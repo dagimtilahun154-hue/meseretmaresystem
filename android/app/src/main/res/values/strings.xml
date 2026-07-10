@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">solar management system</string>
+    <string name="title_activity_main">solar management system</string>
+    <string name="package_name">com.solarflow.management</string>
+    <string name="custom_url_scheme">com.solarflow.management</string>
+</resources>

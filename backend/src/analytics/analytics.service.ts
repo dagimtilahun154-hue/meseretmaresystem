@@ -1,0 +1,131 @@
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+
+const toNumber = (value: any) => Number(value || 0);
+const dateOnly = (value?: Date | string | null) => (value ? new Date(value).toISOString().slice(0, 10) : "");
+
+function payloadNumber(payload: any, key: string) {
+  return Number(payload?.[key] || 0);
+}
+
+function groupByDate<T>(rows: T[], dateSelector: (row: T) => string, amountSelector: (row: T) => number) {
+  const grouped: Record<string, number> = {};
+  rows.forEach((row) => {
+    const date = dateSelector(row);
+    if (!date) return;
+    grouped[date] = (grouped[date] || 0) + amountSelector(row);
+  });
+  return Object.entries(grouped)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-30)
+    .map(([date, amount]) => ({ date: date.slice(5), amount }));
+}
+
+@Injectable()
+export class AnalyticsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async dashboard(query: any) {
+    const company = query.company;
+    const financeWhere = (type: string) => ({ type, ...(company ? { company } : {}) });
+
+    const [
+      products,
+      sales,
+      payments,
+      fieldWorks,
+      inventoryRequests,
+      cashFlowRows,
+      bankAccountRows,
+      loanRows,
+      peachtreeImports,
+      syncStatusCounts,
+    ] = await Promise.all([
+      this.prisma.product.findMany({ orderBy: { name: "asc" } }),
+      this.prisma.posSale.findMany({ orderBy: { date: "desc" }, take: 500 }),
+      this.prisma.payment.findMany({ orderBy: { date: "desc" }, take: 500 }),
+      this.prisma.fieldWorkJob.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
+      this.prisma.inventoryRequest.findMany({ orderBy: { createdAt: "desc" }, take: 200 }),
+      this.prisma.financeCenterRecord.findMany({ where: financeWhere("cash-flow"), orderBy: { createdAt: "desc" }, take: 500 }),
+      this.prisma.financeCenterRecord.findMany({ where: financeWhere("bank-accounts"), orderBy: { createdAt: "desc" }, take: 200 }),
+      this.prisma.financeCenterRecord.findMany({ where: financeWhere("loans"), orderBy: { createdAt: "desc" }, take: 200 }),
+      this.prisma.peachtreeImport.findMany({ where: company ? { company } : undefined, orderBy: { uploadedAt: "desc" }, take: 10 }),
+      this.prisma.syncMutation.groupBy({ by: ["status"], _count: { status: true }, where: company ? { company } : undefined }),
+    ]);
+
+    const totalSales = sales.reduce((sum, sale) => sum + toNumber(sale.total), 0);
+    const totalCost = sales.reduce((sum, sale) => sum + Math.max(0, toNumber(sale.subtotal) - toNumber(sale.discount)), 0);
+    const totalProfit = totalSales - totalCost;
+    const totalVat = sales.reduce((sum, sale) => sum + toNumber(sale.tax), 0);
+    const uniqueCustomers = new Set(sales.map((sale) => sale.customerName).filter(Boolean)).size;
+    const totalProducts = products.length;
+    const lowStockCount = products.filter((product) => toNumber(product.quantity) > 0 && toNumber(product.quantity) <= 5).length;
+    const outOfStockCount = products.filter((product) => toNumber(product.quantity) <= 0).length;
+    const inventoryValue = products.reduce((sum, product) => sum + toNumber(product.quantity) * toNumber(product.sellPrice), 0);
+
+    const paymentMethodBreakdown = {
+      cash: payments.filter((payment) => payment.type === "received" && payment.method === "Cash").reduce((sum, payment) => sum + toNumber(payment.amount), 0),
+      bank: payments.filter((payment) => payment.type === "received" && payment.method === "Bank Transfer").reduce((sum, payment) => sum + toNumber(payment.amount), 0),
+      telebirr: payments.filter((payment) => payment.type === "received" && payment.method === "Mobile Money").reduce((sum, payment) => sum + toNumber(payment.amount), 0),
+    };
+
+    const cashFlow = cashFlowRows.map((row) => row.payload as any);
+    const cashFlowIncome = cashFlow.filter((row) => row.type === "income").reduce((sum, row) => sum + payloadNumber(row, "amount"), 0);
+    const cashFlowExpense = cashFlow.filter((row) => row.type === "expense").reduce((sum, row) => sum + payloadNumber(row, "amount"), 0);
+    const bankBalance = bankAccountRows.reduce((sum, row) => sum + payloadNumber(row.payload, "balance"), 0) + paymentMethodBreakdown.bank + paymentMethodBreakdown.telebirr;
+    const loanOutstanding = loanRows.reduce((sum, row) => sum + payloadNumber(row.payload, "remainingBalance"), 0);
+    const pendingRequests = inventoryRequests.filter((request) => request.status === "pending").length;
+    const fieldWorkExpense = fieldWorks.reduce((sum, job) => sum + toNumber(job.cost), 0);
+    const activeFieldWorks = fieldWorks.filter((job) => job.status === "in-progress").length;
+    const overdueFieldWorks = fieldWorks.filter((job) => job.status === "in-progress" && job.completedDate && job.completedDate < new Date()).length;
+
+    const peachtreeLastImport = peachtreeImports[0];
+    const syncStatus = syncStatusCounts.reduce<Record<string, number>>((acc, row) => {
+      acc[row.status] = row._count.status;
+      return acc;
+    }, {});
+
+    return {
+      company: company || "all",
+      generatedAt: new Date().toISOString(),
+      stats: {
+        totalSales,
+        totalProfit,
+        totalVat,
+        uniqueCustomers,
+        totalProducts,
+        lowStockCount,
+        outOfStockCount,
+        inventoryValue,
+        bankBalance,
+        netCashFlow: cashFlowIncome - cashFlowExpense + paymentMethodBreakdown.cash + paymentMethodBreakdown.bank + paymentMethodBreakdown.telebirr - fieldWorkExpense,
+        pendingRequests,
+        loanOutstanding,
+        fieldWorkExpense,
+        activeFieldWorks,
+        overdueFieldWorks,
+      },
+      payments: {
+        cashSales: paymentMethodBreakdown.cash,
+        bankSales: paymentMethodBreakdown.bank,
+        telebirrSales: paymentMethodBreakdown.telebirr,
+      },
+      charts: {
+        salesTrend: groupByDate(sales, (sale) => dateOnly(sale.date), (sale) => toNumber(sale.total)),
+        cashFlowTrend: groupByDate(cashFlow, (row) => row.date || "", (row) => (row.type === "expense" ? -payloadNumber(row, "amount") : payloadNumber(row, "amount"))),
+      },
+      peachtree: {
+        lastSyncAt: peachtreeLastImport?.uploadedAt?.toISOString() || null,
+        lastFileName: peachtreeLastImport?.fileName || null,
+        lastStatus: peachtreeLastImport?.status || null,
+        importedFiles: peachtreeImports.length,
+        importedRows: peachtreeImports.reduce((sum, item) => sum + item.recordCount, 0),
+      },
+      sync: {
+        queued: syncStatus.queued || 0,
+        applied: syncStatus.applied || 0,
+        failed: syncStatus.failed || 0,
+      },
+    };
+  }
+}

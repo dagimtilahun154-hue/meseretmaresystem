@@ -1,0 +1,128 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 220 30% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 30% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 10%;
+
+    /* Brand Yellow - Solar Power & Energy (PRIMARY Highlight) */
+    --primary: 48 100% 50%;
+    --primary-foreground: 220 30% 10%;
+
+    /* Brand Green - Stability & Growth (SECONDARY Accent) */
+    --secondary: 142 72% 29%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 20% 96%;
+    --muted-foreground: 220 15% 45%;
+
+    --accent: 48 100% 50%;
+    --accent-foreground: 220 30% 10%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Status Green is separate from Brand Green */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 42 100% 50%;
+    --warning-foreground: 220 30% 10%;
+
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 210 20% 90%;
+    --input: 210 20% 90%;
+    --ring: 48 100% 50%;
+
+    --radius: 1rem;
+
+    /* Neutral Dark Sidebar - Professional & High Contrast */
+    --sidebar-background: 220 35% 8%; 
+    --sidebar-foreground: 210 30% 90%;
+    --sidebar-primary: 48 100% 50%;
+    --sidebar-primary-foreground: 220 30% 10%;
+    --sidebar-accent: 142 72% 29%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 35% 15%;
+    --sidebar-ring: 48 100% 50%;
+
+    --font-heading: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border) / 1);
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-body);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    background-color: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--primary) / 0.1);
+    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.05);
+  }
+  .stat-gradient-sales {
+    background: linear-gradient(135deg, hsl(142 72% 29%) 0%, hsl(45 93% 47%) 100%);
+  }
+  .stat-gradient-products {
+    background: linear-gradient(135deg, hsl(200 90% 45%) 0%, hsl(190 80% 55%) 100%);
+  }
+  .stat-gradient-customers {
+    background: linear-gradient(135deg, hsl(142 72% 35%) 0%, hsl(160 60% 45%) 100%);
+  }
+  .stat-gradient-profit {
+    background: linear-gradient(135deg, hsl(45 93% 47%) 0%, hsl(35 90% 55%) 100%);
+  }
+  .stat-gradient-vat {
+    background: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(350 70% 50%) 100%);
+  }
+
+  /* Custom Thin Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--primary) / 0.8);
+  }
+
+  /* Hide scrollbar utility */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}

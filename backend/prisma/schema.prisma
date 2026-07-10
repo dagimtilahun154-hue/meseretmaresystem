@@ -1,0 +1,709 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  REFRESH
+  CREATE
+  UPDATE
+  DELETE
+  APPROVE
+  SYNC
+}
+
+model Organization {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  companies Company[]
+  users     User[]
+  roles     Role[]
+  auditLogs AuditLog[]
+
+  @@map("organizations")
+}
+
+model Company {
+  id             String        @id @default(cuid())
+  organizationId String
+  code           String
+  name           String
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users          UserCompany[]
+  auditLogs      AuditLog[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("companies")
+}
+
+model User {
+  id               String         @id @default(cuid())
+  organizationId   String
+  username         String
+  passwordHash     String
+  displayName      String
+  status           UserStatus     @default(ACTIVE)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  reportsToId      String?
+  department       String?
+  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reportsTo        User?          @relation("UserReporting", fields: [reportsToId], references: [id], onDelete: SetNull)
+  subordinates     User[]         @relation("UserReporting")
+  roles            UserRole[]
+  companies        UserCompany[]
+  refreshTokens    RefreshToken[]
+  auditLogs        AuditLog[]
+  createdRequests  HierarchyRequest[] @relation("CreatedRequests")
+  assignedRequests HierarchyRequest[] @relation("AssignedRequests")
+  requestAuditLogs RequestAuditLog[]
+  lastSeen         DateTime?
+  eodReports       EodReport[]    @relation("EodSubmittedBy")
+  tasksCreated        Task[]             @relation("CreatedTasks")
+  tasksAssigned       Task[]             @relation("AssignedTasks")
+  comments            Comment[]          @relation("AuthoredComments")
+  channelMemberships  ChannelMember[]    @relation("UserChannels")
+  chatMessages        ChatMessage[]      @relation("SentMessages")
+  notifications       Notification[]     @relation("UserNotifications")
+
+  @@unique([organizationId, username])
+  @@index([organizationId])
+  @@map("users")
+}
+
+model Role {
+  id             String           @id @default(cuid())
+  organizationId String
+  name           String
+  label          String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users          UserRole[]
+  permissions    RolePermission[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  description String?
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserCompany {
+  userId    String
+  companyId String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, companyId])
+  @@map("user_companies")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @db.VarChar(255)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id             String        @id @default(cuid())
+  organizationId String
+  companyId      String?
+  userId         String?
+  action         AuditAction
+  resource       String
+  resourceId     String?
+  ipAddress      String?
+  userAgent      String?
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company        Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([companyId])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+model Product {
+  id              String   @id
+  code            String?
+  name            String
+  category        String?
+  quantity        Decimal  @default(0) @db.Decimal(15, 2)
+  costPrice       Decimal  @default(0) @db.Decimal(15, 2)
+  sellPrice       Decimal  @default(0) @db.Decimal(15, 2)
+  unit            String?
+  measurementUnit String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("products")
+}
+
+model PosSale {
+  id            String   @id
+  date          DateTime
+  customerName  String?
+  paymentMethod String?
+  bankName      String?
+  subtotal      Decimal  @default(0) @db.Decimal(15, 2)
+  discount      Decimal  @default(0) @db.Decimal(15, 2)
+  tax           Decimal  @default(0) @db.Decimal(15, 2)
+  total         Decimal  @default(0) @db.Decimal(15, 2)
+  note          String?  @db.Text
+  createdBy     String?
+  items         Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("pos_sales")
+}
+
+model FieldWorkJob {
+  id            String   @id
+  title         String
+  description   String?  @db.Text
+  customerName  String?
+  location      String?
+  assignedTo    String?
+  status        String   @default("pending")
+  priority      String   @default("medium")
+  scheduledDate DateTime?
+  completedDate DateTime?
+  cost          Decimal  @default(0) @db.Decimal(15, 2)
+  notes         String?  @db.Text
+  payload       Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("field_work_jobs")
+}
+
+model Customer {
+  id          String   @id
+  name        String
+  phone       String?
+  email       String?
+  address     String?  @db.Text
+  tin         String?
+  contact     String?
+  city        String?
+  state       String?
+  zip         String?
+  creditLimit Decimal  @default(0) @db.Decimal(15, 2)
+  balance     Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("customers")
+}
+
+model Vendor {
+  id          String   @id
+  name        String
+  phone       String?
+  email       String?
+  address     String?  @db.Text
+  tin         String?
+  contact     String?
+  city        String?
+  state       String?
+  zip         String?
+  creditLimit Decimal  @default(0) @db.Decimal(15, 2)
+  balance     Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("vendors")
+}
+
+model Account {
+  id             String   @id
+  name           String
+  type           String
+  description    String?  @db.Text
+  openingBalance Decimal  @default(0) @db.Decimal(15, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("chart_accounts")
+}
+
+model Invoice {
+  id           String   @id
+  customerId   String?
+  customerName String?
+  date         DateTime
+  dueDate      DateTime?
+  items        Json?
+  subtotal     Decimal  @default(0) @db.Decimal(15, 2)
+  totalVat     Decimal  @default(0) @db.Decimal(15, 2)
+  total        Decimal  @default(0) @db.Decimal(15, 2)
+  status       String   @default("Draft")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("invoices")
+}
+
+model Bill {
+  id         String   @id
+  vendorId   String?
+  vendorName String?
+  date       DateTime
+  items      Json?
+  total      Decimal  @default(0) @db.Decimal(15, 2)
+  status     String   @default("Pending")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("bills")
+}
+
+model Payment {
+  id              String   @id
+  reference       String?
+  entityId        String?
+  entityName      String?
+  invoiceOrBillId String?
+  amount          Decimal  @default(0) @db.Decimal(15, 2)
+  method          String?
+  bankName        String?
+  note            String?  @db.Text
+  date            DateTime
+  type            String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("payments")
+}
+
+model Expense {
+  id          String   @id
+  category    String
+  description String?  @db.Text
+  amount      Decimal  @default(0) @db.Decimal(15, 2)
+  date        DateTime
+  method      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("expenses")
+}
+
+model FinanceJournalEntry {
+  id            String   @id
+  date          DateTime
+  description   String?  @db.Text
+  debitAccount  String?
+  creditAccount String?
+  amount        Decimal  @default(0) @db.Decimal(15, 2)
+  lines         Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("finance_journal_entries")
+}
+
+model HrDepartment {
+  id          String   @id
+  name        String
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("hr_departments")
+}
+
+model HrWorker {
+  id            String   @id
+  workerCode    String?  @unique
+  fullName      String
+  phone         String?
+  position      String?
+  departmentId  String?
+  departmentName String?
+  photoUrl      String?  @db.Text
+  fingerprintId String?  @unique
+  status        String   @default("Active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("hr_workers")
+}
+
+model HrSetting {
+  id                 String   @id @default("default")
+  workStartTime      String   @default("08:00")
+  workEndTime        String   @default("17:00")
+  gracePeriodMinutes Int      @default(15)
+  companyName        String   @default("Meseret Mare Solar")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("hr_settings")
+}
+
+model AttendanceLog {
+  id                 String   @id @default(cuid())
+  workerId           String
+  workerName         String?
+  date               DateTime
+  checkInTime        DateTime?
+  checkOutTime       DateTime?
+  totalHours         Decimal  @default(0) @db.Decimal(8, 2)
+  status             String   @default("Present")
+  lateMinutes        Int      @default(0)
+  earlyLeaveMinutes  Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([workerId, date])
+  @@map("attendance_logs")
+}
+
+model InventoryRequest {
+  id           String   @id
+  productId    String?
+  productName  String
+  productCode  String?
+  category     String?
+  quantity     Decimal  @default(0) @db.Decimal(15, 2)
+  price        Decimal  @default(0) @db.Decimal(15, 2)
+  requestedBy  String
+  reason       String?  @db.Text
+  status       String   @default("pending")
+  approvedBy   String?
+  approvedDate DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("inventory_requests")
+}
+
+model FinanceCenterRecord {
+  id        String   @id
+  type      String
+  company   String?
+  payload   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type, company])
+  @@map("finance_center_records")
+}
+
+model PeachtreeImport {
+  id              String   @id @default(cuid())
+  company         String?
+  source          String   @default("desktop-agent")
+  fileName        String
+  fileType        String?
+  mimeType        String?
+  sizeBytes       Int
+  checksum        String   @unique
+  status          String   @default("received")
+  detectedFormat  String?
+  recordCount     Int      @default(0)
+  rawPreview      String?  @db.Text
+  parsedData      Json?
+  mappingSummary  Json?
+  errorMessage    String?  @db.Text
+  uploadedBy      String?
+  uploadedAt      DateTime @default(now())
+  processedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([company, uploadedAt])
+  @@map("peachtree_imports")
+}
+
+model SyncDevice {
+  id           String   @id @default(cuid())
+  deviceKey    String   @unique
+  name         String?
+  type         String   @default("web")
+  company      String?
+  userId       String?
+  lastSeenAt   DateTime @default(now())
+  lastPushAt   DateTime?
+  lastPullAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([company, lastSeenAt])
+  @@map("sync_devices")
+}
+
+model SyncMutation {
+  id             String   @id
+  deviceKey      String?
+  company        String?
+  entityType     String
+  entityId       String?
+  operation      String
+  endpoint       String?
+  method         String?
+  payload        Json?
+  status         String   @default("queued")
+  retryCount     Int      @default(0)
+  errorMessage   String?  @db.Text
+  createdBy      String?
+  clientCreatedAt DateTime?
+  appliedAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([company, status, createdAt])
+  @@index([deviceKey, status])
+  @@map("sync_mutations")
+}
+
+model SyncConflict {
+  id           String   @id @default(cuid())
+  mutationId   String?
+  company      String?
+  entityType   String
+  entityId     String?
+  reason       String
+  clientValue  Json?
+  serverValue  Json?
+  status       String   @default("open")
+  resolvedBy   String?
+  resolvedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([company, status, createdAt])
+  @@map("sync_conflicts")
+}
+
+model PumpProduct {
+  id              String   @id @default(cuid())
+  model           String
+  brand           String
+  status          String   @default("Published")
+  firstCategory   String
+  secondCategory  String
+  power           String
+  voltage         String
+  description     String?  @db.Text
+  image           String?  @db.Text
+  controllerImage String?  @db.Text
+  panelImage      String?  @db.Text
+  introductionTitle    String?
+  technicalDataTitle   String?
+  hydraulicCurveTitle  String?
+  hydraulicCurveImage  String?  @db.Text
+  technicalData   Json?
+  performanceData Json?
+  equipment       Json?
+  sourceUrl       String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([firstCategory, secondCategory])
+  @@map("pump_products")
+}
+
+model PumpCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?  @db.Text
+  icon        String   @default("droplets")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("pump_categories")
+}
+
+model HierarchyRequest {
+  id             String            @id @default(cuid())
+  title          String
+  description    String?           @db.Text
+  amount         Decimal?          @db.Decimal(15, 2)
+  type           String            // "FIELD_TRIP", "MARKETING", "STOCK_REORDER", "GENERAL"
+  status         String            // "PENDING", "FORWARDED", "APPROVED", "REJECTED"
+  createdById    String
+  assignedToId   String
+  fieldWorkJobId String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  createdBy      User              @relation("CreatedRequests", fields: [createdById], references: [id], onDelete: Cascade)
+  assignedTo     User              @relation("AssignedRequests", fields: [assignedToId], references: [id], onDelete: Cascade)
+  logs           RequestAuditLog[]
+
+  @@map("hierarchy_requests")
+}
+
+model RequestAuditLog {
+  id          String           @id @default(cuid())
+  requestId   String
+  userId      String
+  action      String           // "SUBMIT", "APPROVE", "REJECT", "FORWARD", "PAY"
+  comment     String?          @db.Text
+  createdAt   DateTime         @default(now())
+
+  request     HierarchyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("request_audit_logs")
+}
+
+model EodReport {
+  id            String   @id @default(cuid())
+  date          String   // e.g. "2026-07-08"
+  department    String
+  submittedById String
+  submittedBy   User     @relation("EodSubmittedBy", fields: [submittedById], references: [id], onDelete: Cascade)
+  content       String   @db.Text
+  metrics       Json?    // Optional EOD KPI counts
+  createdAt     DateTime @default(now())
+
+  @@map("eod_reports")
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  status      String   @default("TODO") // "TODO", "IN_PROGRESS", "REVIEW", "DONE"
+  priority    String   @default("MEDIUM") // "LOW", "MEDIUM", "HIGH"
+  dueDate     DateTime?
+  creatorId   String
+  assigneeId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creator     User     @relation("CreatedTasks", fields: [creatorId], references: [id], onDelete: Cascade)
+  assignee    User     @relation("AssignedTasks", fields: [assigneeId], references: [id], onDelete: Cascade)
+
+  @@map("tasks")
+}
+
+model Comment {
+  id          String   @id @default(cuid())
+  entityType  String   // "EOD", "TASK", "REQUEST"
+  entityId    String
+  authorId    String
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+
+  author      User     @relation("AuthoredComments", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@map("comments")
+}
+
+model ChatChannel {
+  id          String   @id @default(cuid())
+  name        String?
+  type        String   // "PUBLIC", "PRIVATE", "DM"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     ChannelMember[]
+  messages    ChatMessage[]
+
+  @@map("chat_channels")
+}
+
+model ChannelMember {
+  channelId   String
+  userId      String
+  lastReadAt  DateTime @default(now())
+  joinedAt    DateTime @default(now())
+
+  channel     ChatChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user        User        @relation("UserChannels", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([channelId, userId])
+  @@map("channel_members")
+}
+
+model ChatMessage {
+  id          String   @id @default(cuid())
+  channelId   String
+  senderId    String
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+
+  channel     ChatChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  sender      User        @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // "MENTION", "TASK_ASSIGNED", "EOD_COMMENT", "TASK_UPDATED"
+  title       String?
+  content     String   @db.Text
+  read        Boolean  @default(false)
+  link        String?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
