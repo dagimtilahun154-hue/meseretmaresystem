@@ -16,6 +16,8 @@ import { ChatModule } from "./chat/chat.module";
 import { TasksModule } from "./tasks/tasks.module";
 import { CommentsModule } from "./comments/comments.module";
 import { NotificationsModule } from "./notifications/notifications.module";
+import { SizingModule } from "./sizing/sizing.module";
+import { AssetsModule } from "./assets/assets.module";
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { NotificationsModule } from "./notifications/notifications.module";
     TasksModule,
     CommentsModule,
     NotificationsModule,
+    SizingModule,
+    AssetsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

@@ -280,7 +280,7 @@ function renderDetailedRequest(req: HierarchyRequest) {
 }
 
 export default function ApprovalsInbox() {
-  const { currentUser, users } = useAuth();
+  const { currentUser, users, hasAccess } = useAuth();
   const [requests, setRequests] = useState<HierarchyRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<HierarchyRequest | null>(null);
@@ -703,7 +703,7 @@ export default function ApprovalsInbox() {
                     />
                     
                     {/* Forward option specifically for General Manager */}
-                    {currentUser?.role === "manager" && (
+                    {hasAccess(["manager"]) && (
                       <div className="space-y-1.5">
                         <Label htmlFor="forward-user" className="text-xs">Or Forward request to (Manager):</Label>
                         <div className="flex gap-2">

@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo, Fragment } from "react";
+import { apiClient } from "@/lib/api/client";
 import { useStore } from "@/context/StoreContext";
+import { ClientFileModal } from "@/components/ClientFileModal";
 import { financeStore, normalizePayment, Payment, toMoneyNumber } from "@/lib/finance-hub-store";
 import { analyticsDB, financeCenterDB, inventoryRequestsDB, journalDB, hierarchyRequestsDB } from "@/lib/db-service";
 import { ETHIOPIAN_BANKS } from "@/lib/data";
@@ -19,7 +21,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   DollarSign, Users, BarChart3, FileText, Plus, Check, X,
   Clock, CheckCircle2, XCircle, Landmark,
-  CreditCard, Calendar, CalendarClock, ArrowUpRight, ArrowDownRight, Building, Coins
+  CreditCard, Calendar, CalendarClock, ArrowUpRight, ArrowDownRight, Building, Coins, Droplets
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -35,6 +37,8 @@ import { formatCurrency } from "@/lib/data";
 import { downloadCSV, generateVATExport, generatePayrollExport, generateCashFlowExport } from "@/lib/export-utils";
 import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
+import PeachtreePage from "@/pages/PeachtreePage";
+
 const STATUS_COLORS: Record<RequestStatus, string> = {
   pending: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
   approved: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
@@ -48,11 +52,13 @@ const FINANCE_SECTIONS = new Set([
   "loans",
   "bank-reconciliation",
   "building-rent",
+  "sizing-proposals",
   "inventory",
   "budget",
   "payroll",
   "vat",
   "petty-cash",
+  "peachtree",
   "financials",
   "reports",
 ]);
@@ -139,6 +145,38 @@ export default function FinanceCenterPage() {
   const [selectedBankView, setSelectedBankView] = useState<string | null>(null);
   const selectedEntity = financeEntity as "FZ" | "MM";
   const selectedEntityName = selectedEntity === "FZ" ? "Fasil Zelalem" : "Meseret Mare";
+
+  const [sizingProposals, setSizingProposals] = useState<any[]>([]);
+  const [loadingSizing, setLoadingSizing] = useState<boolean>(false);
+  const [fileModalOpen, setFileModalOpen] = useState<boolean>(false);
+  const [fileModalProposal, setFileModalProposal] = useState<any | null>(null);
+
+  const fetchSizingProposals = async () => {
+    setLoadingSizing(true);
+    try {
+      const res = await apiClient.get("/sizing-requests");
+      setSizingProposals(res.data);
+    } catch (e) {
+      console.error("Failed to load sizing proposals in Finance Center", e);
+    } finally {
+      setLoadingSizing(false);
+    }
+  };
+
+  const handleRegisterSizingPayment = async (id: string) => {
+    try {
+      await apiClient.patch(`/sizing-requests/${id}/finance-pay`);
+      toast.success("Client payment registered successfully! Proposal marked as Paid.");
+      fetchSizingProposals();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.response?.data?.message || "Failed to register payment.");
+    }
+  };
+
+  useEffect(() => {
+    fetchSizingProposals();
+  }, []);
 
   const allCashFlow = useMemo(() => {
     const safePayments = Array.isArray(financePayments) ? financePayments.map(normalizePayment) : [];
@@ -552,7 +590,7 @@ export default function FinanceCenterPage() {
       toast.error("Fill required fields");
       return;
     }
-    const isDraft = currentUser?.username !== "finance_admin" && currentUser?.role !== "manager";
+    const isDraft = !canApprove;
     const record: CashFlowEntry = {
       id: crypto.randomUUID(),
       ...cfForm,
@@ -681,7 +719,7 @@ export default function FinanceCenterPage() {
       <Tabs value={activeSection} className="space-y-4">
         <TabsContent value="dashboard">
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
               <Card className="border-primary/20 bg-primary/5 shadow-sm">
                 <CardContent className="p-4 flex flex-col items-center justify-center">
                   <p className="text-xs font-bold uppercase tracking-wider text-primary/80 mb-1">Total Sales</p>
@@ -698,11 +736,18 @@ export default function FinanceCenterPage() {
                   <p className="text-[10px] uppercase text-muted-foreground mt-2 font-semibold">Income minus expenses</p>
                 </CardContent>
               </Card>
-              <Card className="shadow-sm">
+              <Card className="shadow-sm cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate("/finance/inventory")}>
                 <CardContent className="p-4 flex flex-col items-center justify-center">
-                  <p className="text-xs font-bold uppercase tracking-wider text-warning mb-1">Pending Requests</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-warning mb-1">Pending Inventory</p>
                   <p className="text-3xl font-black text-warning">{invRequests.filter((r) => r.status === "pending").length}</p>
-                  <Button variant="link" size="sm" className="mt-1 h-auto py-0">Waiting approval</Button>
+                  <Button variant="link" size="sm" className="mt-1 h-auto py-0 text-warning hover:text-warning/80">Waiting approval</Button>
+                </CardContent>
+              </Card>
+              <Card className="shadow-sm cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate("/finance/sizing-proposals")}>
+                <CardContent className="p-4 flex flex-col items-center justify-center">
+                  <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">Sizing Proposals</p>
+                  <p className="text-3xl font-black text-blue-600">{sizingProposals.filter((p) => p.status === "APPROVED_TM").length}</p>
+                  <Button variant="link" size="sm" className="mt-1 h-auto py-0 text-blue-600 hover:text-blue-700">Awaiting Payment</Button>
                 </CardContent>
               </Card>
               <Card className="shadow-sm border-border/50">
@@ -839,7 +884,7 @@ export default function FinanceCenterPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          {cf.status === "pending" && (currentUser?.username === "finance_admin" || currentUser?.role === "manager") && (
+                          {cf.status === "pending" && canApprove && (
                             <Button size="sm" variant="outline" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white border-0" onClick={() => approveCashFlowEntry(cf.id)}>
                               Approve
                             </Button>
@@ -1496,6 +1541,99 @@ export default function FinanceCenterPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="sizing-proposals">
+          <Card>
+            <CardHeader className="bg-muted/15 border-b pb-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="font-heading text-lg flex items-center gap-2">
+                    <Droplets className="h-5 w-5 text-primary" />
+                    Sizing Proposals & Client Payment Collections
+                  </CardTitle>
+                  <CardDescription className="text-xs mt-1">
+                    Review TM-approved solar pump sizing proposals, inspect calculated equipment packages, and log client payments to authorize fieldwork dispatches.
+                  </CardDescription>
+                </div>
+                <Button size="sm" variant="outline" onClick={fetchSizingProposals} disabled={loadingSizing}>
+                  <Clock className="h-3.5 w-3.5 mr-1" /> Refresh List
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Client Name</TableHead>
+                    <TableHead>Site Address</TableHead>
+                    <TableHead>Selected Pump Model</TableHead>
+                    <TableHead>Water Demand</TableHead>
+                    <TableHead>Calculated Package Cost</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Approved By</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sizingProposals.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-bold">{p.clientName}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{p.address || "N/A"}</TableCell>
+                      <TableCell className="font-semibold text-primary">{p.selectedPumpModel}</TableCell>
+                      <TableCell className="font-mono text-xs">{p.dailyWaterNeed} m³/day</TableCell>
+                      <TableCell className="font-mono font-bold text-sm">
+                        {p.totalPrice ? `$${Number(p.totalPrice).toLocaleString()}` : "Pending Calc"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={
+                          p.status === "APPROVED_TM" ? "bg-blue-100 text-blue-800 border-blue-200" :
+                          p.status === "PAID" ? "bg-green-100 text-green-800 border-green-200" :
+                          p.status === "FIELDWORK_CREATED" ? "bg-teal-100 text-teal-800 border-teal-200" :
+                          "bg-gray-100 text-gray-800"
+                        }>
+                          {p.status === "APPROVED_TM" ? "TM Approved (Payable)" :
+                           p.status === "PAID" ? "Paid (Awaiting Crew)" :
+                           p.status === "FIELDWORK_CREATED" ? "Fieldwork Active" : p.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{p.checkedByName || "TM"}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button size="sm" variant="outline" className="gap-1 text-xs font-semibold" onClick={() => { setFileModalProposal(p); setFileModalOpen(true); }}>
+                            <FileText className="h-3.5 w-3.5 text-primary" /> Full Client File
+                          </Button>
+
+                          {p.status === "APPROVED_TM" && canApprove && (
+                            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white font-semibold gap-1" onClick={() => handleRegisterSizingPayment(p.id)}>
+                              <CreditCard className="h-3.5 w-3.5" /> Register Client Payment
+                            </Button>
+                          )}
+                          {p.status === "PAID" && (
+                            <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
+                              Payment Logged
+                            </Badge>
+                          )}
+                          {p.status === "FIELDWORK_CREATED" && (
+                            <Badge variant="outline" className="text-teal-600 border-teal-200 bg-teal-50">
+                              Crew Dispatched
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {sizingProposals.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        No sizing proposals found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="budget">
           <div className="space-y-6">
             <div className="flex justify-between items-center mb-4">
@@ -1876,6 +2014,10 @@ export default function FinanceCenterPage() {
             </Card>
           </div>
         </TabsContent>
+
+        <TabsContent value="peachtree">
+          <PeachtreePage />
+        </TabsContent>
       </Tabs>
 
       {/* Dialogs */}
@@ -1940,6 +2082,12 @@ export default function FinanceCenterPage() {
           <DialogFooter><Button variant="outline" onClick={() => setPettyCashDialog(false)}>Cancel</Button><Button onClick={handleAddPettyCash}>Save Settlement</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ClientFileModal
+        open={fileModalOpen}
+        onOpenChange={setFileModalOpen}
+        proposal={fileModalProposal}
+      />
     </div>
   );
 }

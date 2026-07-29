@@ -35,7 +35,7 @@ export default function ChartOfAccounts() {
   const [form, setForm] = useState<Partial<Account>>({});
   const [filterType, setFilterType] = useState<string>("All");
 
-  const save = () => {
+  const save = async () => {
     const entry: Account = {
       id: form.id || `${Date.now()}`,
       name: form.name || "",
@@ -43,22 +43,17 @@ export default function ChartOfAccounts() {
       description: form.description || "",
       openingBalance: Number(form.openingBalance) || 0,
     };
-    let updated;
-    if (editing) {
-      updated = accounts.map((a) => (a.id === editing.id ? entry : a));
-    } else {
-      updated = [...accounts, entry];
-    }
-    store.setAccounts(updated);
+    await store.saveAccount(entry);
+    const updated = store.getAccounts();
     setAccounts(updated);
     setOpen(false);
     setEditing(null);
     setForm({});
   };
 
-  const remove = (id: string) => {
-    const updated = accounts.filter((a) => a.id !== id);
-    store.setAccounts(updated);
+  const remove = async (id: string) => {
+    await store.deleteAccount(id);
+    const updated = store.getAccounts();
     setAccounts(updated);
   };
 

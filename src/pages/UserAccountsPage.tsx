@@ -12,11 +12,14 @@ import { Plus, Pencil, Trash2, Users, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 const ROLE_COLORS: Record<UserRole, string> = {
-  manager: "bg-primary/10 text-primary",
-  finance: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  storekeeper: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  fieldwork: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  attendance: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  manager: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/20 dark:text-purple-400",
+  fieldwork: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950/20 dark:text-orange-400",
+  ttl: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400",
+  finance: "bg-green-100 text-green-800 border-green-200 dark:bg-green-950/20 dark:text-green-400",
+  storekeeper: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400",
+  sales: "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-950/20 dark:text-teal-400",
+  technician: "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400",
+  attendance: "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950/20 dark:text-indigo-400",
 };
 
 export default function UserAccountsPage() {
@@ -113,9 +116,9 @@ export default function UserAccountsPage() {
                   <TableCell className="font-medium">{u.displayName}</TableCell>
                   <TableCell>{u.username}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={ROLE_COLORS[u.role]}>
+                    <Badge variant="outline" className={ROLE_COLORS[u.role] || "bg-slate-100 text-slate-800"}>
                       <ShieldCheck className="h-3 w-3 mr-1" />
-                      {ROLE_LABELS[u.role]}
+                      {ROLE_LABELS[u.role] || u.role}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right space-x-1">

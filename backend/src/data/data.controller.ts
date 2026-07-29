@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UploadedFile, UseInterceptors, Req } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { DataService } from "./data.service";
+import { Roles } from "../common/decorators/roles.decorator";
 
 @Controller()
 export class DataController {
@@ -35,20 +36,48 @@ export class DataController {
   @Get("vendors") vendors() { return this.data.vendors(); }
   @Post("vendors") saveVendor(@Body() body: any) { return this.data.saveVendor(body); }
   @Delete("vendors/:id") deleteVendor(@Param("id") id: string) { return this.data.deleteVendor(id); }
-  @Get("accounts") accounts() { return this.data.accounts(); }
-  @Post("accounts") saveAccount(@Body() body: any) { return this.data.saveAccount(body); }
-  @Delete("accounts/:id") deleteAccount(@Param("id") id: string) { return this.data.deleteAccount(id); }
-  @Get("invoices") invoices() { return this.data.invoices(); }
-  @Post("invoices") saveInvoice(@Body() body: any) { return this.data.saveInvoice(body); }
-  @Get("bills") bills() { return this.data.bills(); }
-  @Post("bills") saveBill(@Body() body: any) { return this.data.saveBill(body); }
-  @Get("payments") payments() { return this.data.payments(); }
-  @Post("payments") savePayment(@Body() body: any) { return this.data.savePayment(body); }
-  @Get("expenses") expenses() { return this.data.expenses(); }
-  @Post("expenses") saveExpense(@Body() body: any) { return this.data.saveExpense(body); }
-  @Delete("expenses/:id") deleteExpense(@Param("id") id: string) { return this.data.deleteExpense(id); }
-  @Get("journal") journal() { return this.data.journal(); }
-  @Post("journal") saveJournal(@Body() body: any) { return this.data.saveJournal(body); }
+  @Get("accounts")
+  @Roles('manager', 'finance')
+  accounts() { return this.data.accounts(); }
+  @Post("accounts")
+  @Roles('manager', 'finance')
+  saveAccount(@Body() body: any) { return this.data.saveAccount(body); }
+  @Delete("accounts/:id")
+  @Roles('manager', 'finance')
+  deleteAccount(@Param("id") id: string) { return this.data.deleteAccount(id); }
+  @Get("invoices")
+  @Roles('manager', 'finance')
+  invoices() { return this.data.invoices(); }
+  @Post("invoices")
+  @Roles('manager', 'finance')
+  saveInvoice(@Body() body: any) { return this.data.saveInvoice(body); }
+  @Get("bills")
+  @Roles('manager', 'finance')
+  bills() { return this.data.bills(); }
+  @Post("bills")
+  @Roles('manager', 'finance')
+  saveBill(@Body() body: any) { return this.data.saveBill(body); }
+  @Get("payments")
+  @Roles('manager', 'finance')
+  payments() { return this.data.payments(); }
+  @Post("payments")
+  @Roles('manager', 'finance')
+  savePayment(@Body() body: any) { return this.data.savePayment(body); }
+  @Get("expenses")
+  @Roles('manager', 'finance')
+  expenses() { return this.data.expenses(); }
+  @Post("expenses")
+  @Roles('manager', 'finance')
+  saveExpense(@Body() body: any) { return this.data.saveExpense(body); }
+  @Delete("expenses/:id")
+  @Roles('manager', 'finance')
+  deleteExpense(@Param("id") id: string) { return this.data.deleteExpense(id); }
+  @Get("journal")
+  @Roles('manager', 'finance')
+  journal() { return this.data.journal(); }
+  @Post("journal")
+  @Roles('manager', 'finance')
+  saveJournal(@Body() body: any) { return this.data.saveJournal(body); }
 
   @Get("hr/departments") departments() { return this.data.departments(); }
   @Post("hr/departments") saveDepartment(@Body() body: any) { return this.data.saveDepartment(body); }
@@ -64,8 +93,12 @@ export class DataController {
   @Get("inventory-requests") inventoryRequests() { return this.data.inventoryRequests(); }
   @Post("inventory-requests") saveInventoryRequest(@Body() body: any) { return this.data.saveInventoryRequest(body); }
 
-  @Get("finance-center/:type") financeCenter(@Param("type") type: string) { return this.data.financeCenter(type); }
-  @Post("finance-center/:type") saveFinanceCenter(@Param("type") type: string, @Body() body: any) { return this.data.saveFinanceCenter(type, body); }
+  @Get("finance-center/:type")
+  @Roles('manager', 'finance')
+  financeCenter(@Param("type") type: string) { return this.data.financeCenter(type); }
+  @Post("finance-center/:type")
+  @Roles('manager', 'finance')
+  saveFinanceCenter(@Param("type") type: string, @Body() body: any) { return this.data.saveFinanceCenter(type, body); }
 
   @Get("peachtree/imports") peachtreeImports(@Query() query: any) { return this.data.peachtreeImports(query); }
   @Get("peachtree/imports/:id") peachtreeImport(@Param("id") id: string) { return this.data.peachtreeImport(id); }

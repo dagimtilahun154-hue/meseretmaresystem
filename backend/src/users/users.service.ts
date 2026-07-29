@@ -20,7 +20,7 @@ export class UsersService {
       id: user.id,
       username: user.username,
       displayName: user.displayName,
-      role: user.roles[0]?.role.name || "manager",
+      role: user.roles[0]?.role.name || "storekeeper",
       roles: user.roles.map((entry) => entry.role.name),
       reportsToId: user.reportsToId,
       department: user.department,
@@ -41,11 +41,17 @@ export class UsersService {
       throw new ConflictException("Username is already taken.");
     }
 
-    const role = await this.prisma.role.findFirst({
+    let role = await this.prisma.role.findFirst({
       where: { organizationId, name: dto.role },
     });
     if (!role) {
-      throw new NotFoundException(`Role '${dto.role}' not found.`);
+      role = await this.prisma.role.create({
+        data: {
+          organizationId,
+          name: dto.role,
+          label: dto.role.charAt(0).toUpperCase() + dto.role.slice(1),
+        },
+      });
     }
 
     const passwordHash = await argon2.hash(dto.password || "123");
@@ -126,22 +132,29 @@ export class UsersService {
     });
 
     if (dto.role) {
-      const role = await this.prisma.role.findFirst({
+      let role = await this.prisma.role.findFirst({
         where: { organizationId, name: dto.role },
       });
-      if (role) {
-        // Delete existing roles
-        await this.prisma.userRole.deleteMany({
-          where: { userId: id },
-        });
-        // Add new role
-        await this.prisma.userRole.create({
+      if (!role) {
+        role = await this.prisma.role.create({
           data: {
-            userId: id,
-            roleId: role.id,
+            organizationId,
+            name: dto.role,
+            label: dto.role.charAt(0).toUpperCase() + dto.role.slice(1),
           },
         });
       }
+      // Delete existing roles
+      await this.prisma.userRole.deleteMany({
+        where: { userId: id },
+      });
+      // Add new role
+      await this.prisma.userRole.create({
+        data: {
+          userId: id,
+          roleId: role.id,
+        },
+      });
     }
 
     return {

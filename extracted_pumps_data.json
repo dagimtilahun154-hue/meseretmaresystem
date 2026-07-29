@@ -16247,6 +16247,346 @@
           "cost": 15
         }
       ]
+    },
+    {
+      "model": "PBG15-2-130",
+      "brand": "REDBUD",
+      "firstCategory": "Redbud AC Surface Pumps",
+      "secondCategory": "PBG Series",
+      "power": "1.5kW",
+      "voltage": "220V",
+      "description": "PBG series pump for HVAC systems and hot water circulation",
+      "maxFlow": 2.2,
+      "maxHead": 60,
+      "outletSize": "1.5\"",
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "REDBUD"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Surface"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "1.5\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "2.2 m³/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "60 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "1.5kW"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "220V"
+        }
+      ],
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 2.2
+        },
+        {
+          "head": 30,
+          "flow": 1.5
+        },
+        {
+          "head": 60,
+          "flow": 0
+        }
+      ],
+      "source_pdf": "AC water pumps.pdf",
+      "sourceUrl": "AC water pumps.pdf",
+      "status": "Published",
+      "id": "PUMP-059",
+      "introductionTitle": "Overview",
+      "technicalDataTitle": "Technical Parameters",
+      "hydraulicCurveTitle": "Hydraulic Performance Curve",
+      "hydraulicCurveImage": "",
+      "image": "",
+      "controllerImage": "",
+      "panelImage": "",
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-PBG15-2-130",
+          "name": "Redbud PBG15-2-130 Pump Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 600,
+          "cost": 400
+        },
+        {
+          "productId": "AC-CONTROL-BOX",
+          "name": "Standard Single Phase AC Control Box",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 25,
+          "cost": 12
+        }
+      ]
+    },
+    {
+      "model": "PBG20-4-130",
+      "brand": "REDBUD",
+      "firstCategory": "Redbud AC Surface Pumps",
+      "secondCategory": "PBG Series",
+      "power": "1.5kW",
+      "voltage": "220V",
+      "description": "PBG series pump for HVAC systems and hot water circulation",
+      "maxFlow": 4,
+      "maxHead": 60,
+      "outletSize": "1.5\"",
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "REDBUD"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Surface"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "1.5\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "4 m³/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "60 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "1.5kW"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "220V"
+        }
+      ],
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 4
+        },
+        {
+          "head": 30,
+          "flow": 2.5
+        },
+        {
+          "head": 60,
+          "flow": 0
+        }
+      ],
+      "source_pdf": "AC water pumps.pdf",
+      "sourceUrl": "AC water pumps.pdf",
+      "status": "Published",
+      "id": "PUMP-060",
+      "introductionTitle": "Overview",
+      "technicalDataTitle": "Technical Parameters",
+      "hydraulicCurveTitle": "Hydraulic Performance Curve",
+      "hydraulicCurveImage": "",
+      "image": "",
+      "controllerImage": "",
+      "panelImage": "",
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-PBG20-4-130",
+          "name": "Redbud PBG20-4-130 Pump Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 600,
+          "cost": 400
+        },
+        {
+          "productId": "AC-CONTROL-BOX",
+          "name": "Standard Single Phase AC Control Box",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 25,
+          "cost": 12
+        }
+      ]
+    },
+    {
+      "model": "PBG25-4-130",
+      "brand": "REDBUD",
+      "firstCategory": "Redbud AC Surface Pumps",
+      "secondCategory": "PBG Series",
+      "power": "1.5kW",
+      "voltage": "220V",
+      "description": "PBG series pump for HVAC systems and hot water circulation",
+      "maxFlow": 4.2,
+      "maxHead": 60,
+      "outletSize": "1.5\"",
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "REDBUD"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Surface"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "1.5\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "4.2 m³/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "60 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "1.5kW"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "220V"
+        }
+      ],
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 4.2
+        },
+        {
+          "head": 30,
+          "flow": 2.8
+        },
+        {
+          "head": 60,
+          "flow": 0
+        }
+      ],
+      "source_pdf": "AC water pumps.pdf",
+      "sourceUrl": "AC water pumps.pdf",
+      "status": "Published",
+      "id": "PUMP-061",
+      "introductionTitle": "Overview",
+      "technicalDataTitle": "Technical Parameters",
+      "hydraulicCurveTitle": "Hydraulic Performance Curve",
+      "hydraulicCurveImage": "",
+      "image": "",
+      "controllerImage": "",
+      "panelImage": "",
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-PBG25-4-130",
+          "name": "Redbud PBG25-4-130 Pump Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 600,
+          "cost": 400
+        },
+        {
+          "productId": "AC-CONTROL-BOX",
+          "name": "Standard Single Phase AC Control Box",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 25,
+          "cost": 12
+        }
+      ]
+    },
+    {
+      "model": "PBG32-4-130",
+      "brand": "REDBUD",
+      "firstCategory": "Redbud AC Surface Pumps",
+      "secondCategory": "PBG Series",
+      "power": "1.5kW",
+      "voltage": "220V",
+      "description": "PBG series pump for HVAC systems and hot water circulation",
+      "maxFlow": 5.5,
+      "maxHead": 60,
+      "outletSize": "1.5\"",
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "REDBUD"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Surface"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "1.5\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "5.5 m³/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "60 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "1.5kW"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "220V"
+        }
+      ],
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 5.5
+        },
+        {
+          "head": 30,
+          "flow": 3.5
+        },
+        {
+          "head": 60,
+          "flow": 0
+        }
+      ],
+      "source_pdf": "AC water pumps.pdf",
+      "sourceUrl": "AC water pumps.pdf",
+      "status": "Published",
+      "id": "PUMP-062",
+      "introductionTitle": "Overview",
+      "technicalDataTitle": "Technical Parameters",
+      "hydraulicCurveTitle": "Hydraulic Performance Curve",
+      "hydraulicCurveImage": "",
+      "image": "",
+      "controllerImage": "",
+      "panelImage": "",
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-PBG32-4-130",
+          "name": "Redbud PBG32-4-130 Pump Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 600,
+          "cost": 400
+        },
+        {
+          "productId": "AC-CONTROL-BOX",
+          "name": "Standard Single Phase AC Control Box",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 25,
+          "cost": 12
+        }
+      ]
     }
   ],
   "inventory_products": [
@@ -18260,6 +18600,50 @@
       "quantity": 50,
       "costPrice": 450,
       "sellPrice": 750,
+      "unit": "Piece",
+      "measurementUnit": "Piece"
+    },
+    {
+      "id": "INV-MOTOR-PBG15-2-130",
+      "code": "MTR-PBG15-2-130",
+      "name": "Redbud PBG15-2-130 Pump Motor Unit",
+      "category": "Pump Equipment",
+      "quantity": 50,
+      "costPrice": 400,
+      "sellPrice": 600,
+      "unit": "Piece",
+      "measurementUnit": "Piece"
+    },
+    {
+      "id": "INV-MOTOR-PBG20-4-130",
+      "code": "MTR-PBG20-4-130",
+      "name": "Redbud PBG20-4-130 Pump Motor Unit",
+      "category": "Pump Equipment",
+      "quantity": 50,
+      "costPrice": 400,
+      "sellPrice": 600,
+      "unit": "Piece",
+      "measurementUnit": "Piece"
+    },
+    {
+      "id": "INV-MOTOR-PBG25-4-130",
+      "code": "MTR-PBG25-4-130",
+      "name": "Redbud PBG25-4-130 Pump Motor Unit",
+      "category": "Pump Equipment",
+      "quantity": 50,
+      "costPrice": 400,
+      "sellPrice": 600,
+      "unit": "Piece",
+      "measurementUnit": "Piece"
+    },
+    {
+      "id": "INV-MOTOR-PBG32-4-130",
+      "code": "MTR-PBG32-4-130",
+      "name": "Redbud PBG32-4-130 Pump Motor Unit",
+      "category": "Pump Equipment",
+      "quantity": 50,
+      "costPrice": 400,
+      "sellPrice": 600,
       "unit": "Piece",
       "measurementUnit": "Piece"
     }

@@ -49,6 +49,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useWebSocket } from "@/context/WebSocketProvider";
+import { apiClient } from "@/lib/api/client";
 
 interface NavItem {
   title: string;
@@ -64,36 +65,37 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["manager", "finance"] },
-  { title: "Inbox", url: "/inbox", icon: Inbox, roles: ["manager", "finance", "storekeeper", "fieldwork", "attendance"] },
-  { title: "Team Chat", url: "/chat", icon: MessageSquare, roles: ["manager", "finance", "storekeeper", "fieldwork", "attendance"] },
-  { title: "Point of Sale", url: "/pos", icon: ShoppingCart, roles: ["manager"] },
-  { title: "Inventory", url: "/inventory", icon: Package, roles: ["manager", "storekeeper", "finance", "fieldwork"] },
-  { title: "Pump Products", url: "/pumps", icon: Droplets, roles: ["manager", "storekeeper", "fieldwork"] },
-  { title: "Field Work Overview", url: "/fieldwork/overview", icon: Compass, roles: ["manager", "fieldwork"] },
-  { title: "Pump Sizing", url: "/fieldwork/sizing", icon: Droplets, roles: ["manager", "fieldwork"] },
-  { title: "Research", url: "/fieldwork/research", icon: FlaskConical, roles: ["manager", "fieldwork"] },
-  { title: "Field Jobs", url: "/fieldwork/jobs", icon: Briefcase, roles: ["manager", "fieldwork"] },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance"] },
+  { title: "Inbox", url: "/inbox", icon: Inbox, roles: ["manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance"] },
+  { title: "Team Chat", url: "/chat", icon: MessageSquare, roles: ["manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance"] },
+  { title: "Point of Sale", url: "/pos", icon: ShoppingCart, roles: ["manager", "finance", "storekeeper", "sales"] },
+  { title: "Inventory", url: "/inventory", icon: Package, roles: ["manager", "storekeeper", "finance", "fieldwork", "ttl", "sales", "technician"] },
+  { title: "Pump Products", url: "/pumps", icon: Droplets, roles: ["manager", "storekeeper", "fieldwork", "ttl", "sales", "technician", "finance"] },
+  { title: "Field Work Overview", url: "/fieldwork/overview", icon: Compass, roles: ["manager", "fieldwork", "ttl", "sales", "technician", "finance"] },
+  { title: "Pump Sizing", url: "/fieldwork/sizing", icon: Droplets, roles: ["manager", "fieldwork", "ttl", "sales", "technician", "finance"] },
+  { title: "Research", url: "/fieldwork/research", icon: FlaskConical, roles: ["manager", "fieldwork", "ttl", "sales"] },
+  { title: "Field Jobs", url: "/fieldwork/jobs", icon: Briefcase, roles: ["manager", "fieldwork", "ttl", "sales", "technician", "finance"] },
   {
     title: "Finance Center",
     url: "/finance",
     icon: DollarSign,
     roles: ["manager", "finance"],
     subItems: [
-      { title: "Dashboard", url: "/finance/dashboard", icon: LayoutDashboard },
-      { title: "Cash Flow", url: "/finance/cashflow", icon: TrendingUp },
-      { title: "Bank", url: "/finance/bank", icon: Building },
-      { title: "Loans", url: "/finance/loans", icon: Landmark },
-      { title: "Reconciliation", url: "/finance/bank-reconciliation", icon: FileText },
-      { title: "Building Rent", url: "/finance/building-rent", icon: Building },
-      { title: "Inventory", url: "/inventory", icon: Package },
-      { title: "Budget", url: "/finance/budget", icon: BarChart3 },
-      { title: "Payroll", url: "/finance/payroll", icon: Users },
-      { title: "VAT", url: "/finance/vat", icon: Receipt },
-      { title: "Petty Cash", url: "/finance/petty-cash", icon: Wallet },
+      { title: "Dashboard", url: "/finance/dashboard", icon: LayoutDashboard, roles: ["manager", "finance"] },
+      { title: "Cash Flow", url: "/finance/cashflow", icon: TrendingUp, roles: ["manager", "finance"] },
+      { title: "Bank", url: "/finance/bank", icon: Building, roles: ["manager", "finance"] },
+      { title: "Loans", url: "/finance/loans", icon: Landmark, roles: ["manager", "finance"] },
+      { title: "Reconciliation", url: "/finance/bank-reconciliation", icon: FileText, roles: ["manager", "finance"] },
+      { title: "Building Rent", url: "/finance/building-rent", icon: Building, roles: ["manager", "finance"] },
+      { title: "Sizing Proposals", url: "/finance/sizing-proposals", icon: Droplets, roles: ["manager", "finance"] },
+      { title: "Inventory Requests", url: "/finance/inventory", icon: Package, roles: ["manager", "finance"] },
+      { title: "Budget", url: "/finance/budget", icon: BarChart3, roles: ["manager", "finance"] },
+      { title: "Payroll", url: "/finance/payroll", icon: Users, roles: ["manager", "finance"] },
+      { title: "VAT", url: "/finance/vat", icon: Receipt, roles: ["manager", "finance"] },
+      { title: "Petty Cash", url: "/finance/petty-cash", icon: Wallet, roles: ["manager", "finance"] },
       { title: "Peachtree Bridge", url: "/finance/peachtree", icon: FileUp, roles: ["manager", "finance"] },
-      { title: "Financials", url: "/finance/financials", icon: BarChart3 },
-      { title: "Legacy Reports", url: "/finance/reports", icon: FileText },
+      { title: "Financials", url: "/finance/financials", icon: BarChart3, roles: ["manager", "finance"] },
+      { title: "Legacy Reports", url: "/finance/reports", icon: FileText, roles: ["manager", "finance"] },
     ],
   },
   { title: "Reports", url: "/reports", icon: BarChart3, roles: ["manager", "finance"] },
@@ -105,12 +107,12 @@ const navItems: NavItem[] = [
     icon: Users,
     roles: ["manager", "attendance"],
     subItems: [
-      { title: "Dashboard", url: "/hr/dashboard", icon: LayoutDashboard },
-      { title: "Workers", url: "/hr/workers", icon: Users },
-      { title: "Registration", url: "/hr/registration", icon: Fingerprint },
-      { title: "Scan Page", url: "/hr/scan", icon: Clock },
-      { title: "Reports", url: "/hr/reports", icon: ClipboardList },
-      { title: "Settings", url: "/hr/settings", icon: Settings },
+      { title: "Dashboard", url: "/hr/dashboard", icon: LayoutDashboard, roles: ["manager"] },
+      { title: "Workers", url: "/hr/workers", icon: Users, roles: ["manager"] },
+      { title: "Registration", url: "/hr/registration", icon: Fingerprint, roles: ["manager"] },
+      { title: "Scan Page", url: "/hr/scan", icon: Clock, roles: ["manager", "attendance"] },
+      { title: "Reports", url: "/hr/reports", icon: ClipboardList, roles: ["manager"] },
+      { title: "Settings", url: "/hr/settings", icon: Settings, roles: ["manager"] },
     ]
   },
 ];
@@ -132,9 +134,34 @@ export function AppSidebar() {
   const [financeOpen, setFinanceOpen] = useState(false);
   const [hrOpen, setHrOpen] = useState(false);
   const [fieldworkOpen, setFieldworkOpen] = useState(false);
+  const [sizingPayCount, setSizingPayCount] = useState<number>(0);
   const { counts } = useWebSocket();
   const showFinanceEntitySwitch =
     !collapsed && location.pathname.startsWith("/finance") && hasAccess(["manager", "finance"]);
+
+  useEffect(() => {
+    if (!currentUser || !hasAccess(["finance", "manager"])) return;
+    let mounted = true;
+
+    const loadSizingCount = async () => {
+      try {
+        const res = await apiClient.get('/sizing-requests');
+        if (mounted && Array.isArray(res.data)) {
+          const count = res.data.filter((p: any) => p.status === 'APPROVED_TM').length;
+          setSizingPayCount(count);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    loadSizingCount();
+    const timer = setInterval(loadSizingCount, 8000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [currentUser]);
 
   useEffect(() => {
     if (location.pathname.startsWith("/finance")) {
@@ -252,6 +279,11 @@ export function AppSidebar() {
                             >
                               {item.title}
                             </motion.span>
+                            {!collapsed && item.title === "Finance Center" && sizingPayCount > 0 && (
+                              <Badge variant="destructive" className="ml-auto mr-1.5 rounded-full px-1.5 py-0 text-[10px] h-5 min-w-5 flex items-center justify-center bg-amber-500 hover:bg-amber-600 text-white font-bold animate-pulse">
+                                {sizingPayCount}
+                              </Badge>
+                            )}
                             {!collapsed && (
                               <ChevronDown
                                 className={`ml-auto h-4 w-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""} ${location.pathname.startsWith(item.url) ? "text-[#0b1324]" : "text-white/60"}`}
@@ -285,6 +317,11 @@ export function AppSidebar() {
                                     <span className="truncate text-[11px] uppercase tracking-wide">
                                       {sub.title}
                                     </span>
+                                    {sub.title === "Sizing Proposals" && sizingPayCount > 0 && (
+                                      <Badge variant="destructive" className="ml-auto rounded-full px-1.5 py-0 text-[9px] h-4 min-w-4 flex items-center justify-center bg-amber-500 hover:bg-amber-600 text-white font-bold">
+                                        {sizingPayCount}
+                                      </Badge>
+                                    )}
                                   </NavLink>
                                 </SidebarMenuButton>
                               ))}

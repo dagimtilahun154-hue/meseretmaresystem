@@ -461,6 +461,23 @@ export class DataService {
   }
 
   async saveCustomer(customer: any) {
+    // Duplicate detection: check if another customer with the same name + phone already exists
+    const name = (customer.name || "").trim().toLowerCase();
+    const phone = (customer.phone || "").trim();
+    if (name) {
+      const existing = await this.prisma.customer.findFirst({
+        where: {
+          id: { not: customer.id },
+          name: { equals: customer.name },
+          ...(phone ? { phone } : {}),
+        },
+      });
+      if (existing) {
+        throw new BadRequestException(
+          `A customer named "${existing.name}" already exists${existing.phone ? ` (Phone: ${existing.phone})` : ""}. Please use a unique name or edit the existing record.`,
+        );
+      }
+    }
     await this.prisma.customer.upsert({
       where: { id: customer.id },
       update: { ...customer, creditLimit: asNumber(customer.creditLimit), balance: asNumber(customer.balance) },
@@ -1038,8 +1055,17 @@ export class DataService {
     return { success: true, duplicate: false, import: created };
   }
 
-  pumpProducts() {
-    return this.prisma.pumpProduct.findMany({ orderBy: { model: "asc" } });
+  async pumpProducts() {
+    const products = await this.prisma.pumpProduct.findMany({ orderBy: { model: "asc" } });
+    return products.map((p) => ({
+      ...p,
+      // Aliased fields for API discoverability
+      modelName: p.model,
+      category: p.firstCategory,
+      subCategory: p.secondCategory,
+      ratedPowerW: p.power,
+      ratedVoltage: p.voltage,
+    }));
   }
 
   pumpProduct(id: string) {
@@ -1182,23 +1208,27 @@ export class DataService {
       nextStatus = "REJECTED";
       nextAssigneeId = request.createdById;
     } else if (action === "APPROVE") {
-      // 1. Non-manager, non-finance (e.g., tech_manager) approves -> if has amount, route to Finance. Else route to GM.
+      // 1. Non-manager, non-finance (e.g., tech_manager) approves -> route to GM for approval first
       if (request.assignedToId === user.id && !roles.includes("manager") && !roles.includes("finance")) {
-        if (request.amount && Number(request.amount) > 0) {
-          const financeAdmin = await this.prisma.user.findFirst({
-            where: { roles: { some: { role: { name: "finance" } } } }
-          });
-          if (financeAdmin) {
-            nextStatus = "FORWARDED_TO_FINANCE";
-            nextAssigneeId = financeAdmin.id;
-          }
+        const gm = await this.prisma.user.findFirst({
+          where: { roles: { some: { role: { name: "manager" } } } }
+        });
+        if (gm) {
+          nextStatus = "FORWARDED_TO_GM";
+          nextAssigneeId = gm.id;
         } else {
-          const gm = await this.prisma.user.findFirst({
-            where: { roles: { some: { role: { name: "manager" } } } }
-          });
-          if (gm) {
-            nextStatus = "FORWARDED_TO_GM";
-            nextAssigneeId = gm.id;
+          // Fallback if no GM
+          if (request.amount && Number(request.amount) > 0) {
+            const financeAdmin = await this.prisma.user.findFirst({
+              where: { roles: { some: { role: { name: "finance" } } } }
+            });
+            if (financeAdmin) {
+              nextStatus = "FORWARDED_TO_FINANCE";
+              nextAssigneeId = financeAdmin.id;
+            } else {
+              nextStatus = "APPROVED";
+              nextAssigneeId = request.createdById;
+            }
           } else {
             nextStatus = "APPROVED";
             nextAssigneeId = request.createdById;
@@ -1218,10 +1248,23 @@ export class DataService {
           nextAssigneeId = request.createdById;
         }
       }
-      // 3. GM approves -> final sign-off
+      // 3. GM approves -> if it was forwarded from Technical Manager (FORWARDED_TO_GM) and needs payment (amount > 0), route to Finance. Otherwise, final sign-off.
       else if (roles.includes("manager")) {
-        nextStatus = "APPROVED"; // or "FINISHED"
-        nextAssigneeId = request.createdById;
+        if (request.status === "FORWARDED_TO_GM" && request.amount && Number(request.amount) > 0) {
+          const financeAdmin = await this.prisma.user.findFirst({
+            where: { roles: { some: { role: { name: "finance" } } } }
+          });
+          if (financeAdmin) {
+            nextStatus = "FORWARDED_TO_FINANCE";
+            nextAssigneeId = financeAdmin.id;
+          } else {
+            nextStatus = "APPROVED";
+            nextAssigneeId = request.createdById;
+          }
+        } else {
+          nextStatus = "APPROVED"; // or "FINISHED"
+          nextAssigneeId = request.createdById;
+        }
       }
     } else if (action === "FORWARD") {
       if (comment === "finance") {

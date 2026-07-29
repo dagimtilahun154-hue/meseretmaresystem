@@ -22,6 +22,7 @@ import {
   FlaskConical,
   Briefcase,
   LayoutDashboard,
+  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,6 +39,8 @@ import { SecurityCodeDialog } from "@/components/SecurityCodeDialog";
 import { toast } from "sonner";
 import { useStore } from "@/context/StoreContext";
 import { useAuth } from "@/context/AuthContext";
+import { apiClient } from "@/lib/api/client";
+import { ClientFileModal } from "@/components/ClientFileModal";
 import { FieldWork, FieldWorkEquipment, FieldWorker, ReturnForm } from "@/lib/fieldwork-data";
 import { hierarchyRequestsDB, pumpProductsDB } from "@/lib/db-service";
 import { useParams } from "react-router-dom";
@@ -45,7 +48,7 @@ import { WaterSource } from "@/lib/pump-sizing";
 import ApprovalsInbox from "@/components/ApprovalsInbox";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { CardHeader, CardTitle } from "@/components/ui/card";
-
+import PumpSizingPage from "./PumpSizingPage";
 type WorkerWithPosition = FieldWorker & {
   position?: string;
 };
@@ -76,14 +79,258 @@ const getInclusiveDays = (startDate: string, endDate: string) => {
   return Math.max(1, differenceInCalendarDays(end, start) + 1);
 };
 
+const statusColors: Record<string, string> = {
+  pending: "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700",
+  planning: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900/50",
+  accepted: "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/50",
+  submitted_tm: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-950/20 dark:text-yellow-400 dark:border-yellow-900/50",
+  checked_tm: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50",
+  approved_gm: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50",
+  "Approved and ready to go": "bg-green-100 text-green-800 border-green-200 dark:bg-green-950/20 dark:text-green-400 dark:border-green-900/50",
+  completed_ttl: "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/50",
+  completed: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50",
+  done: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50",
+};
+
+const statusLabels: Record<string, string> = {
+  pending: "Pending Assignment",
+  planning: "Planning Crew/Tools",
+  accepted: "TTL Accepted Planning",
+  submitted_tm: "Awaiting TM Check",
+  checked_tm: "Awaiting GM Approval",
+  approved_gm: "Awaiting Finance Approval",
+  "Approved and ready to go": "Approved & Ready to Go",
+  completed_ttl: "Awaiting TM Return Sign-off",
+  completed: "Installation Completed",
+  done: "Completed & Done",
+};
+
 export default function FieldWorkPage() {
   const { section } = useParams<{ section: string }>();
-  const { currentUser } = useAuth();
-  const { fieldWorks, addFieldWork, updateFieldWork, deleteFieldWork: dbDeleteFieldWork, addReturnForm, sales = [] } = useStore() as any;
+  const { currentUser, users = [], hasAccess } = useAuth();
+  const { fieldWorks, addFieldWork, updateFieldWork, deleteFieldWork: dbDeleteFieldWork, addReturnForm, sales = [], refreshStoreData } = useStore() as any;
 
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [returnFormOpen, setReturnFormOpen] = useState(false);
+  const [fileModalOpen, setFileModalOpen] = useState(false);
+  const [fileModalProposal, setFileModalProposal] = useState<any | null>(null);
+  
+  const [availableTools, setAvailableTools] = useState<any[]>([]);
+  const [hrWorkersList, setHrWorkersList] = useState<any[]>([]);
+  const [assigningTtlId, setAssigningTtlId] = useState<Record<string, string>>({});
+  const [planningFwId, setPlanningFwId] = useState<string | null>(null);
+
+  const ttlCandidates = useMemo(() => {
+    const list: { username: string; displayName: string }[] = [];
+
+    // 1. Add system user accounts (role 'ttl', 'fieldwork', 'technician')
+    if (users && users.length > 0) {
+      users.forEach((u: any) => {
+        const uRole = u.role;
+        const uRoles = u.roles || [];
+        if (uRole === "ttl" || uRole === "fieldwork" || uRole === "technician" || uRoles.includes("ttl") || uRoles.includes("fieldwork")) {
+          list.push({
+            username: u.username,
+            displayName: `${u.displayName} (${uRole === 'ttl' ? 'TTL' : uRole === 'fieldwork' ? 'Tech Manager' : 'Technician'})`,
+          });
+        }
+      });
+    }
+
+    // 2. Add HR Field Technicians & Team Leaders
+    if (hrWorkersList && hrWorkersList.length > 0) {
+      hrWorkersList.forEach((w: any) => {
+        const name = w.name || w.displayName;
+        const username = w.id || name;
+        if (!list.some((existing) => existing.username === username || existing.displayName.includes(name))) {
+          list.push({
+            username: username,
+            displayName: `${name} (${w.position || "Field Technical Leader"})`,
+          });
+        }
+      });
+    }
+
+    // Fallbacks if empty
+    if (list.length === 0) {
+      if (users && users.length > 0) {
+        users.forEach((u: any) => {
+          list.push({ username: u.username, displayName: `${u.displayName} (@${u.username})` });
+        });
+      } else {
+        list.push(
+          { username: "tech_leader", displayName: "Technical Team Leader (tech_leader)" },
+          { username: "tech_manager", displayName: "Technical Manager (tech_manager)" }
+        );
+      }
+    }
+
+    return list;
+  }, [users, hrWorkersList]);
+
+  // States for planning form
+  const [selectedPlanWorkers, setSelectedPlanWorkers] = useState<{ id: string; name: string; position: string; perDiem: number }[]>([]);
+  const [selectedPlanTools, setSelectedPlanTools] = useState<string[]>([]);
+  const [planNotes, setPlanNotes] = useState("");
+  const [planFuelAmount, setPlanFuelAmount] = useState<string>("");
+  const [planFuelPrice, setPlanFuelPrice] = useState<string>("");
+
+  const refreshPlanningData = async () => {
+    try {
+      const [toolsRes, workersRes] = await Promise.all([
+        apiClient.get("/company-assets"),
+        apiClient.get("/hr/workers")
+      ]);
+      setAvailableTools(toolsRes.data.filter((t: any) => t.status === "WAREHOUSE"));
+      setHrWorkersList(workersRes.data.filter((w: any) => w.status === "Active"));
+    } catch (e) {
+      console.error("Failed to load planning lists:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      refreshPlanningData();
+    }
+  }, [currentUser]);
+
+  const handleAssignJob = async (jobId: string) => {
+    const defaultTtl = ttlCandidates[0]?.username || "tech_leader";
+    const assignedTo = assigningTtlId[jobId] || defaultTtl;
+    try {
+      await apiClient.patch(`/fieldwork/${jobId}/assign`, { assignedTo });
+      toast.success(`Job assigned to TTL ${assignedTo}`);
+      if (refreshStoreData) await refreshStoreData();
+      await refreshPlanningData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to assign TTL");
+    }
+  };
+
+  const handleAcceptJob = async (jobId: string) => {
+    try {
+      await apiClient.patch(`/fieldwork/${jobId}/accept`);
+      toast.success("Job accepted. Planning interface unlocked.");
+      if (refreshStoreData) await refreshStoreData();
+      await refreshPlanningData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to accept job");
+    }
+  };
+
+  const handleSubmitPlan = async (jobId: string) => {
+    if (selectedPlanWorkers.length === 0) {
+      toast.error("Please assign at least one worker.");
+      return;
+    }
+    try {
+      await apiClient.patch(`/fieldwork/${jobId}/submit-plan`, {
+        workers: selectedPlanWorkers,
+        notes: planNotes,
+        companyTools: selectedPlanTools,
+        fuelAmount: planFuelAmount ? parseFloat(planFuelAmount) : undefined,
+        fuelPrice: planFuelPrice ? parseFloat(planFuelPrice) : undefined,
+      });
+      toast.success("Fieldwork plan submitted & tools checked out.");
+      setSelectedPlanWorkers([]);
+      setSelectedPlanTools([]);
+      setPlanNotes("");
+      setPlanFuelAmount("");
+      setPlanFuelPrice("");
+      setPlanningFwId(null);
+      if (refreshStoreData) await refreshStoreData();
+      await refreshPlanningData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to submit plan");
+    }
+  };
+
+  const handleTmCheck = async (jobId: string) => {
+    try {
+      await apiClient.patch(`/fieldwork/${jobId}/tm-check`);
+      toast.success("Plan checked and forwarded to General Manager.");
+      if (refreshStoreData) await refreshStoreData();
+      await refreshPlanningData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to check plan");
+    }
+  };
+
+  const handleGmApprovePlan = async (jobId: string) => {
+    try {
+      await apiClient.patch(`/fieldwork/${jobId}/gm-approve`);
+      toast.success("Plan approved and forwarded to Finance.");
+      if (refreshStoreData) await refreshStoreData();
+      await refreshPlanningData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to approve plan");
+    }
+  };
+
+  const handleFinanceApprove = async (jobId: string) => {
+    try {
+      await apiClient.patch(`/fieldwork/${jobId}/finance-approve`);
+      toast.success("Budget approved & ready to go!");
+      if (refreshStoreData) await refreshStoreData();
+      await refreshPlanningData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to approve budget");
+    }
+  };
+
+  const [dailyReportText, setDailyReportText] = useState<Record<string, string>>({});
+
+  const handleSendDailyReport = async (jobId: string) => {
+    const text = dailyReportText[jobId];
+    if (!text?.trim()) return;
+    try {
+      await apiClient.post(`/fieldwork/${jobId}/daily-report`, {
+        content: text,
+        submittedBy: currentUser?.displayName || currentUser?.username || "TTL",
+      });
+      toast.success("Daily report submitted successfully!");
+      setDailyReportText(prev => ({ ...prev, [jobId]: "" }));
+      if (refreshStoreData) await refreshStoreData();
+      await refreshPlanningData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to submit daily report");
+    }
+  };
+
+  const handleForwardReport = async (jobId: string, reportId: string) => {
+    try {
+      await apiClient.post(`/fieldwork/${jobId}/daily-report/${reportId}/forward`);
+      toast.success("Daily report forwarded to General Manager!");
+      if (refreshStoreData) await refreshStoreData();
+      await refreshPlanningData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to forward daily report");
+    }
+  };
+
+  const handleCompleteJobTTL = async (jobId: string) => {
+    try {
+      await apiClient.patch(`/fieldwork/${jobId}/complete`);
+      toast.success("Fieldwork marked completed by TTL. Awaiting TM review of returns.");
+      if (refreshStoreData) await refreshStoreData();
+      await refreshPlanningData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to mark job complete");
+    }
+  };
+
+  const handleApproveReturns = async (jobId: string) => {
+    try {
+      await apiClient.patch(`/fieldwork/${jobId}/approve-returns`);
+      toast.success("Returns approved. Fieldwork job is finalized and sale is complete!");
+      if (refreshStoreData) await refreshStoreData();
+      await refreshPlanningData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to approve returns");
+    }
+  };
+
   const [returnFormFW, setReturnFormFW] = useState<FieldWork | null>(null);
   const [editingFW, setEditingFW] = useState<FieldWork | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -135,7 +382,7 @@ export default function FieldWorkPage() {
   const overdueAlerts = useMemo(() => {
     const today = new Date();
     return fieldWorks.filter(
-      (fw: FieldWork) => fw.status === "in-progress" && isAfter(today, parseISO(fw.endDate))
+      (fw: FieldWork) => (fw.status === "in-progress" || fw.status === "Approved and ready to go") && isAfter(today, parseISO(fw.endDate))
     );
   }, [fieldWorks]);
 
@@ -152,7 +399,9 @@ export default function FieldWorkPage() {
     return matchSearch && matchStatus;
   });
 
-  const activeCount = fieldWorks.filter((fw: FieldWork) => fw.status === "in-progress").length;
+  const activeCount = fieldWorks.filter((fw: FieldWork) => 
+    ["in-progress", "planning", "accepted", "submitted_tm", "checked_tm", "approved_gm", "Approved and ready to go", "completed_ttl"].includes(fw.status)
+  ).length;
 
   const totalPerDiemAll = fieldWorks.reduce((sum: number, fw: FieldWork) => {
     const days = getInclusiveDays(fw.startDate, fw.endDate);
@@ -161,10 +410,7 @@ export default function FieldWorkPage() {
   }, 0);
 
   const completeFieldWork = async (id: string) => {
-    const current = fieldWorks.find((fw: FieldWork) => fw.id === id);
-    if (!current) return;
-    await updateFieldWork(id, { ...current, status: "completed" as const });
-    toast.success("Field work marked as completed");
+    await handleCompleteJobTTL(id);
   };
 
   const submitCrewForApproval = async (id: string) => {
@@ -208,7 +454,7 @@ export default function FieldWorkPage() {
     return <OverviewSection fieldWorks={fieldWorks} />;
   }
   if (section === "sizing") {
-    return <PumpSizingSection />;
+    return <PumpSizingPage />;
   }
   if (section === "research") {
     return <ResearchSection />;
@@ -353,7 +599,13 @@ export default function FieldWorkPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="in-progress">In Progress</SelectItem>
+                <SelectItem value="pending">Pending Assignment</SelectItem>
+                <SelectItem value="planning">Planning Crew/Tools</SelectItem>
+                <SelectItem value="accepted">TTL Accepted</SelectItem>
+                <SelectItem value="submitted_tm">Awaiting TM Check</SelectItem>
+                <SelectItem value="checked_tm">Awaiting GM Approval</SelectItem>
+                <SelectItem value="approved_gm">Awaiting Finance Approval</SelectItem>
+                <SelectItem value="Approved and ready to go">Approved & Ready to Go</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
               </SelectContent>
             </Select>
@@ -361,9 +613,9 @@ export default function FieldWorkPage() {
 
           <div className="space-y-3">
             {filtered.map((fw) => {
-              const isOverdue = fw.status === "in-progress" && isAfter(new Date(), parseISO(fw.endDate));
+              const isOverdue = (fw.status === "in-progress" || fw.status === "Approved and ready to go") && isAfter(new Date(), parseISO(fw.endDate));
               const totalDays = getInclusiveDays(fw.startDate, fw.endDate);
-              const totalPerDiem = fw.workers.reduce((sum, w) => sum + w.perDiem * totalDays, 0);
+              const totalPerDiem = fw.workers.reduce((sum, w) => sum + (w.perDiem || 0) * totalDays, 0);
 
               return (
                 <div key={fw.id} className={cn("border rounded-lg overflow-hidden", isOverdue && "border-destructive/50")}>
@@ -373,14 +625,21 @@ export default function FieldWorkPage() {
                   >
                     <div className="flex items-center gap-4 flex-wrap">
                       <div>
-                        <p className="font-medium text-sm">{fw.workers.map((w) => w.name).join(", ")}</p>
-                        <p className="text-xs text-muted-foreground">{fw.workers.length} worker(s)</p>
+                        <p className="font-bold text-sm text-foreground">
+                          {fw.customerName ? `${fw.customerName} (${fw.location || "Site"})` : (fw.location || "Fieldwork Job")}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {fw.workers.length > 0 ? `${fw.workers.length} crew worker(s) assigned` : "Crew planning pending"}
+                        </p>
                       </div>
-                      <Badge variant="outline" className="text-xs">
-                        {fw.pumpModel}
+                      <Badge variant="outline" className="text-xs font-bold bg-primary/10 text-primary border-primary/30">
+                        {fw.pumpModel || "Solar Pump"}
                       </Badge>
-                      <span className="text-xs text-muted-foreground">{fw.location}</span>
-                      <span className="text-xs text-muted-foreground">
+                      <Badge variant="outline" className="text-xs font-bold bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 flex items-center gap-1.5 px-2.5 py-0.5">
+                        <UserCheck className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                        TTL: {fw.assignedTo || "Unassigned"}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground font-mono">
                         {fw.startDate} → {fw.endDate}
                       </span>
                     </div>
@@ -392,13 +651,12 @@ export default function FieldWorkPage() {
                         </Badge>
                       )}
                       <Badge
-                        className={
-                          fw.status === "in-progress"
-                            ? "bg-warning/15 text-warning border-warning/20"
-                            : "bg-success/15 text-success border-success/20"
-                        }
+                        className={cn(
+                          "border text-[10px] font-bold px-2 py-0.5 rounded-full",
+                          statusColors[fw.status] || "bg-slate-100 text-slate-800"
+                        )}
                       >
-                        {fw.status === "in-progress" ? "In Progress" : "Completed"}
+                        {statusLabels[fw.status] || fw.status}
                       </Badge>
                       {expandedId === fw.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </div>
@@ -406,6 +664,53 @@ export default function FieldWorkPage() {
 
                   {expandedId === fw.id && (
                     <div className="border-t p-4 bg-muted/20 space-y-4">
+                      {/* Client File Quick Action Bar */}
+                      <div className="flex justify-between items-center bg-card p-3 rounded-lg border">
+                        <div>
+                          <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                            <Wrench className="h-4 w-4 text-primary" /> {fw.pumpModel || "Solar Pump Installation"} — {fw.customerName || fw.location}
+                          </h4>
+                          <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                            <span>Location: {fw.location || "Site"}</span>
+                            <span>•</span>
+                            <span className="font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                              <UserCheck className="h-3 w-3 text-amber-600" /> Assigned TTL: {fw.assignedTo || "Unassigned"}
+                            </span>
+                            <span>•</span>
+                            <span>Scheduled: {fw.startDate} → {fw.endDate}</span>
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5 font-bold text-xs border-primary/40 text-primary hover:bg-primary/10"
+                          onClick={() => {
+                            const p = fw.payload || {};
+                            const clientFile = {
+                              clientName: p.clientName || fw.customerName || fw.location,
+                              address: p.address || fw.location,
+                              selectedPumpModel: p.selectedPumpModel || fw.pumpModel,
+                              waterSource: p.waterSource || '',
+                              dailyWaterNeed: p.dailyWaterNeed,
+                              pipeLength: p.pipeLength,
+                              verticalLift: p.verticalLift,
+                              totalPrice: p.totalPrice,
+                              preparedByName: p.preparedByName || '',
+                              checkedByName: p.checkedByName || '',
+                              status: fw.status,
+                              dataCollection: p.dataCollection || {},
+                              calculatedEquipment: p.equipment || [],
+                              latitude: p.latitude,
+                              longitude: p.longitude,
+                            };
+                            setFileModalProposal(clientFile);
+                            setFileModalOpen(true);
+                          }}
+                        >
+                          <Eye className="h-3.5 w-3.5 text-primary" /> 📄 View Full Client File & Site Form
+                        </Button>
+                      </div>
+
                       <div>
                         <p className="text-sm font-medium mb-2">Workers</p>
                         <div className="overflow-x-auto">
@@ -509,6 +814,81 @@ export default function FieldWorkPage() {
                         </div>
                       )}
 
+                      {/* Daily Progress Reports Section */}
+                      <div className="rounded-lg border bg-card p-4 space-y-4 mt-4">
+                        <div className="flex items-center justify-between border-b pb-2">
+                          <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                            <CalendarIcon className="h-4 w-4 text-primary" /> Daily Progress Reports
+                          </p>
+                          <Badge variant="outline" className="text-xs">
+                            {(fw.dailyReports || []).length} reports
+                          </Badge>
+                        </div>
+
+                        {/* Reports List */}
+                        {fw.dailyReports && fw.dailyReports.length > 0 ? (
+                          <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                            {fw.dailyReports.map((report: any) => (
+                              <div key={report.id} className="p-3 border rounded-lg bg-slate-50 dark:bg-slate-900/40 space-y-1.5">
+                                <div className="flex items-center justify-between text-xs">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-foreground">{report.submittedBy}</span>
+                                    <span className="text-muted-foreground">•</span>
+                                    <span className="text-muted-foreground">
+                                      {format(report.date ? new Date(report.date) : new Date(), "yyyy-MM-dd HH:mm")}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    {report.forwardedToGm ? (
+                                      <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[10px]">
+                                        Forwarded to GM
+                                      </Badge>
+                                    ) : (
+                                       hasAccess(["fieldwork", "manager"]) && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleForwardReport(fw.id, report.id)}
+                                          className="h-6 text-[10px] px-2 py-0 border-primary text-primary hover:bg-primary/5"
+                                        >
+                                          Forward to GM
+                                        </Button>
+                                      )
+                                    )}
+                                  </div>
+                                </div>
+                                <p className="text-xs text-foreground whitespace-pre-wrap">{report.content}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground py-2 italic">No daily progress reports submitted yet.</p>
+                        )}
+
+                        {/* Submit progress report if the job is active and logged user is TTL */}
+                        {fw.status === "Approved and ready to go" && currentUser?.username === fw.assignedTo && (
+                          <div className="space-y-2 border-t pt-3">
+                            <Label className="text-xs font-semibold">Submit Daily Progress Report</Label>
+                            <div className="flex gap-2">
+                              <Textarea
+                                placeholder="Type today's work progress, site challenges, or achievements..."
+                                value={dailyReportText[fw.id] || ""}
+                                onChange={(e) => setDailyReportText({ ...dailyReportText, [fw.id]: e.target.value })}
+                                className="text-xs min-h-[60px] bg-background"
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => handleSendDailyReport(fw.id)}
+                                className="self-end bg-primary text-white h-9 px-4 font-semibold"
+                                disabled={!dailyReportText[fw.id]?.trim()}
+                              >
+                                Submit
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="flex items-center gap-6 text-sm flex-wrap">
                         <div>
                           <span className="text-muted-foreground">Duration: </span>
@@ -526,22 +906,355 @@ export default function FieldWorkPage() {
                         )}
                       </div>
 
+                      {/* ROLE-BASED FLOW CONTROLS */}
+                      <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-dashed border-border space-y-4 text-sm mt-3">
+                        <div className="flex items-center justify-between border-b pb-2">
+                          <p className="font-semibold text-foreground flex items-center gap-1.5">
+                            <Zap className="h-4 w-4 text-primary" /> Workflow Phase: {statusLabels[fw.status] || fw.status}
+                          </p>
+                          <span className="text-[10px] text-muted-foreground uppercase font-semibold font-mono">Job ID: {fw.id}</span>
+                        </div>
+
+                        {/* 1. Status: PENDING (Technical Manager Assigns TTL) */}
+                        {fw.status === "pending" && (
+                          <div className="space-y-3">
+                            <p className="text-xs text-muted-foreground">Awaiting Technical Manager review. Select a Technical Team Leader to assign this fieldwork installation job.</p>
+                            {hasAccess(["fieldwork", "manager"]) ? (
+                              <div className="flex items-center gap-3">
+                                <Select
+                                  value={assigningTtlId[fw.id] || (ttlCandidates[0]?.username || "tech_leader")}
+                                  onValueChange={(val) => setAssigningTtlId({ ...assigningTtlId, [fw.id]: val })}
+                                >
+                                  <SelectTrigger className="w-64 h-9 bg-background">
+                                    <SelectValue placeholder="Select TTL..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {ttlCandidates.map((ttlUser) => (
+                                      <SelectItem key={ttlUser.username} value={ttlUser.username}>
+                                        {ttlUser.displayName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Button size="sm" onClick={() => handleAssignJob(fw.id)} className="bg-primary hover:bg-primary/95 text-white">
+                                  Assign & Send to TTL
+                                </Button>
+                              </div>
+                            ) : (
+                              <Badge className="bg-muted text-muted-foreground">Awaiting Technical Manager assignment...</Badge>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 2. Status: PLANNING (Assigned to TTL, Awaiting Acceptance) */}
+                        {fw.status === "planning" && (
+                          <div className="space-y-3">
+                            <p className="text-xs text-muted-foreground">Assigned to: <strong className="text-foreground">{fw.assignedTo}</strong>. TTL must accept the fieldwork request to begin budget & crew allocation.</p>
+                            {currentUser?.username === fw.assignedTo ? (
+                              <Button size="sm" onClick={() => handleAcceptJob(fw.id)} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
+                                Accept Fieldwork Job
+                              </Button>
+                            ) : (
+                              <Badge className="bg-muted text-muted-foreground">Awaiting acceptance by assigned TTL...</Badge>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 3. Status: ACCEPTED (TTL Planning Form) */}
+                        {fw.status === "accepted" && (
+                          <div className="space-y-4">
+                            <p className="text-xs text-muted-foreground">Job accepted by TTL. Enter crew configuration, daily per diem pricing, travel fuel budgets, and check out company tools.</p>
+                            
+                            {currentUser?.username === fw.assignedTo ? (
+                              <div className="space-y-4">
+                                {planningFwId !== fw.id ? (
+                                  <Button size="sm" onClick={() => {
+                                    setPlanningFwId(fw.id);
+                                    setSelectedPlanWorkers([]);
+                                    setSelectedPlanTools([]);
+                                    setPlanNotes("");
+                                    setPlanFuelAmount("");
+                                    setPlanFuelPrice("");
+                                  }} className="bg-purple-600 hover:bg-purple-700 text-white font-semibold">
+                                    Configure Crew, Budget & Tools
+                                  </Button>
+                                ) : (
+                                  <Card className="p-4 border bg-background space-y-4">
+                                    <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground border-b pb-1">Trip Planning & Budget Config</h4>
+                                    
+                                    {/* Worker Assigning */}
+                                    <div className="space-y-2">
+                                      <Label className="text-xs font-semibold">Assign Workers & Per Diem (ETB/day)</Label>
+                                      {hrWorkersList.length > 0 ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg bg-muted/10 max-h-48 overflow-y-auto">
+                                          {hrWorkersList.map((worker) => {
+                                            const isSelected = selectedPlanWorkers.some(w => w.id === worker.id);
+                                            const match = selectedPlanWorkers.find(w => w.id === worker.id);
+                                            const currentPerDiem = match ? match.perDiem : 500;
+
+                                            return (
+                                              <div key={worker.id} className="flex items-center justify-between p-1.5 border rounded hover:bg-muted/30">
+                                                <div className="flex items-center gap-2">
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={(e) => {
+                                                      if (e.target.checked) {
+                                                        setSelectedPlanWorkers([...selectedPlanWorkers, { id: worker.id, name: worker.fullName, position: worker.position || "Tech", perDiem: 500 }]);
+                                                      } else {
+                                                        setSelectedPlanWorkers(selectedPlanWorkers.filter(w => w.id !== worker.id));
+                                                      }
+                                                    }}
+                                                    className="rounded border-gray-300 mr-2"
+                                                  />
+                                                  <div>
+                                                    <span className="text-xs font-medium text-foreground">{worker.fullName}</span>
+                                                    <span className="text-[10px] text-muted-foreground block">{worker.position || "Technician"}</span>
+                                                  </div>
+                                                </div>
+                                                
+                                                {isSelected && (
+                                                  <div className="flex items-center gap-1.5">
+                                                    <Input
+                                                      type="number"
+                                                      value={currentPerDiem}
+                                                      onChange={(e) => {
+                                                        const val = parseFloat(e.target.value) || 0;
+                                                        setSelectedPlanWorkers(selectedPlanWorkers.map(w => w.id === worker.id ? { ...w, perDiem: val } : w));
+                                                      }}
+                                                      className="w-20 h-7 text-xs px-2 text-right bg-background border-border"
+                                                    />
+                                                    <span className="text-[10px] text-muted-foreground font-mono">ETB</span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      ) : (
+                                        <p className="text-xs text-muted-foreground">No active workers found in HR registry.</p>
+                                      )}
+                                    </div>
+
+                                    {/* Fuel Budget */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className="space-y-1">
+                                        <Label className="text-xs font-semibold">Fuel Required (Liters)</Label>
+                                        <Input
+                                          type="number"
+                                          placeholder="e.g. 50"
+                                          value={planFuelAmount}
+                                          onChange={(e) => setPlanFuelAmount(e.target.value)}
+                                          className="h-8 text-xs bg-background"
+                                        />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <Label className="text-xs font-semibold">Fuel Price per Liter (ETB/L)</Label>
+                                        <Input
+                                          type="number"
+                                          placeholder="e.g. 85"
+                                          value={planFuelPrice}
+                                          onChange={(e) => setPlanFuelPrice(e.target.value)}
+                                          className="h-8 text-xs bg-background"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {/* Company Tools Checklist */}
+                                    <div className="space-y-2">
+                                      <Label className="text-xs font-semibold">Check Out Reusable Company Tools (Warehouse)</Label>
+                                      {availableTools.length > 0 ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg bg-muted/10 max-h-40 overflow-y-auto">
+                                          {availableTools.map((tool) => (
+                                            <label key={tool.id} className="flex items-center gap-2 p-1.5 border rounded hover:bg-muted/30 cursor-pointer">
+                                              <input
+                                                type="checkbox"
+                                                checked={selectedPlanTools.includes(tool.id)}
+                                                onChange={(e) => {
+                                                  if (e.target.checked) {
+                                                    setSelectedPlanTools([...selectedPlanTools, tool.id]);
+                                                  } else {
+                                                    setSelectedPlanTools(selectedPlanTools.filter(id => id !== tool.id));
+                                                  }
+                                                }}
+                                                className="rounded border-gray-300 mr-2"
+                                              />
+                                              <div>
+                                                <span className="text-xs font-medium text-foreground">{tool.name}</span>
+                                                <span className="text-[9px] text-muted-foreground block font-mono">S/N: {tool.serialNumber}</span>
+                                              </div>
+                                            </label>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <p className="text-xs text-muted-foreground">All tools are checked out or in maintenance.</p>
+                                      )}
+                                    </div>
+
+                                    {/* Plan Notes */}
+                                    <div className="space-y-1">
+                                      <Label className="text-xs font-semibold">Planning Notes / Comment</Label>
+                                      <Textarea
+                                        value={planNotes}
+                                        onChange={(e) => setPlanNotes(e.target.value)}
+                                        placeholder="Add trip logistics, accommodation details, or other notes..."
+                                        rows={2}
+                                        className="text-xs bg-background"
+                                      />
+                                    </div>
+
+                                    {/* Calculated budget sum */}
+                                    <div className="bg-primary/5 p-3 rounded border border-primary/20 flex justify-between items-center text-xs">
+                                      <div>
+                                        <span className="font-semibold text-primary block">Estimated Planning Budget</span>
+                                        <span className="text-[10px] text-muted-foreground">Includes per-diem ({totalDays} days) + fuel requests.</span>
+                                      </div>
+                                      <div className="text-sm font-bold font-mono text-primary">
+                                        {(
+                                          selectedPlanWorkers.reduce((s, w) => s + (w.perDiem || 0) * totalDays, 0) +
+                                          (parseFloat(planFuelAmount) || 0) * (parseFloat(planFuelPrice) || 0)
+                                        ).toLocaleString()}{" "}
+                                        ETB
+                                      </div>
+                                    </div>
+
+                                    {/* Submit actions */}
+                                    <div className="flex justify-end gap-2">
+                                      <Button size="sm" variant="outline" onClick={() => setPlanningFwId(null)}>Cancel</Button>
+                                      <Button size="sm" onClick={() => handleSubmitPlan(fw.id)} className="bg-purple-600 hover:bg-purple-700 text-white">
+                                        Submit Fieldwork Plan & Check Out
+                                      </Button>
+                                    </div>
+                                  </Card>
+                                )}
+                              </div>
+                            ) : (
+                              <Badge className="bg-muted text-muted-foreground">Awaiting Acceptance or Planning by Assigned TTL...</Badge>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 4. Status: SUBMITTED_TM (Awaiting TM Check) */}
+                        {fw.status === "submitted_tm" && (
+                          <div className="space-y-3">
+                            <p className="text-xs text-muted-foreground">Fieldwork plan has been formulated by the TTL. Technical Manager must review the crew and tools checkout list.</p>
+                            
+                            {/* Budget breakdown */}
+                            <div className="text-xs p-3 rounded border bg-background font-mono space-y-1.5">
+                              <p className="font-bold text-foreground mb-1 border-b pb-1">Budget Details:</p>
+                              <p>• Assigned Crew: {(fw.payload?.workers || []).map((w: any) => `${w.name} (${w.position})`).join(', ') || 'N/A'}</p>
+                              {fw.payload?.fuelAmount && (
+                                <p>• Fuel Request: {fw.payload.fuelAmount} L @ {fw.payload.fuelPrice} ETB/L (Cost: {Number(fw.payload.fuelAmount * fw.payload.fuelPrice).toLocaleString()} ETB)</p>
+                              )}
+                              <p className="font-bold text-primary">• Total Travel Budget: {Number(fw.cost).toLocaleString()} ETB</p>
+                            </div>
+
+                            {hasAccess(["fieldwork", "manager"]) ? (
+                              <Button size="sm" onClick={() => handleTmCheck(fw.id)} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold">
+                                TM Check & Sign Fieldwork Plan
+                              </Button>
+                            ) : (
+                              <Badge className="bg-muted text-muted-foreground">Awaiting Technical Manager verification...</Badge>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 5. Status: CHECKED_TM (Awaiting GM Approve) */}
+                        {fw.status === "checked_tm" && (
+                          <div className="space-y-3">
+                            <p className="text-xs text-muted-foreground">Fieldwork plan verified by Technical Manager. General Manager signature is required.</p>
+                            
+                            <div className="text-xs p-3 rounded border bg-background font-mono space-y-1">
+                              <p className="font-bold">• Travel Budget: {Number(fw.cost).toLocaleString()} ETB</p>
+                              <p>• Assigned Crew: {(fw.payload?.workers || []).map((w: any) => w.name).join(', ')}</p>
+                            </div>
+
+                            {(currentUser?.role === 'manager' || currentUser?.roles?.includes('manager')) ? (
+                              <Button size="sm" onClick={() => handleGmApprovePlan(fw.id)} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+                                GM Approve Fieldwork Plan
+                              </Button>
+                            ) : (
+                              <Badge className="bg-muted text-muted-foreground">Awaiting General Manager approval...</Badge>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 6. Status: APPROVED_GM (Awaiting Finance Release) */}
+                        {fw.status === "approved_gm" && (
+                          <div className="space-y-3">
+                            <p className="text-xs text-muted-foreground">Fieldwork plan approved by General Manager. Finance Admin must confirm per-diem payment allocation.</p>
+                            
+                            <div className="text-xs p-3 rounded border bg-background font-mono space-y-1.5">
+                              <p className="font-bold text-foreground">Budget Request Summary:</p>
+                              <p>• Per-diem Budget: {Number(fw.cost).toLocaleString()} ETB</p>
+                              <p>• Payment Reference: PAY-FW-{fw.id}</p>
+                            </div>
+
+                            {(currentUser?.role === 'finance' || currentUser?.roles?.includes('finance')) ? (
+                              <Button size="sm" onClick={() => handleFinanceApprove(fw.id)} className="bg-green-600 hover:bg-green-700 text-white font-semibold">
+                                Finance Release & Approve Budget
+                              </Button>
+                            ) : (
+                              <Badge className="bg-muted text-muted-foreground">Awaiting Finance budget confirmation...</Badge>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 7. Status: Approved and ready to go (Ready to Go) */}
+                        {fw.status === "Approved and ready to go" && (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-green-700 dark:text-green-400 bg-green-500/10 p-3 rounded border border-green-500/20 text-xs font-semibold">
+                              <CheckCircle2 className="h-4 w-4" />
+                              <span>Approved and ready to go! Per diem budget released. Field crew is authorized.</span>
+                            </div>
+                            
+                            <p className="text-xs text-muted-foreground">Once installation is completed at the client site, click "Add Return Form" below to check back all checked out tools.</p>
+                          </div>
+                        )}
+
+                        {/* 8. Status: COMPLETED_TTL */}
+                        {fw.status === "completed_ttl" && (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-teal-700 dark:text-teal-400 bg-teal-500/10 p-3 rounded border border-teal-500/20 text-xs font-semibold">
+                              <CheckCircle2 className="h-4 w-4" />
+                              <span>Installation marked as completed by TTL. Awaiting TM review of return forms.</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">Technical Manager must verify the returned tools/materials details and approve returns to complete the sale.</p>
+                            
+                            {hasAccess(["fieldwork", "manager"]) ? (
+                              <Button size="sm" onClick={() => handleApproveReturns(fw.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+                                Approve Returns & Complete Sale
+                              </Button>
+                            ) : (
+                              <Badge className="bg-muted text-muted-foreground">Awaiting Technical Manager verification and sign-off...</Badge>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 9. Status: DONE / COMPLETED */}
+                        {(fw.status === "completed" || fw.status === "done") && (
+                          <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 p-3 rounded border border-emerald-500/20 text-xs font-semibold">
+                            <CheckCircle2 className="h-4 w-4" />
+                            <span>This installation job is finalized, tools checked back to the warehouse inventory, and the sale is complete.</span>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="flex gap-2 flex-wrap">
-                        <Button size="sm" variant="outline" onClick={() => requestSecurity(() => openEdit(fw))}>
-                          <Edit className="h-4 w-4 mr-1" /> Edit
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => openReturnForm(fw)}>
-                          <RotateCcw className="h-4 w-4 mr-1" /> Add Return Form
-                        </Button>
-                        {currentUser?.username === "tech_leader" && (
-                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white border-0" onClick={() => submitCrewForApproval(fw.id)}>
-                            Request Crew Approval
+                        {fw.status !== "completed" && fw.status !== "done" && (
+                          <Button size="sm" variant="outline" onClick={() => requestSecurity(() => openEdit(fw))}>
+                            <Edit className="h-4 w-4 mr-1" /> Edit
                           </Button>
                         )}
-                        {fw.status === "in-progress" && (
-                          <Button size="sm" onClick={() => completeFieldWork(fw.id)}>
-                            <UserCheck className="h-4 w-4 mr-1" /> Mark Completed
-                          </Button>
+                        {fw.status === "Approved and ready to go" && currentUser?.username === fw.assignedTo && (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => openReturnForm(fw)}>
+                              <RotateCcw className="h-4 w-4 mr-1" /> Add Return Form
+                            </Button>
+                            <Button size="sm" onClick={() => completeFieldWork(fw.id)}>
+                              <UserCheck className="h-4 w-4 mr-1" /> Mark Completed
+                            </Button>
+                          </>
                         )}
                         <Button size="sm" variant="destructive" onClick={() => requestSecurity(() => deleteFieldWork(fw.id))}>
                           <Trash2 className="h-4 w-4 mr-1" /> Delete
@@ -590,22 +1303,30 @@ export default function FieldWorkPage() {
               fieldWork={returnFormFW}
               onSave={async (form) => {
                 await addReturnForm(returnFormFW.id, form);
+                await handleCompleteJobTTL(returnFormFW.id);
                 setReturnFormOpen(false);
-                toast.success("Return form added");
               }}
               onCancel={() => setReturnFormOpen(false)}
             />
           )}
         </DialogContent>
       </Dialog>
+
+      <ClientFileModal
+        open={fileModalOpen}
+        onOpenChange={setFileModalOpen}
+        proposal={fileModalProposal}
+      />
     </div>
   );
 }
 
 // ─── OVERVIEW SECTION ───
 function OverviewSection({ fieldWorks }: { fieldWorks: FieldWork[] }) {
-  const activeCount = fieldWorks.filter((fw: FieldWork) => fw.status === "in-progress").length;
-  const completedCount = fieldWorks.filter((fw: FieldWork) => fw.status === "completed").length;
+  const activeCount = fieldWorks.filter((fw: FieldWork) => 
+    ["in-progress", "planning", "accepted", "submitted_tm", "checked_tm", "approved_gm", "Approved and ready to go", "completed_ttl"].includes(fw.status)
+  ).length;
+  const completedCount = fieldWorks.filter((fw: FieldWork) => fw.status === "completed" || fw.status === "done").length;
   const pendingCount = fieldWorks.filter((fw: FieldWork) => fw.status === "pending").length;
   const totalJobs = fieldWorks.length;
 
@@ -1026,6 +1747,28 @@ function ReturnFormComponent({
   ]);
   const [comments, setComments] = useState("");
   const [otherNotes, setOtherNotes] = useState("");
+  
+  const [checkedOutTools, setCheckedOutTools] = useState<any[]>([]);
+  const [toolReturns, setToolReturns] = useState<Record<string, { condition: string; notes: string }>>({});
+
+  useEffect(() => {
+    const fetchCheckedOutTools = async () => {
+      try {
+        const response = await apiClient.get(`/fieldwork-assets/job/${fieldWork.id}`);
+        setCheckedOutTools(response.data);
+        const initialStates: Record<string, { condition: string; notes: string }> = {};
+        response.data.forEach((item: any) => {
+          if (item.status === 'CHECKED_OUT') {
+            initialStates[item.companyAssetId] = { condition: 'GOOD', notes: '' };
+          }
+        });
+        setToolReturns(initialStates);
+      } catch (e) {
+        console.error("Failed to load checked out tools:", e);
+      }
+    };
+    fetchCheckedOutTools();
+  }, [fieldWork.id]);
 
   const addMaterial = () => {
     setMaterials([...materials, { name: "", quantity: 1, condition: "Good" }]);
@@ -1047,7 +1790,7 @@ function ReturnFormComponent({
     setMaterials(materials.filter((_, i) => i !== index));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!workerName.trim()) {
       toast.error("Select a worker");
       return;
@@ -1057,6 +1800,27 @@ function ReturnFormComponent({
     if (validMaterials.length === 0) {
       toast.error("Add at least one returned material");
       return;
+    }
+
+    // Submit tool returns
+    const activeCheckouts = checkedOutTools.filter(t => t.status === 'CHECKED_OUT');
+    if (activeCheckouts.length > 0) {
+      const returns = activeCheckouts.map(item => ({
+        companyAssetId: item.companyAssetId,
+        condition: toolReturns[item.companyAssetId]?.condition || 'GOOD',
+        notes: toolReturns[item.companyAssetId]?.notes || '',
+      }));
+      try {
+        await apiClient.post('/fieldwork-assets/return', {
+          fieldWorkJobId: fieldWork.id,
+          returns
+        });
+        toast.success("Company tools returned successfully!");
+      } catch (e: any) {
+        console.error(e);
+        toast.error("Failed to return some company tools. Please check asset conditions.");
+        return;
+      }
     }
 
     onSave({
@@ -1153,6 +1917,59 @@ function ReturnFormComponent({
         ))}
       </div>
 
+      {/* Reusable Company Tools Return Section */}
+      {checkedOutTools.length > 0 && checkedOutTools.some(t => t.status === 'CHECKED_OUT') && (
+        <div className="space-y-3 border-t pt-4">
+          <Label className="text-sm font-medium text-primary">Checked Out Company Tools Return Checklist</Label>
+          <p className="text-xs text-muted-foreground">Select the return condition for each company tool. Lost tools will remain flagged in the system.</p>
+          <div className="space-y-3">
+            {checkedOutTools.map((t) => {
+              if (t.status !== 'CHECKED_OUT') return null;
+              const assetName = t.asset?.name || "Company Asset";
+              const assetSerial = t.asset?.serialNumber || "";
+              const val = toolReturns[t.companyAssetId] || { condition: 'GOOD', notes: '' };
+
+              return (
+                <Card key={t.id} className="p-3 bg-muted/20 border border-muted">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-xs text-foreground">{assetName}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono">S/N: {assetSerial}</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={val.condition}
+                        onChange={(e) => setToolReturns({
+                          ...toolReturns,
+                          [t.companyAssetId]: { ...val, condition: e.target.value }
+                        })}
+                        className="flex h-9 w-36 rounded-md border border-input bg-background px-2 py-1 text-xs ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      >
+                        <option value="GOOD">Good Condition</option>
+                        <option value="FAIR">Fair Condition</option>
+                        <option value="DAMAGED">Damaged</option>
+                        <option value="LOST">Lost / Missing</option>
+                      </select>
+                      
+                      <Input
+                        placeholder="Return notes..."
+                        value={val.notes}
+                        onChange={(e) => setToolReturns({
+                          ...toolReturns,
+                          [t.companyAssetId]: { ...val, notes: e.target.value }
+                        })}
+                        className="h-9 text-xs w-48 bg-background border-border"
+                      />
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-1.5">
         <Label>Comments</Label>
         <Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="Work summary, observations..." />
@@ -1165,7 +1982,7 @@ function ReturnFormComponent({
 
       <div className="flex gap-2 justify-end">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button onClick={handleSave}>Submit Return Form</Button>
+        <Button onClick={handleSave}>Submit Return & Complete Job</Button>
       </div>
     </div>
   );

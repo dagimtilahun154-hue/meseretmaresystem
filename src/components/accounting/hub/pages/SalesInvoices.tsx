@@ -65,7 +65,7 @@ export default function SalesInvoices() {
     });
   const removeItem = (i: number) =>
     setForm({ ...form, items: form.items.filter((_, idx) => idx !== i) });
-  const save = () => {
+  const save = async () => {
     const customer = customers.find((c) => c.id === form.customerId);
     const items = form.items.map(calcItem);
     const subtotal = items.reduce(
@@ -85,8 +85,8 @@ export default function SalesInvoices() {
       total: subtotal + totalVat,
       status: "Draft",
     };
-    const updated = [...invoices, invoice];
-    store.setInvoices(updated);
+    await store.saveInvoice(invoice);
+    const updated = store.getInvoices();
     setInvoices(updated);
     setOpen(false);
     setForm({
@@ -105,11 +105,12 @@ export default function SalesInvoices() {
       ],
     });
   };
-  const markPaid = (id: string) => {
-    const updated = invoices.map((i) =>
-      i.id === id ? { ...i, status: "Paid" as const } : i,
-    );
-    store.setInvoices(updated);
+  const markPaid = async (id: string) => {
+    const target = invoices.find((i) => i.id === id);
+    if (!target) return;
+    const updatedInvoice = { ...target, status: "Paid" as const };
+    await store.saveInvoice(updatedInvoice);
+    const updated = store.getInvoices();
     setInvoices(updated);
   };
   const filtered = invoices.filter(

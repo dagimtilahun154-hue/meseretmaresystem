@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { getComments, addComment } from "@/lib/api/communication";
 
 export default function Dashboard() {
-  const { currentUser } = useAuth();
+  const { currentUser, hasAccess } = useAuth();
   const { products, sales, fieldWorks, financePayments, financeEntity } = useStore();
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
@@ -823,10 +823,10 @@ export default function Dashboard() {
       </div>
 
       {/* Non-Manager EOD submission card */}
-      {currentUser?.role !== "manager" && renderEodSubmissionCard()}
+      {!hasAccess(["manager"]) && renderEodSubmissionCard()}
 
       {/* General Manager Live presence & EOD Timeline Panels */}
-      {currentUser?.role === "manager" && (
+      {hasAccess(["manager"]) && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* EOD Reports Deck */}
           <Card className="lg:col-span-2 border-indigo-100 dark:border-indigo-900 bg-indigo-50/5 dark:bg-indigo-950/5">
@@ -906,7 +906,7 @@ export default function Dashboard() {
       )}
 
       {/* General Manager Peachtree Integration Feed */}
-      {currentUser?.role === "manager" && (
+      {hasAccess(["manager"]) && (
         <Card className="border-cyan-100 dark:border-cyan-900 bg-cyan-50/5 dark:bg-cyan-950/5">
           <CardHeader className="pb-2 border-b">
             <CardTitle className="text-sm font-bold flex items-center gap-2">

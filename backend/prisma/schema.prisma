@@ -216,21 +216,23 @@ model PosSale {
 }
 
 model FieldWorkJob {
-  id            String   @id
-  title         String
-  description   String?  @db.Text
-  customerName  String?
-  location      String?
-  assignedTo    String?
-  status        String   @default("pending")
-  priority      String   @default("medium")
-  scheduledDate DateTime?
-  completedDate DateTime?
-  cost          Decimal  @default(0) @db.Decimal(15, 2)
-  notes         String?  @db.Text
-  payload       Json?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String   @id
+  title           String
+  description     String?  @db.Text
+  customerName    String?
+  location        String?
+  assignedTo      String?
+  status          String   @default("pending")
+  priority        String   @default("medium")
+  scheduledDate   DateTime?
+  completedDate   DateTime?
+  cost            Decimal  @default(0) @db.Decimal(15, 2)
+  notes           String?  @db.Text
+  payload         Json?
+  dailyReports    Json?    // [{ id, date, content, submittedBy, forwardedToGm, forwardedAt }]
+  returnsApproved Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@map("field_work_jobs")
 }
@@ -585,6 +587,7 @@ model HierarchyRequest {
   createdById    String
   assignedToId   String
   fieldWorkJobId String?
+  sizingRequestId String?
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
@@ -706,4 +709,60 @@ model Notification {
   user        User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+}
+
+model SizingRequest {
+  id                  String    @id @default(cuid())
+  clientName          String
+  address             String?   @db.Text
+  latitude            Float
+  longitude           Float
+  waterSource         String?
+  dailyWaterNeed      Decimal   @db.Decimal(15, 2)
+  pipeLength          Decimal?  @db.Decimal(15, 2)
+  verticalLift        Decimal?  @db.Decimal(15, 2)
+  selectedPumpModel   String?
+  status              String    @default("DRAFT") // DRAFT, PENDING_TM, REJECTED_TM, APPROVED_TM, PAID, FIELDWORK_CREATED
+  preparedById        String
+  preparedByName      String
+  preparedAt          DateTime  @default(now())
+  checkedById         String?
+  checkedByName       String?
+  checkedAt           DateTime?
+  calculatedEquipment Json?     // [{ id, name, qty, price, isConsumable }]
+  totalPrice          Decimal?  @db.Decimal(15, 2)
+  hierarchyRequestId  String?   @unique
+  dataCollection      Json?     // Full Solar Irrigation System Data Collection Sheet
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@map("sizing_requests")
+}
+
+model CompanyAsset {
+  id           String           @id @default(cuid())
+  serialNumber String           @unique
+  name         String
+  category     String?          // Tool, Ladder, Drill, Tester
+  status       String           @default("WAREHOUSE") // WAREHOUSE, IN_FIELD, MAINTENANCE
+  condition    String           @default("GOOD") // GOOD, FAIR, DAMAGED
+  checkouts    FieldWorkAsset[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@map("company_assets")
+}
+
+model FieldWorkAsset {
+  id             String       @id @default(cuid())
+  fieldWorkJobId String
+  companyAssetId String
+  status         String       @default("CHECKED_OUT") // CHECKED_OUT, RETURNED, MISSING
+  checkedOutAt   DateTime     @default(now())
+  returnedAt     DateTime?
+  notes          String?      @db.Text
+  asset          CompanyAsset @relation(fields: [companyAssetId], references: [id], onDelete: Cascade)
+
+  @@index([fieldWorkJobId])
+  @@map("field_work_assets")
 }

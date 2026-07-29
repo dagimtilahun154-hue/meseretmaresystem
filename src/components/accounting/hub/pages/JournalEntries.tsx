@@ -26,7 +26,7 @@ export default function JournalEntries() {
   const [form, setForm] = useState<Partial<JournalEntry>>({
     date: new Date().toISOString().split("T")[0],
   });
-  const save = () => {
+  const save = async () => {
     const entry: JournalEntry = {
       id: `JE-${String(entries.length + 1).padStart(3, "0")}`,
       date: form.date || "",
@@ -35,8 +35,8 @@ export default function JournalEntries() {
       creditAccount: form.creditAccount || "",
       amount: Number(form.amount) || 0,
     };
-    const updated = [...entries, entry];
-    store.setJournalEntries(updated);
+    await store.saveJournalEntry(entry);
+    const updated = store.getJournalEntries();
     setEntries(updated);
     setOpen(false);
     setForm({ date: new Date().toISOString().split("T")[0] });

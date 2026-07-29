@@ -3,7 +3,15 @@ import { clearAuthTokens, getAccessToken } from "@/lib/api/client";
 import { ApiCompany, ApiUser, loginRequest, logoutRequest, meRequest, usersRequest, createUserRequest, updateUserRequest, deleteUserRequest } from "@/lib/api/auth";
 import { toast } from "sonner";
 
-export type UserRole = "manager" | "finance" | "storekeeper" | "fieldwork" | "attendance";
+export type UserRole = 
+  | "manager"
+  | "fieldwork"
+  | "ttl"
+  | "finance"
+  | "storekeeper"
+  | "sales"
+  | "technician"
+  | "attendance";
 
 export interface AppUser {
   id: string;
@@ -37,13 +45,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const SECURITY_CODE = import.meta.env.VITE_SECURITY_CODE || "admin123";
 
 function normalizeApiUser(user: ApiUser): AppUser {
-  const roles = ((user.roles?.length ? user.roles : [user.role || "manager"]) as UserRole[]).filter(Boolean);
+  const rawRoles = user.roles?.length ? user.roles : (user.role ? [user.role] : []);
+  const roles = (rawRoles.length ? rawRoles : ["storekeeper"])
+    .map((r: any) => (typeof r === "string" ? r : r?.name || r?.role?.name))
+    .filter(Boolean) as UserRole[];
+
+  const userRole = roles[0] || (typeof user.role === "string" && user.role ? (user.role as UserRole) : "storekeeper");
+  const finalRoles = roles.length ? roles : [userRole];
+
   return {
     id: user.id,
     username: user.username,
     displayName: user.displayName,
-    role: roles[0] || "manager",
-    roles,
+    role: userRole,
+    roles: finalRoles,
     organizationId: user.organizationId,
     companies: user.companies || [],
     reportsToId: user.reportsToId,
@@ -83,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function loadBackendUsers() {
-      if (!currentUser || !currentUser.roles?.includes("manager")) return;
+      if (!currentUser) return;
       try {
         const backendUsers = await usersRequest();
         setUsers(backendUsers.map(normalizeApiUser));
@@ -110,25 +125,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await logoutRequest();
     } catch {
-      // Token cleanup happens inside logoutRequest when possible.
+      // ignore
+    } finally {
+      clearAuthTokens();
+      setCurrentUser(null);
+      sessionStorage.removeItem("solar_auth_uid");
     }
-    setCurrentUser(null);
-    sessionStorage.removeItem("solar_auth_uid");
   };
 
   const verifySecurityCode = (code: string): boolean => code === SECURITY_CODE;
 
   const hasAccess = (allowedRoles: UserRole[]): boolean => {
     if (!currentUser) return false;
-    const roles = currentUser.roles?.length ? currentUser.roles : [currentUser.role];
-    if (roles.includes("manager")) return true;
-    return roles.some((role) => allowedRoles.includes(role));
+    const userRoles = (currentUser.roles?.length ? currentUser.roles : [currentUser.role])
+      .map((r: any) => (typeof r === "string" ? r : r?.name || r?.role?.name))
+      .filter(Boolean);
+    if (userRoles.includes("manager") || currentUser.username === "manager") return true;
+    return userRoles.some((role: any) => allowedRoles.includes(role));
   };
 
   const addUser = async (user: AppUser) => {
     try {
-      const newUser = normalizeApiUser(await createUserRequest(user));
-      setUsers((prev) => [...prev, newUser]);
+      await createUserRequest(user);
+      const fresh = await usersRequest();
+      setUsers(fresh.map(normalizeApiUser));
       toast.success("User added successfully");
     } catch (e: any) {
       toast.error(e.response?.data?.message || "Failed to add user");
@@ -137,10 +157,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateUser = async (user: AppUser) => {
     try {
-      const updatedUser = normalizeApiUser(await updateUserRequest(user.id, user));
-      setUsers((prev) => prev.map((u) => (u.id === user.id ? updatedUser : u)));
+      await updateUserRequest(user.id, user);
+      const fresh = await usersRequest();
+      const normalized = fresh.map(normalizeApiUser);
+      setUsers(normalized);
       if (currentUser?.id === user.id) {
-        setCurrentUser(updatedUser);
+        const me = normalized.find((u) => u.id === user.id);
+        if (me) setCurrentUser(me);
       }
       toast.success("User updated successfully");
     } catch (e: any) {
@@ -151,7 +174,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const deleteUser = async (id: string) => {
     try {
       await deleteUserRequest(id);
-      setUsers((prev) => prev.filter((u) => u.id !== id));
+      const fresh = await usersRequest();
+      setUsers(fresh.map(normalizeApiUser));
       toast.success("User deleted successfully");
     } catch (e: any) {
       toast.error(e.response?.data?.message || "Failed to delete user");
@@ -186,9 +210,12 @@ export function useAuth() {
 }
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  manager: "Manager",
-  finance: "Finance",
-  storekeeper: "Store Keeper",
-  fieldwork: "Field Work Controller",
-  attendance: "Attendance Officer",
+  manager: "General Manager (GM)",
+  fieldwork: "Technical Manager (TM)",
+  ttl: "Technical Team Leader (TTL)",
+  finance: "Finance Admin / Accountant",
+  storekeeper: "Store Keeper / Inventory Manager",
+  sales: "Sales Manager / Sales Engineer",
+  technician: "Field Technician / Installer",
+  attendance: "HR & Attendance Officer",
 };

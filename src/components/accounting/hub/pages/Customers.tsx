@@ -19,9 +19,22 @@ export default function Customers() {
   const [form, setForm] = useState<Partial<Customer>>({});
   const [search, setSearch] = useState("");
   const save = () => {
+    const name = (form.name || "").trim();
+    if (!name) return;
+
+    // Duplicate detection: warn if a customer with the same name already exists
+    const duplicate = customers.find(
+      (c) => c.name.toLowerCase() === name.toLowerCase() && c.id !== (editing?.id ?? form.id),
+    );
+    if (duplicate && !window.confirm(
+      `A customer named "${duplicate.name}" already exists (ID: ${duplicate.id}). Are you sure you want to create another?`,
+    )) {
+      return;
+    }
+
     const entry: Customer = {
       id: form.id || `C${String(customers.length + 1).padStart(3, "0")}`,
-      name: form.name || "",
+      name,
       phone: form.phone || "",
       email: form.email || "",
       address: form.address || "",
@@ -35,7 +48,7 @@ export default function Customers() {
     } else {
       updated = [...customers, entry];
     }
-    store.setCustomers(updated);
+    store.saveCustomer(entry);
     setCustomers(updated);
     setOpen(false);
     setEditing(null);

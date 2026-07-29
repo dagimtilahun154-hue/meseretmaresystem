@@ -7,7 +7,6 @@ import { UsersService } from "./users.service";
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Roles("manager")
   @Get()
   findAll(@Req() request: { user: AuthUser }) {
     return this.usersService.findAll(request.user.organizationId);

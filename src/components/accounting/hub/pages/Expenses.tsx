@@ -38,7 +38,7 @@ export default function Expenses() {
     method: "Cash",
     category: "Other",
   });
-  const save = () => {
+  const save = async () => {
     const entry: Expense = {
       id: `EXP-${String(expenses.length + 1).padStart(3, "0")}`,
       category: form.category || "Other",
@@ -47,8 +47,8 @@ export default function Expenses() {
       date: form.date || "",
       method: (form.method as Expense["method"]) || "Cash",
     };
-    const updated = [...expenses, entry];
-    store.setExpenses(updated);
+    await store.saveExpense(entry);
+    const updated = store.getExpenses();
     setExpenses(updated);
     setOpen(false);
     setForm({
@@ -57,9 +57,9 @@ export default function Expenses() {
       category: "Other",
     });
   };
-  const remove = (id: string) => {
-    const u = expenses.filter((e) => e.id !== id);
-    store.setExpenses(u);
+  const remove = async (id: string) => {
+    await store.deleteExpense(id);
+    const u = store.getExpenses();
     setExpenses(u);
   };
   const total = expenses.reduce((s, e) => s + toMoneyNumber(e.amount), 0);

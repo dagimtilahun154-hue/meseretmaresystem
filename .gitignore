@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python AI Engine
+/ai-engine/.env
+/ai-engine/venv
+/ai-engine/__pycache__
+
+# Test artifacts & uploads
+/playwright-report
+/test-results
+/uploads
+/backend/uploads
+

@@ -26,6 +26,15 @@ export interface ReturnForm {
   status: "pending" | "reviewed" | "approved";
 }
 
+export interface DailyReport {
+  id: string;
+  date: string | Date;
+  content: string;
+  submittedBy: string;
+  forwardedToGm: boolean;
+  forwardedAt?: string | Date | null;
+}
+
 export interface FieldWork {
   id: string;
   startDate: string;
@@ -33,13 +42,15 @@ export interface FieldWork {
   workers: FieldWorker[];
   pumpModel: string;
   location: string;
-  status: "in-progress" | "completed";
+  status: "pending" | "planning" | "accepted" | "submitted_tm" | "checked_tm" | "approved_gm" | "Approved and ready to go" | "completed_ttl" | "completed" | "done" | string;
   equipment: FieldWorkEquipment[];
   notes: string;
   returnForms?: ReturnForm[];
   saleId?: string;
   fuelAmount?: number;
   fuelPrice?: number;
+  dailyReports?: DailyReport[];
+  returnsApproved?: boolean;
 }
 
 export const BEHAVIOR_LABELS: Record<number, string> = {

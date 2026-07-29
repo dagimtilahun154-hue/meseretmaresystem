@@ -32,7 +32,7 @@ export default function PaymentsMade() {
     date: new Date().toISOString().split("T")[0],
     method: "Cash",
   });
-  const save = () => {
+  const save = async () => {
     const vendor = vendors.find((v) => v.id === form.entityId);
     const entry: Payment = {
       id: `PM-${String(payments.length + 1).padStart(3, "0")}`,
@@ -45,8 +45,8 @@ export default function PaymentsMade() {
       date: form.date || "",
       type: "made",
     };
-    const allUpdated = [...store.getPayments(), entry];
-    store.setPayments(allUpdated);
+    await store.savePayment(entry);
+    const allUpdated = store.getPayments();
     setPayments(allUpdated.filter((p) => p.type === "made"));
     setOpen(false);
     setForm({ date: new Date().toISOString().split("T")[0], method: "Cash" });

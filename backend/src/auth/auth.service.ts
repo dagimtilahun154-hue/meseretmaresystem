@@ -128,7 +128,7 @@ export class AuthService {
         displayName: user.displayName,
         organizationId: user.organizationId,
         roles,
-        role: roles[0] || "manager",
+        role: roles[0] || "storekeeper",
         reportsToId: user.reportsToId,
         department: user.department,
         companies,

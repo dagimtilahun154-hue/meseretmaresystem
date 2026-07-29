@@ -134,8 +134,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const payload = typeof dbf.payload === "string"
         ? JSON.parse(dbf.payload)
         : dbf.payload;
-      if (payload && payload.workers) {
-        return { ...payload, id: dbf.id };
+      const dailyReports = typeof dbf.dailyReports === "string"
+        ? JSON.parse(dbf.dailyReports)
+        : Array.isArray(dbf.dailyReports)
+          ? dbf.dailyReports
+          : [];
+      const returnsApproved = !!dbf.returnsApproved;
+      if (payload) {
+        const workers = Array.isArray(payload.workers) ? payload.workers : [];
+        const rawEq = Array.isArray(payload.equipment) ? payload.equipment : [];
+        const equipment = rawEq.map((eq: any) => ({
+          productId: eq.productId || eq.id || "",
+          name: eq.name || eq.productName || "",
+          quantityTaken: Number(eq.quantityTaken || eq.qty || eq.quantity || 0),
+          quantityReturned: Number(eq.quantityReturned || 0),
+          quantityUsed: Number(eq.quantityUsed || 0),
+          unit: eq.unit || "Piece",
+        }));
+        const returnForms = Array.isArray(payload.returnForms) ? payload.returnForms : [];
+        const saleId = payload.sizingRequestId || payload.saleId || undefined;
+
+        return {
+          startDate: dbf.scheduled_date || payload.startDate || "",
+          endDate: dbf.completed_date || payload.endDate || "",
+          location: dbf.location || payload.location || "",
+          pumpModel: dbf.title || payload.pumpModel || "",
+          notes: dbf.notes || payload.notes || "",
+          ...payload,
+          id: dbf.id,
+          status: dbf.status as any,
+          workers,
+          equipment,
+          returnForms,
+          saleId,
+          dailyReports,
+          returnsApproved,
+        };
       }
       return {
         id: dbf.id,
@@ -148,6 +182,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         workers: [],
         equipment: [],
         returnForms: [],
+        dailyReports,
+        returnsApproved,
       };
     });
 

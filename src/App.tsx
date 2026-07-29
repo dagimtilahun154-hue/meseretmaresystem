@@ -112,7 +112,7 @@ function AuthenticatedApp() {
         <Route
           path="/pos"
           element={
-            <ProtectedRoute roles={["manager", "storekeeper"]}>
+            <ProtectedRoute roles={["manager", "storekeeper", "finance"]}>
               <POSPage />
             </ProtectedRoute>
           }
@@ -121,7 +121,7 @@ function AuthenticatedApp() {
         <Route
           path="/inventory"
           element={
-            <ProtectedRoute roles={["manager", "storekeeper"]}>
+            <ProtectedRoute roles={["manager", "storekeeper", "finance", "fieldwork"]}>
               <InventoryPage />
             </ProtectedRoute>
           }
@@ -148,7 +148,7 @@ function AuthenticatedApp() {
         <Route
           path="/pumps"
           element={
-            <ProtectedRoute roles={["manager", "fieldwork", "storekeeper"]}>
+            <ProtectedRoute roles={["manager", "fieldwork", "ttl", "sales", "technician", "storekeeper", "finance"]}>
               <PumpProductsPage />
             </ProtectedRoute>
           }
@@ -157,7 +157,7 @@ function AuthenticatedApp() {
         <Route
           path="/pumps/:id"
           element={
-            <ProtectedRoute roles={["manager", "fieldwork", "storekeeper"]}>
+            <ProtectedRoute roles={["manager", "fieldwork", "ttl", "sales", "technician", "storekeeper", "finance"]}>
               <PumpDetailPage />
             </ProtectedRoute>
           }
@@ -166,7 +166,15 @@ function AuthenticatedApp() {
         <Route
           path="/fieldwork"
           element={
-            <ProtectedRoute roles={["manager", "fieldwork"]}>
+            <ProtectedRoute roles={["manager", "fieldwork", "ttl", "sales", "technician", "finance"]}>
+              <FieldWorkPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/fieldwork/:section"
+          element={
+            <ProtectedRoute roles={["manager", "fieldwork", "ttl", "sales", "technician", "finance"]}>
               <FieldWorkPage />
             </ProtectedRoute>
           }
@@ -185,22 +193,6 @@ function AuthenticatedApp() {
           element={
             <ProtectedRoute roles={["manager", "finance"]}>
               <FinanceCenterPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/fieldwork"
-          element={
-            <ProtectedRoute roles={["manager", "fieldwork"]}>
-              <FieldWorkPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/fieldwork/:section"
-          element={
-            <ProtectedRoute roles={["manager", "fieldwork"]}>
-              <FieldWorkPage />
             </ProtectedRoute>
           }
         />

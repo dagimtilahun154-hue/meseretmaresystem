@@ -34,7 +34,7 @@ export default function PurchaseBills() {
     items[i].total = toMoneyNumber(items[i].quantity) * toMoneyNumber(items[i].costPrice);
     setForm({ ...form, items });
   };
-  const save = () => {
+  const save = async () => {
     const vendor = vendors.find((v) => v.id === form.vendorId);
     const bill: Bill = {
       id: `BILL-${String(bills.length + 1).padStart(3, "0")}`,
@@ -45,8 +45,8 @@ export default function PurchaseBills() {
       total: form.items.reduce((s, i) => s + toMoneyNumber(i.total), 0),
       status: "Pending",
     };
-    const updated = [...bills, bill];
-    store.setBills(updated);
+    await store.saveBill(bill);
+    const updated = store.getBills();
     setBills(updated);
     setOpen(false);
     setForm({
@@ -55,12 +55,13 @@ export default function PurchaseBills() {
       items: [{ product: "", quantity: 1, costPrice: 0, total: 0 }],
     });
   };
-  const markPaid = (id: string) => {
-    const u = bills.map((b) =>
-      b.id === id ? { ...b, status: "Paid" as const } : b,
-    );
-    store.setBills(u);
-    setBills(u);
+  const markPaid = async (id: string) => {
+    const target = bills.find((b) => b.id === id);
+    if (!target) return;
+    const updatedBill = { ...target, status: "Paid" as const };
+    await store.saveBill(updatedBill);
+    const updated = store.getBills();
+    setBills(updated);
   };
   return (
     <div className="p-6 space-y-8 animate-fade-in bg-slate-50/30 min-h-full">

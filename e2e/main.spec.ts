@@ -26,7 +26,7 @@ test.describe('SolarFlow Manager E2E', () => {
     await expect(page.locator('text=SolarPro 500').first()).toBeVisible({ timeout: 15000 });
 
     // 4. Check Field Work Module
-    await page.click('text=Field Work');
+    await page.click('text=Field Jobs');
     await expect(page.locator('text=Field Work').first()).toBeVisible();
     await expect(page.locator('text=Install SolarPro 500 at Farm').first()).toBeVisible({ timeout: 15000 });
 

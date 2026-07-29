@@ -18,7 +18,7 @@ export default function Vendors() {
   const [editing, setEditing] = useState<Vendor | null>(null);
   const [form, setForm] = useState<Partial<Vendor>>({});
   const [search, setSearch] = useState("");
-  const save = () => {
+  const save = async () => {
     const entry: Vendor = {
       id: form.id || `V${String(vendors.length + 1).padStart(3, "0")}`,
       name: form.name || "",
@@ -27,18 +27,16 @@ export default function Vendors() {
       tin: form.tin || "",
       balance: Number(form.balance) || 0,
     };
-    let updated = editing
-      ? vendors.map((v) => (v.id === editing.id ? entry : v))
-      : [...vendors, entry];
-    store.setVendors(updated);
+    await store.saveVendor(entry);
+    const updated = store.getVendors();
     setVendors(updated);
     setOpen(false);
     setEditing(null);
     setForm({});
   };
-  const remove = (id: string) => {
-    const u = vendors.filter((v) => v.id !== id);
-    store.setVendors(u);
+  const remove = async (id: string) => {
+    await store.deleteVendor(id);
+    const u = store.getVendors();
     setVendors(u);
   };
   const filtered = vendors.filter((v) =>
