@@ -87,6 +87,21 @@ export class SizingService {
     if (request.status !== 'DRAFT' && request.status !== 'REJECTED_TM') {
       throw new BadRequestException('Can only submit draft or rejected sizing requests.');
     }
+
+    // Auto-create customer and log the milestone!
+    const dataColl = request.dataCollection && typeof request.dataCollection === 'object' ? (request.dataCollection as any) : {};
+    const clientPhone = dataColl.generalSite?.phone || dataColl.generalSite?.phoneNumber || dataColl.phone || dataColl.phoneNumber || null;
+    const clientEmail = dataColl.generalSite?.email || dataColl.email || null;
+    
+    await this.logCustomerMilestone(
+      request.clientName,
+      clientPhone,
+      clientEmail,
+      request.address,
+      `Sizing Proposal and Assessment Sheet submitted for Technical Manager check. Sized pump: ${request.selectedPumpModel}. Status set to PENDING_TM.`,
+      request.preparedById
+    );
+
     return this.prisma.sizingRequest.update({
       where: { id },
       data: { status: 'PENDING_TM' },
@@ -133,33 +148,33 @@ export class SizingService {
     const equipmentList = await this.calculateEquipment(request);
     const totalPrice = equipmentList.reduce((sum, item) => sum + item.total, 0);
 
-    // 2. Find default finance user to route payment request to
-    const financeUser = await this.prisma.user.findFirst({
+    // 2. Find default GM user to route payment request to
+    const gmUser = await this.prisma.user.findFirst({
       where: {
         roles: {
           some: {
             role: {
-              name: 'finance'
+              name: 'manager'
             }
           }
         }
       }
     }) || await this.prisma.user.findFirst();
 
-    if (!financeUser) {
-      throw new BadRequestException('No finance user found to route hierarchy request to.');
+    if (!gmUser) {
+      throw new BadRequestException('No General Manager user found to route hierarchy request to.');
     }
 
-    // 3. Create a Hierarchy Request for Finance Payment Collection
+    // 3. Create a Hierarchy Request for GM Review
     const hierarchyRequest = await this.prisma.hierarchyRequest.create({
       data: {
         title: `Sizing Payment Collection - ${request.clientName}`,
-        description: `Automatic sizing request approved by Technical Manager ${displayName}. Awaiting payment collection for pump ${request.selectedPumpModel}.`,
+        description: `Automatic sizing request checked by Technical Manager ${displayName}. Awaiting GM review and structural sign-off for pump ${request.selectedPumpModel}.`,
         amount: new Prisma.Decimal(totalPrice),
         type: 'FIELD_TRIP',
-        status: 'FORWARDED_TO_FINANCE',
+        status: 'FORWARDED_TO_GM',
         createdById: request.preparedById,
-        assignedToId: financeUser.id,
+        assignedToId: gmUser.id,
         sizingRequestId: request.id,
       }
     });
@@ -174,36 +189,36 @@ export class SizingService {
       }
     });
 
-    // 5. Create Inbox Notification for Finance User
+    // 5. Create Inbox Notification for GM User
     try {
-      const financeUsers = await this.prisma.user.findMany({
+      const gmUsers = await this.prisma.user.findMany({
         where: {
           roles: {
             some: {
               role: {
-                name: 'finance'
+                name: 'manager'
               }
             }
           }
         }
       });
-      for (const fUser of financeUsers) {
+      for (const gm of gmUsers) {
         await this.prisma.notification.create({
           data: {
-            userId: fUser.id,
-            title: `Sizing Proposal Payment Awaiting Collection`,
-            content: `Sizing proposal for client "${request.clientName}" (${request.selectedPumpModel}) approved by ${displayName}. Total Package: ETB ${totalPrice.toLocaleString()}.`,
+            userId: gm.id,
+            title: `Sizing Proposal Awaiting GM Review`,
+            content: `Sizing proposal for client "${request.clientName}" (${request.selectedPumpModel}) checked by TM ${displayName}. Total Package: ETB ${totalPrice.toLocaleString()}.`,
             type: 'HIERARCHY_REQUEST',
-            link: '/finance/sizing-proposals',
+            link: '/fieldwork',
           }
         });
       }
     } catch (e) {
-      console.error('Failed to create sizing notification for finance users', e);
+      console.error('Failed to create sizing notification for GM users', e);
     }
 
     // 5. Update Sizing Request status
-    return this.prisma.sizingRequest.update({
+    const updatedRequest = await this.prisma.sizingRequest.update({
       where: { id },
       data: {
         status: 'APPROVED_TM',
@@ -215,6 +230,22 @@ export class SizingService {
         hierarchyRequestId: hierarchyRequest.id,
       },
     });
+
+    // Milestone 1: Create customer profile and log sizing check milestone!
+    const dataColl1 = request.dataCollection && typeof request.dataCollection === 'object' ? (request.dataCollection as any) : {};
+    const clientPhone1 = dataColl1.clientPhone || dataColl1.phone || null;
+    const clientEmail1 = dataColl1.clientEmail || dataColl1.email || null;
+
+    await this.logCustomerMilestone(
+      request.clientName,
+      clientPhone1,
+      clientEmail1,
+      request.address,
+      `Solar Pump Sizing Proposal checked & approved by Technical Manager ${displayName}. Calculated model: ${request.selectedPumpModel}. Price package: ETB ${totalPrice.toLocaleString()}. Status set to APPROVED_TM.`,
+      userId
+    );
+
+    return updatedRequest;
   }
 
   async gmApprove(id: string, userId: string, displayName: string) {
@@ -244,6 +275,20 @@ export class SizingService {
       },
     });
 
+    // Milestone 2: Log payment milestone
+    const dataColl2 = request.dataCollection && typeof request.dataCollection === 'object' ? (request.dataCollection as any) : {};
+    const clientPhone2 = dataColl2.clientPhone || dataColl2.phone || null;
+    const clientEmail2 = dataColl2.clientEmail || dataColl2.email || null;
+
+    await this.logCustomerMilestone(
+      request.clientName,
+      clientPhone2,
+      clientEmail2,
+      request.address,
+      `Payment confirmed by Finance Admin ${displayName} via Peachtree verification. Equipment package paid: ETB ${(Number(request.totalPrice) || 0).toLocaleString()}. Status set to PAID.`,
+      userId
+    );
+
     // Update Hierarchy request
     await this.prisma.hierarchyRequest.update({
       where: { id: request.hierarchyRequestId },
@@ -267,7 +312,7 @@ export class SizingService {
         roles: {
           some: {
             role: {
-              name: 'manager'
+              name: { in: ['manager', 'fieldwork'] }
             }
           }
         }
@@ -303,7 +348,7 @@ export class SizingService {
         description: `Pump installation site work at ${request.address || 'Customer site'}. Calculated pump model: ${request.selectedPumpModel}. Location: Lat ${request.latitude}, Lng ${request.longitude}.`,
         customerName: request.clientName,
         location: request.address || `Lat: ${request.latitude}, Lng: ${request.longitude}`,
-        status: 'pending',
+        status: 'planning',
         priority: 'medium',
         cost: request.totalPrice || new Prisma.Decimal(0),
         assignedTo: payload.assignedTo,
@@ -331,11 +376,25 @@ export class SizingService {
     await this.prisma.sizingRequest.update({
       where: { id },
       data: {
-        status: 'FIELDWORK_CREATED',
+        status: 'FIELDWORK_INITIATED',
       }
     });
 
-    // Notify TTL
+    // Milestone 3: Log fieldwork initiated milestone
+    const dataColl3 = request.dataCollection && typeof request.dataCollection === 'object' ? (request.dataCollection as any) : {};
+    const clientPhone3 = dataColl3.clientPhone || dataColl3.phone || null;
+    const clientEmail3 = dataColl3.clientEmail || dataColl3.email || null;
+
+    await this.logCustomerMilestone(
+      request.clientName,
+      clientPhone3,
+      clientEmail3,
+      request.address,
+      `Fieldwork installation job spawned by Technical Manager ${displayName}. Assigned to TTL: ${payload.assignedTo}. Status set to planning.`,
+      userId
+    );
+
+    // Notify TTL to build field work proposal
     const ttlUser = await this.prisma.user.findFirst({
       where: { username: payload.assignedTo }
     });
@@ -344,8 +403,8 @@ export class SizingService {
         data: {
           userId: ttlUser.id,
           type: 'TASK_ASSIGNED',
-          title: 'New Fieldwork Job Assigned',
-          content: `New fieldwork job "${fieldJob.title}" has been assigned to you.`,
+          title: 'Fieldwork Assignment - Build Proposal',
+          content: `Technical Manager initiated fieldwork for "${request.clientName}". Please review data sheet, assign workers, calculate per diem & check out tools.`,
           link: '/fieldwork',
         }
       });
@@ -452,5 +511,70 @@ export class SizingService {
     });
 
     return items;
+  }
+
+  async logCustomerMilestone(
+    clientName: string,
+    phone: string | null,
+    email: string | null,
+    address: string | null,
+    noteText: string,
+    userId?: string
+  ) {
+    if (!clientName?.trim()) return;
+
+    const normalizedName = clientName.trim();
+    let customer = await this.prisma.customer.findFirst({
+      where: {
+        name: { equals: normalizedName }
+      }
+    });
+
+    if (!customer) {
+      const custId = `CUST-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      customer = await this.prisma.customer.create({
+        data: {
+          id: custId,
+          name: normalizedName,
+          phone: phone || null,
+          email: email || null,
+          address: address || null,
+          creditLimit: new Prisma.Decimal(0),
+          balance: new Prisma.Decimal(0),
+        }
+      });
+    }
+
+    // Determine user role and department for logging notes
+    let userRole = 'system';
+    let department = null;
+    let finalUserId = userId || '';
+
+    if (!finalUserId) {
+      const firstUser = await this.prisma.user.findFirst();
+      finalUserId = firstUser?.id || '';
+    }
+
+    if (finalUserId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: finalUserId },
+        include: { roles: { include: { role: true } } }
+      });
+      if (user) {
+        const roles = user.roles?.map(r => r.role?.name) || [];
+        userRole = roles[0] || 'system';
+        department = user.department || null;
+      }
+    }
+
+    await this.prisma.customerNote.create({
+      data: {
+        customerId: customer.id,
+        userId: finalUserId,
+        userRole,
+        department,
+        note: noteText,
+      }
+    });
   }
 }

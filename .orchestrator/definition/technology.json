@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "status": "draft",
+  "items": [],
+  "updated_at": "2026-08-03T12:19:59.846213+00:00",
+  "frontend": {
+    "framework": "React 18",
+    "build_tool": "Vite",
+    "routing": "HashRouter (react-router-dom)",
+    "state_management": [
+      "StoreContext",
+      "AuthContext",
+      "WebSocketProvider",
+      "React Query"
+    ],
+    "ui_libraries": [
+      "TailwindCSS",
+      "shadcn/ui",
+      "Recharts",
+      "React-Leaflet"
+    ]
+  },
+  "backend": {
+    "framework": "NestJS",
+    "language": "TypeScript",
+    "orm": "Prisma",
+    "database": "MySQL",
+    "websockets": "Socket.IO"
+  },
+  "ai_engine": {
+    "framework": "FastAPI",
+    "language": "Python 3.9+",
+    "external_apis": [
+      "NASA LaRC Climatology API",
+      "Nominatim reverse-geocoding API",
+      "Groq API (Llama 3.3 70b)"
+    ]
+  }
+}

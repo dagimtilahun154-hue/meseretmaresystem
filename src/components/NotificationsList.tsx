@@ -4,19 +4,35 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Bell, BellOff, CheckCircle2, Trash2, Calendar, Circle } from "lucide-react";
+import { Bell, BellOff, CheckCircle2, Trash2, Calendar, Circle, ShieldAlert, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 export function NotificationsList() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
 
   const fetchNotifications = async () => {
+    if (!currentUser) return;
     setLoading(true);
     try {
       const data = await getNotifications();
-      setNotifications(data);
+      // Strict Role & User Gated Filtering
+      const filtered = (data || []).filter((n: any) => {
+        if (n.userId === currentUser.id) return true;
+        const role = (currentUser.role || "").toLowerCase();
+        const titleAndContent = `${n.title || ""} ${n.content || ""} ${n.type || ""}`.toLowerCase();
+
+        if (role === "storekeeper" && (titleAndContent.includes("stock") || titleAndContent.includes("product") || titleAndContent.includes("inventory"))) return true;
+        if (role === "finance" && (titleAndContent.includes("pay") || titleAndContent.includes("vat") || titleAndContent.includes("expense") || titleAndContent.includes("bank"))) return true;
+        if ((role === "fieldwork" || role === "ttl") && (titleAndContent.includes("field") || titleAndContent.includes("job") || titleAndContent.includes("task") || titleAndContent.includes("sizing"))) return true;
+        if (role === "manager" || role === "admin") return true;
+
+        return false;
+      });
+      setNotifications(filtered);
     } catch (err) {
       console.error(err);
     } finally {
@@ -26,7 +42,7 @@ export function NotificationsList() {
 
   useEffect(() => {
     fetchNotifications();
-  }, []);
+  }, [currentUser]);
 
   const handleMarkAsRead = async (id: string, link?: string | null) => {
     try {
@@ -70,15 +86,17 @@ export function NotificationsList() {
       <div className="flex items-center justify-between border-b pb-3 border-border">
         <div>
           <h3 className="text-lg font-bold tracking-tight flex items-center gap-2">
-            <Bell className="h-5 w-5 text-primary" />
-            Alerts & Activity
+            <Bell className="h-5 w-5 text-amber-500" />
+            Role-Gated Alerts & Operational Activity
             {unreadCount > 0 && (
               <Badge variant="destructive" className="ml-1 animate-pulse">
                 {unreadCount} New
               </Badge>
             )}
           </h3>
-          <p className="text-sm text-muted-foreground">Keep track of direct assignments, EOD comments, and replies.</p>
+          <p className="text-sm text-muted-foreground">
+            Strictly filtered notifications for {currentUser?.displayName || currentUser?.username} ({currentUser?.role?.toUpperCase()})
+          </p>
         </div>
         {unreadCount > 0 && (
           <Button variant="outline" size="sm" onClick={handleMarkAllRead} className="text-xs">
@@ -92,57 +110,56 @@ export function NotificationsList() {
         <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
           Loading alerts...
         </div>
+      ) : notifications.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed rounded-xl bg-muted/10 space-y-2">
+          <BellOff className="h-10 w-10 text-muted-foreground/60" />
+          <h4 className="font-bold text-sm">No Alerts Right Now</h4>
+          <p className="text-xs text-muted-foreground max-w-sm">
+            You are all caught up! Operational activity and task assignments specifically permitted for your role will appear here.
+          </p>
+        </div>
       ) : (
         <div className="flex-1 overflow-y-auto space-y-2 min-h-0 pr-1 max-h-[600px]">
           {notifications.map((notif) => (
             <Card
               key={notif.id}
               onClick={() => handleMarkAsRead(notif.id, notif.link)}
-              className={`cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-900/30 ${
-                !notif.read ? "border-l-4 border-l-primary bg-primary/5 dark:bg-primary/10" : ""
+              className={`cursor-pointer transition-all hover:border-amber-500/50 hover:shadow-md ${
+                !notif.read ? "bg-amber-500/5 border-amber-500/30" : "bg-card border-border/60"
               }`}
             >
-              <CardContent className="p-4 flex items-start gap-3">
-                <span className="mt-1">
-                  {!notif.read ? (
-                    <Circle className="h-2 w-2 fill-primary text-primary" />
-                  ) : (
-                    <Circle className="h-2 w-2 text-muted-foreground" />
-                  )}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start gap-2">
-                    <h4 className={`text-sm font-semibold truncate ${!notif.read ? "text-foreground" : "text-muted-foreground"}`}>
-                      {notif.title || "Notification"}
-                    </h4>
-                    <span className="text-[10px] text-muted-foreground shrink-0 flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(notif.createdAt).toLocaleDateString()}
+              <CardContent className="p-3.5 flex items-start justify-between gap-3">
+                <div className="space-y-1 flex-1">
+                  <div className="flex items-center gap-2">
+                    {!notif.read ? (
+                      <Circle className="h-2 w-2 text-amber-500 fill-amber-500 shrink-0" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    )}
+                    <span className="font-bold text-xs text-foreground">
+                      {notif.title || notif.type}
                     </span>
+                    <Badge variant="outline" className="text-[9px] uppercase tracking-wider font-mono">
+                      {notif.type}
+                    </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                    {notif.content}
+                  <p className="text-xs text-muted-foreground pl-5">{notif.content}</p>
+                  <p className="text-[10px] text-muted-foreground/70 pl-5 flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(notif.createdAt).toLocaleString()}
                   </p>
                 </div>
                 <Button
-                  variant="ghost"
                   size="icon"
-                  className="h-8 w-8 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/20"
+                  variant="ghost"
+                  className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
                   onClick={(e) => handleDelete(notif.id, e)}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </CardContent>
             </Card>
           ))}
-
-          {notifications.length === 0 && (
-            <div className="h-40 flex flex-col items-center justify-center text-muted-foreground border border-dashed rounded-xl p-4 text-center">
-              <BellOff className="h-8 w-8 text-muted-foreground/60 mb-2" />
-              <p className="text-sm font-semibold">All caught up!</p>
-              <p className="text-xs text-muted-foreground mt-0.5">No notifications currently available.</p>
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { customersDB } from "@/lib/db-service";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -8,12 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, MapPin, Droplets, Zap, CheckCircle2, Sun, Calendar, Info, ShieldCheck, ShoppingCart, Search, UserCheck, CreditCard, ClipboardCheck, Clock } from "lucide-react";
+import { Loader2, MapPin, Droplets, Zap, CheckCircle2, Sun, Calendar, Info, ShieldCheck, ShoppingCart, Search, UserCheck, Users, CreditCard, ClipboardCheck, Clock, Sparkles, FileText, Activity } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import { apiClient } from "@/lib/api/client";
 import { ClientFileModal } from "@/components/ClientFileModal";
+import { SizingProposalPdfModal } from "@/components/sizing/SizingProposalPdfModal";
 import {
   ResponsiveContainer,
   ScatterChart,
@@ -26,7 +29,9 @@ import {
   ComposedChart,
   Bar,
   Area,
-  Line
+  Line,
+  ReferenceLine,
+  ReferenceDot
 } from "recharts";
 
 // Fix leaflet icon issue with Webpack/Vite
@@ -78,11 +83,14 @@ function LocationMarker({ position, setPosition, setMapCenter, setClientAddress 
 }
 
 export default function PumpSizingPage() {
+  const navigate = useNavigate();
   const { currentUser, hasAccess } = useAuth();
   const [position, setPosition] = useState<L.LatLng | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>([9.03, 38.74]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
+  const [nasaInsolation, setNasaInsolation] = useState<number[] | null>(null);
+  const [fetchingNasa, setFetchingNasa] = useState<boolean>(false);
 
   const [verticalLift, setVerticalLift] = useState<string>("45");
   const [pipeLength, setPipeLength] = useState<string>("60");
@@ -102,7 +110,8 @@ export default function PumpSizingPage() {
 
   const [isDataSheetOpen, setIsDataSheetOpen] = useState<boolean>(false);
   const [selectedProposal, setSelectedProposal] = useState<any | null>(null);
-  const [fileModalOpen, setFileModalOpen] = useState<boolean>(false);
+  const [isClientFileModalOpen, setIsClientFileModalOpen] = useState<boolean>(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState<boolean>(false);
   const [fileModalProposal, setFileModalProposal] = useState<any | null>(null);
   const [allPumps, setAllPumps] = useState<any[]>([]);
   const [ttls, setTtls] = useState<any[]>([]);
@@ -218,6 +227,55 @@ export default function PumpSizingPage() {
     }
   }, [activeMainTab]);
 
+  const fetchNasaSolarForSizing = async (lat: number, lon: number) => {
+    setFetchingNasa(true);
+    try {
+      const formattedLat = Number(lat).toFixed(4);
+      const formattedLon = Number(lon).toFixed(4);
+      const url = `https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=ALLSKY_SFC_SW_DWN&community=RE&longitude=${formattedLon}&latitude=${formattedLat}&format=JSON`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`NASA POWER API response error (${res.status})`);
+      const json = await res.json();
+      const parameterData = json?.properties?.parameter?.ALLSKY_SFC_SW_DWN;
+      if (parameterData) {
+        const MONTH_NAMES_UPPER = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+        const monthly = MONTH_NAMES_UPPER.map((m, idx) => {
+          const key = (idx + 1).toString().padStart(2, "0");
+          return Number(parameterData[m] || parameterData[key] || 5.5);
+        });
+        setNasaInsolation(monthly);
+        const ann = parameterData["ANN"] || parameterData["13"] || (monthly.reduce((a, b) => a + b, 0) / 12);
+        setDataCollection((prev: any) => ({
+          ...prev,
+          solarResource: {
+            ...prev.solarResource,
+            irradiation: Number(ann).toFixed(2)
+          }
+        }));
+        toast.success(`NASA Solar Data loaded: ${Number(ann).toFixed(2)} kWh/m²/day avg`);
+      }
+    } catch (err) {
+      console.warn("NASA API fallback:", err);
+      const fallback = [6.12, 6.45, 6.28, 5.92, 5.65, 5.10, 4.65, 4.80, 5.35, 5.85, 6.20, 6.15];
+      setNasaInsolation(fallback);
+      setDataCollection((prev: any) => ({
+        ...prev,
+        solarResource: {
+          ...prev.solarResource,
+          irradiation: "5.71"
+        }
+      }));
+    } finally {
+      setFetchingNasa(false);
+    }
+  };
+
+  useEffect(() => {
+    if (position) {
+      fetchNasaSolarForSizing(position.lat, position.lng);
+    }
+  }, [position]);
+
   useEffect(() => {
     apiClient.get("/pumps").then(res => {
       setAllPumps(res.data);
@@ -227,7 +285,10 @@ export default function PumpSizingPage() {
     apiClient.get("/users").then(res => {
       const filtered = res.data.filter((u: any) => 
         u.role === 'ttl' || u.role === 'fieldwork' || u.role === 'technician' ||
-        (u.roles && u.roles.some((r: any) => ['ttl', 'fieldwork', 'technician'].includes(r.role?.name)))
+        (u.roles && u.roles.some((r: any) => {
+          const roleName = typeof r === 'string' ? r : (r?.role?.name || r?.name || '');
+          return ['ttl', 'fieldwork', 'technician'].includes(roleName);
+        }))
       );
       setTtls(filtered);
       if (filtered.length > 0) setSelectedTtl(filtered[0].username);
@@ -267,12 +328,13 @@ export default function PumpSizingPage() {
     }));
   };
 
+
   const handleOpenDataSheet = () => {
     syncSizingToAssessment();
     setIsDataSheetOpen(true);
   };
 
-  // Save new proposal draft
+  // Save new lead draft (quick info only)
   const handleSaveProposal = async () => {
     if (!clientName.trim()) {
       toast.error("Please enter a client name.");
@@ -295,17 +357,22 @@ export default function PumpSizingPage() {
         pipeLength: parseFloat(pipeLength),
         verticalLift: parseFloat(verticalLift),
         selectedPumpModel: result.exact_match.model,
-        dataCollection,
+        dataCollection: {
+          generalSite: {
+            contactPerson: dataCollection.generalSite.contactPerson,
+            phone: dataCollection.generalSite.phone,
+          },
+          waterSource: { sourceType: waterSource },
+        },
       });
+      toast.success("Lead saved successfully! Go to Proposals & Logs to promote when customer agrees.");
 
-      toast.success("Sizing Proposal and Data Sheet saved successfully!");
-      setIsSaveDialogOpen(false);
       setClientName("");
       setClientAddress("");
       setActiveMainTab("proposals");
     } catch (e: any) {
       console.error(e);
-      toast.error(e.response?.data?.message || "Failed to save proposal draft.");
+      toast.error(e.response?.data?.message || "Failed to save lead.");
     } finally {
       setSavingProposal(false);
     }
@@ -498,31 +565,205 @@ export default function PumpSizingPage() {
           pipe_length_m: parseFloat(pipeLength),
           pipe_diameter_inch: parseFloat(pipeDiameter),
           daily_water_need_m3: parseFloat(dailyWaterNeed),
+          custom_insolation: nasaInsolation || undefined,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to calculate. Please ensure the Python AI Engine is running.");
+        throw new Error("AI Engine returned error " + response.status);
       }
 
       const data = await response.json();
-      setResult(data);
-      toast.success("Pump sizing calculations completed!");
+      const winner = (data.redbud_match?.score || 0) >= (data.difful_match?.score || 0)
+        ? data.redbud_match
+        : data.difful_match;
+      setResult({
+        ...data,
+        exact_match: winner
+      });
+      toast.success("Pump sizing calculations completed via AI Engine!");
     } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "An error occurred while calculating.");
+      console.warn("AI Engine endpoint unreachable, using client-side sizing fallback:", error);
+      
+      const lift = parseFloat(verticalLift) || 0;
+      const length = parseFloat(pipeLength) || 0;
+      const diameter = parseFloat(pipeDiameter) || 1.25;
+      const need = parseFloat(dailyWaterNeed) || 20;
+
+      const frictionPer100m = diameter <= 1.0 ? 5.0 : diameter <= 1.5 ? 2.5 : 1.0;
+      const tdh = Number((lift + (length / 100) * frictionPer100m).toFixed(2));
+      const avgIns = nasaInsolation && nasaInsolation.length > 0
+        ? (nasaInsolation.reduce((a, b) => a + b, 0) / nasaInsolation.length)
+        : 5.5;
+      const reqFlowM3h = Number((need / avgIns).toFixed(2));
+
+      // Filter Redbud and Difful candidate pumps
+      const redbudPumps = (allPumps || []).filter((p: any) => (p.brand || "").toUpperCase() === "REDBUD");
+      const diffulPumps = (allPumps || []).filter((p: any) => (p.brand || "").toUpperCase() === "DIFFUL");
+
+      const findBest = (pList: any[]) => {
+        const matched = pList
+          .map((pump: any) => {
+            const perf = typeof pump.performanceData === "string" ? JSON.parse(pump.performanceData) : pump.performanceData;
+            if (!perf || perf.length === 0) return { pump, flowAtHead: 0, diff: 999, score: 0 };
+            const maxHead = Math.max(...perf.map((d: any) => d.head));
+            let flowAtHead = 0;
+            if (tdh <= maxHead) {
+              const sortedPts = [...perf].sort((a: any, b: any) => a.head - b.head);
+              for (let i = 0; i < sortedPts.length - 1; i++) {
+                if (sortedPts[i].head <= tdh && tdh <= sortedPts[i + 1].head) {
+                  const ratio = (tdh - sortedPts[i].head) / (sortedPts[i + 1].head - sortedPts[i].head || 1);
+                  flowAtHead = sortedPts[i].flow + ratio * (sortedPts[i + 1].flow - sortedPts[i].flow);
+                  break;
+                }
+              }
+            }
+            return { pump, flowAtHead, maxHead, diff: Math.abs(flowAtHead - reqFlowM3h), score: flowAtHead > 0 ? 90 - Math.abs(flowAtHead - reqFlowM3h) * 10 : 0 };
+          })
+          .filter((item: any) => item.flowAtHead > 0)
+          .sort((a: any, b: any) => b.score - a.score);
+
+        return matched[0] || null;
+      };
+
+      const bestRedbudItem = findBest(redbudPumps);
+      const bestDiffulItem = findBest(diffulPumps);
+
+      const rMatch = bestRedbudItem ? {
+        ...bestRedbudItem.pump,
+        score: Math.round(bestRedbudItem.score),
+        suitability: "Suitable",
+        calculated_flow_m3h: Number(bestRedbudItem.flowAtHead.toFixed(2)),
+        daily_water_yield_m3: Number((bestRedbudItem.flowAtHead * 5.5 * 0.9).toFixed(2)),
+        monthly_yields: Array(12).fill(Number((bestRedbudItem.flowAtHead * 5.5 * 0.9).toFixed(2))),
+        daily_profile: Array.from({ length: 13 }, (_, idx) => {
+          const h = idx + 6;
+          const factor = Math.sin(Math.PI * (h - 6) / 12);
+          const irr = Math.round(1000 * factor);
+          const flow = irr >= 200 ? Number((bestRedbudItem.flowAtHead * ((irr - 200) / 800)).toFixed(3)) : 0;
+          return { time: `${h.toString().padStart(2, '0')}:00`, irradiance: irr, flow };
+        })
+      } : { model: "No Matching Redbud Pump Found", brand: "REDBUD", power: "N/A", performanceData: [], score: 0, suitability: "Exceeds Limit" };
+
+      const dMatch = bestDiffulItem ? {
+        ...bestDiffulItem.pump,
+        score: Math.round(bestDiffulItem.score),
+        suitability: "Suitable",
+        calculated_flow_m3h: Number(bestDiffulItem.flowAtHead.toFixed(2)),
+        daily_water_yield_m3: Number((bestDiffulItem.flowAtHead * 5.5 * 0.9).toFixed(2)),
+        monthly_yields: Array(12).fill(Number((bestDiffulItem.flowAtHead * 5.5 * 0.9).toFixed(2))),
+        daily_profile: Array.from({ length: 13 }, (_, idx) => {
+          const h = idx + 6;
+          const factor = Math.sin(Math.PI * (h - 6) / 12);
+          const irr = Math.round(1000 * factor);
+          const flow = irr >= 200 ? Number((bestDiffulItem.flowAtHead * ((irr - 200) / 800)).toFixed(3)) : 0;
+          return { time: `${h.toString().padStart(2, '0')}:00`, irradiance: irr, flow };
+        })
+      } : { model: "No Matching Difful Pump Found", brand: "DIFFUL", power: "N/A", performanceData: [], score: 0, suitability: "Exceeds Limit" };
+
+      const winner = (rMatch.score || 0) >= (dMatch.score || 0) ? rMatch : dMatch;
+
+      const fallbackResult = {
+        redbud_match: rMatch,
+        difful_match: dMatch,
+        exact_match: winner,
+        calculated_tdh: tdh,
+        ai_reasoning: `Selected Redbud: ${rMatch.model} and Difful: ${dMatch.model} for TDH=${tdh}m.`,
+        climate_data: {
+          sol_insolation: [5.5, 5.7, 6.0, 5.8, 5.5, 5.0, 4.5, 4.8, 5.2, 5.5, 5.4, 5.3],
+          temperature: [20, 21, 22, 22, 21, 20, 19, 19, 20, 21, 21, 20]
+        },
+        target_flow_m3h: reqFlowM3h
+      };
+
+      setResult(fallbackResult);
+      toast.success("Pump sizing calculations completed (Local Engine)!");
     } finally {
       setLoading(false);
     }
   };
 
-  // Process data for Recharts
-  const getCurveData = (pump: any) => {
-    if (!pump || !pump.performanceData) return [];
-    return pump.performanceData.map((pt: any) => ({
-      flow: pt.flow,
-      head: pt.head
-    }));
+  // Process mathematically perfect 50-point parabolic H-Q performance curve & system resistance curve
+  const getSmoothHydraulicCurve = (pump: any, targetTdh: number, targetFlow: number) => {
+    if (!pump) return [];
+    
+    // Extract performance points
+    let rawPts: { flow: number; head: number }[] = [];
+    let perf = pump.performanceData;
+    if (typeof perf === "string") {
+      try {
+        perf = JSON.parse(perf);
+      } catch (e) {
+        perf = null;
+      }
+    }
+    if (Array.isArray(perf) && perf.length > 0) {
+      rawPts = perf.map((p: any) => ({ flow: Number(p.flow), head: Number(p.head) }));
+    } else if (pump.calculated_flow_m3h && targetTdh) {
+      const f = pump.calculated_flow_m3h;
+      rawPts = [
+        { flow: 0, head: targetTdh * 1.35 },
+        { flow: f * 0.5, head: targetTdh * 1.18 },
+        { flow: f, head: targetTdh },
+        { flow: f * 1.3, head: targetTdh * 0.45 },
+      ];
+    } else {
+      return [];
+    }
+
+    rawPts = rawPts.filter(p => p.flow >= 0 && p.head >= 0).sort((a, b) => a.flow - b.flow);
+
+    const qDuty = pump.calculated_flow_m3h || targetFlow || 1;
+    const hDuty = targetTdh || 50;
+
+    // Shutoff head H0 (Head at Q=0)
+    let H0 = rawPts.find(p => p.flow === 0)?.head;
+    if (!H0) {
+      const maxHead = Math.max(...rawPts.map(p => p.head), hDuty);
+      H0 = maxHead * 1.15;
+    }
+
+    // Fit perfect parabola H_pump(Q) = H0 - A * Q^2
+    let sumNum = (H0 - hDuty) * (qDuty * qDuty);
+    let sumDen = Math.pow(qDuty, 4);
+
+    for (const p of rawPts) {
+      if (p.flow > 0) {
+        sumNum += (H0 - p.head) * (p.flow * p.flow);
+        sumDen += Math.pow(p.flow, 4);
+      }
+    }
+
+    let A = sumDen > 0 ? sumNum / sumDen : 0.5;
+    if (A <= 0) A = (H0 - hDuty) / (qDuty * qDuty || 1);
+    if (A <= 0) A = 0.5;
+
+    const maxFlowLimit = Math.sqrt(H0 / A);
+    const chartMaxFlow = Math.min(maxFlowLimit, Math.max(...rawPts.map(p => p.flow), qDuty * 1.35, 1));
+    const steps = 50;
+    const stepSize = chartMaxFlow / steps;
+
+    // System Resistance Curve: H_sys(Q) = H_static + k * Q^2
+    const staticLift = Math.max(0, targetTdh * 0.70);
+    const kFriction = (targetTdh - staticLift) / (qDuty * qDuty || 1);
+
+    const curveData = [];
+
+    for (let i = 0; i <= steps; i++) {
+      const q = i * stepSize;
+      
+      // Perfect, mathematical parabolic H-Q curve (strictly downward concave: d^2H/dQ^2 = -2A < 0)
+      const hPump = H0 - A * q * q;
+      const hSystem = staticLift + kFriction * q * q;
+
+      curveData.push({
+        flow: Number(q.toFixed(2)),
+        pumpHead: Number(Math.max(0, hPump).toFixed(2)),
+        systemHead: Number(Math.min(H0 * 1.1, hSystem).toFixed(2)),
+      });
+    }
+
+    return curveData;
   };
 
   const getMonthlyData = () => {
@@ -559,7 +800,8 @@ export default function PumpSizingPage() {
       </div>
 
       {activeMainTab === "calculator" ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* LEFT COLUMN: Inputs & Map */}
           <div className="lg:col-span-5 space-y-6">
@@ -693,20 +935,141 @@ export default function PumpSizingPage() {
                   </div>
                 </div>
 
-                {/* Exact Match display */}
+                {/* 2 Recommendations Comparison Section */}
+                <div className="grid grid-cols-1 gap-4">
+                  {/* REDBUD Option */}
+                  {result.redbud_match && (
+                    <Card
+                      className={`border transition-all cursor-pointer relative overflow-hidden shadow-sm hover:shadow-md hover:border-primary/50 ${
+                        result.exact_match?.brand === "REDBUD"
+                          ? "border-primary ring-2 ring-primary/20 bg-primary/[0.01]"
+                          : "border-border bg-card"
+                      }`}
+                      onClick={() => {
+                        setResult((prev: any) => ({
+                          ...prev,
+                          exact_match: prev.redbud_match
+                        }));
+                      }}
+                    >
+                      {result.exact_match?.brand === "REDBUD" && (
+                        <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[9px] font-bold px-2 py-0.5 rounded-bl">
+                          Winner Match
+                        </div>
+                      )}
+                      <CardHeader className="pb-2 pt-4">
+                        <div className="flex justify-between items-start">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-mono">REDBUD RECOMMENDED PUMP</span>
+                          <Badge variant="outline" className="text-[9px] font-bold border-primary/20 text-primary">Score: {result.redbud_match.score}/100</Badge>
+                        </div>
+                        <CardTitle className="text-base font-bold font-heading mt-1 text-foreground">
+                          {result.redbud_match.model}
+                        </CardTitle>
+                        <CardDescription className="text-xs text-muted-foreground">{result.redbud_match.firstCategory || 'Solar Submersible'}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3 pb-4">
+                        <div className="grid grid-cols-3 gap-1.5 text-[10px] text-center font-mono">
+                          <div className="bg-muted p-1.5 rounded">
+                            <span className="text-muted-foreground block text-[8px] uppercase">Power</span>
+                            <span className="font-bold text-foreground">{result.redbud_match.power}</span>
+                          </div>
+                          <div className="bg-muted p-1.5 rounded">
+                            <span className="text-muted-foreground block text-[8px] uppercase">Voltage</span>
+                            <span className="font-bold text-foreground">{result.redbud_match.voltage}</span>
+                          </div>
+                          <div className="bg-muted p-1.5 rounded">
+                            <span className="text-muted-foreground block text-[8px] uppercase">Daily Yield</span>
+                            <span className="font-bold text-foreground">{result.redbud_match.daily_water_yield_m3 || 0} m³</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-2">
+                          <span className="text-[11px] text-muted-foreground">Suitability: <span className="font-bold text-emerald-600">{result.redbud_match.suitability}</span></span>
+                          <Button size="sm" variant={result.exact_match?.brand === "REDBUD" ? "default" : "outline"} className="h-7 text-xs font-semibold">
+                            {result.exact_match?.brand === "REDBUD" ? "Active Selection" : "Select Brand"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* DIFFUL Option */}
+                  {result.difful_match && (
+                    <Card
+                      className={`border transition-all cursor-pointer relative overflow-hidden shadow-sm hover:shadow-md hover:border-primary/50 ${
+                        result.exact_match?.brand === "DIFFUL"
+                          ? "border-primary ring-2 ring-primary/20 bg-primary/[0.01]"
+                          : "border-border bg-card"
+                      }`}
+                      onClick={() => {
+                        setResult((prev: any) => ({
+                          ...prev,
+                          exact_match: prev.difful_match
+                        }));
+                      }}
+                    >
+                      {result.exact_match?.brand === "DIFFUL" && (
+                        <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[9px] font-bold px-2 py-0.5 rounded-bl">
+                          Winner Match
+                        </div>
+                      )}
+                      <CardHeader className="pb-2 pt-4">
+                        <div className="flex justify-between items-start">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-mono">DIFFUL RECOMMENDED PUMP</span>
+                          <Badge variant="outline" className="text-[9px] font-bold border-primary/20 text-primary">Score: {result.difful_match.score}/100</Badge>
+                        </div>
+                        <CardTitle className="text-base font-bold font-heading mt-1 text-foreground">
+                          {result.difful_match.model}
+                        </CardTitle>
+                        <CardDescription className="text-xs text-muted-foreground">{result.difful_match.firstCategory || 'Solar Submersible'}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3 pb-4">
+                        <div className="grid grid-cols-3 gap-1.5 text-[10px] text-center font-mono">
+                          <div className="bg-muted p-1.5 rounded">
+                            <span className="text-muted-foreground block text-[8px] uppercase">Power</span>
+                            <span className="font-bold text-foreground">{result.difful_match.power}</span>
+                          </div>
+                          <div className="bg-muted p-1.5 rounded">
+                            <span className="text-muted-foreground block text-[8px] uppercase">Voltage</span>
+                            <span className="font-bold text-foreground">{result.difful_match.voltage}</span>
+                          </div>
+                          <div className="bg-muted p-1.5 rounded">
+                            <span className="text-muted-foreground block text-[8px] uppercase">Daily Yield</span>
+                            <span className="font-bold text-foreground">{result.difful_match.daily_water_yield_m3 || 0} m³</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-2">
+                          <span className="text-[11px] text-muted-foreground">Suitability: <span className="font-bold text-emerald-600">{result.difful_match.suitability}</span></span>
+                          <Button size="sm" variant={result.exact_match?.brand === "DIFFUL" ? "default" : "outline"} className="h-7 text-xs font-semibold">
+                            {result.exact_match?.brand === "DIFFUL" ? "Active Selection" : "Select Brand"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Exact Match Detail display */}
                 {result.exact_match && (
                   <Card className="border border-border shadow-md overflow-hidden">
                     <div className="bg-muted/50 p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                       <div>
-                        <span className="text-[10px] bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Recommended Pump</span>
-                        <h2 className="text-2xl font-bold font-heading mt-1 text-foreground">{result.exact_match.model}</h2>
-                        <p className="text-xs text-muted-foreground">{result.exact_match.firstCategory || result.exact_match.brand}</p>
+                        <span className="text-[10px] bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Active Sizing Details</span>
+                        <h2 className="text-2xl font-bold font-heading mt-1 text-foreground">
+                          {result.exact_match.model} <span className="text-muted-foreground text-sm font-normal">[{result.exact_match.brand}]</span>
+                        </h2>
+                        <p className="text-xs text-muted-foreground">{result.exact_match.firstCategory || result.exact_match.secondCategory || 'Solar Pump'}</p>
                       </div>
                       <div className="flex flex-wrap gap-2 items-center">
                         <Badge className="bg-slate-800 text-white hover:bg-slate-800/90">{result.exact_match.power}</Badge>
                         <Badge className="bg-blue-600 text-white hover:bg-blue-600/90">{result.exact_match.voltage}</Badge>
-                        <Button size="sm" onClick={() => setIsSaveDialogOpen(true)} className="gap-1.5 ml-2 font-semibold">
-                          <ShoppingCart className="h-3.5 w-3.5" /> Save Proposal
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            document.getElementById("customer-data-section")?.scrollIntoView({ behavior: "smooth" });
+                          }}
+                          className="gap-1.5 ml-2 font-semibold bg-emerald-500 hover:bg-emerald-600 text-white shadow"
+                        >
+                          <UserCheck className="h-3.5 w-3.5" /> Save Lead Info ↓
                         </Button>
                       </div>
                     </div>
@@ -722,50 +1085,136 @@ export default function PumpSizingPage() {
 
                         <TabsContent value="curves" className="space-y-4 outline-none">
                           <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border">
-                            <h3 className="text-sm font-semibold mb-3 flex items-center gap-1.5 text-foreground">
-                              <Info className="h-4 w-4 text-primary" /> Hydraulic Operating Point Curve (Q vs H)
-                            </h3>
-                            <div className="h-[280px] w-full">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                              <h3 className="text-sm font-semibold flex items-center gap-1.5 text-foreground">
+                                <Activity className="h-4 w-4 text-primary" /> Hydraulic Operating Point (H-Q Performance & System Loss Curves)
+                              </h3>
+                              <Badge variant="outline" className="text-[10px] font-mono bg-background text-emerald-600 border-emerald-500/30 w-fit">
+                                Operating Duty Point: {result.exact_match.calculated_flow_m3h} m³/h @ {result.calculated_tdh}m TDH
+                              </Badge>
+                            </div>
+
+                            <div className="h-[320px] w-full">
                               <ResponsiveContainer width="100%" height="100%">
-                                <ScatterChart margin={{ top: 10, right: 30, bottom: 20, left: 10 }}>
-                                  <CartesianGrid strokeDasharray="3 3" />
-                                  <XAxis type="number" dataKey="flow" name="Flow" unit="m³/h" label={{ value: "Flow (m³/h)", position: "insideBottom", offset: -5 }} />
-                                  <YAxis type="number" dataKey="head" name="Head" unit="m" label={{ value: "Head (m)", angle: -90, position: "insideLeft", offset: 5 }} />
-                                  <Tooltip cursor={{ strokeDasharray: '3 3' }} formatter={(value: any, name: any) => [value, name]} />
-                                  <Legend />
-                                  <Scatter
-                                    name="Pump H-Q Performance Limit"
-                                    data={getCurveData(result.exact_match)}
-                                    line={{ stroke: '#2563eb', strokeWidth: 3 }}
-                                    lineType="joint"
-                                    shape="circle"
-                                    fill="#2563eb"
+                                <ComposedChart
+                                  data={getSmoothHydraulicCurve(result.exact_match, result.calculated_tdh, result.target_flow_m3h)}
+                                  margin={{ top: 15, right: 35, bottom: 25, left: 10 }}
+                                >
+                                  <defs>
+                                    <linearGradient id="pumpCurveGradient" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.25} />
+                                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0} />
+                                    </linearGradient>
+                                    <linearGradient id="systemCurveGradient" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.15} />
+                                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.0} />
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
+                                  <XAxis
+                                    type="number"
+                                    dataKey="flow"
+                                    name="Flow Rate"
+                                    unit=" m³/h"
+                                    domain={[0, 'auto']}
+                                    label={{ value: "Flow Rate Q (m³/h)", position: "insideBottom", offset: -15, fontSize: 11 }}
                                   />
-                                  <Scatter
-                                    name="Actual Sized Operating Point"
-                                    data={[{ flow: result.exact_match.calculated_flow_m3h || 0, head: result.calculated_tdh }]}
+                                  <YAxis
+                                    type="number"
+                                    domain={[0, 'auto']}
+                                    name="Total Head"
+                                    unit=" m"
+                                    label={{ value: "Total Dynamic Head H (m)", angle: -90, position: "insideLeft", offset: 10, fontSize: 11 }}
+                                  />
+                                  <Tooltip
+                                    formatter={(value: any, name: any) => [`${value} ${name.includes('Flow') ? 'm³/h' : 'm'}`, name]}
+                                    contentStyle={{ borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '12px' }}
+                                  />
+                                  <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: '10px', fontSize: '12px' }} />
+
+                                  {/* Smooth Pump Characteristic Curve */}
+                                  <Area
+                                    type="monotone"
+                                    dataKey="pumpHead"
+                                    name="Pump Performance Curve (H-Q)"
+                                    stroke="#2563eb"
+                                    strokeWidth={3}
+                                    fill="url(#pumpCurveGradient)"
+                                    dot={false}
+                                    activeDot={{ r: 6, fill: '#2563eb' }}
+                                  />
+
+                                  {/* Dynamic Piping System Head Curve */}
+                                  <Line
+                                    type="monotone"
+                                    dataKey="systemHead"
+                                    name="System Piping Resistance Curve"
+                                    stroke="#f59e0b"
+                                    strokeWidth={2.5}
+                                    strokeDasharray="4 4"
+                                    dot={false}
+                                  />
+
+                                  {/* Duty Point Intersection Highlights */}
+                                  <ReferenceLine
+                                    x={result.exact_match.calculated_flow_m3h}
+                                    stroke="#22c55e"
+                                    strokeWidth={1.5}
+                                    strokeDasharray="3 3"
+                                    label={{ value: `Operating Flow: ${result.exact_match.calculated_flow_m3h} m³/h`, position: 'top', fill: '#16a34a', fontSize: 10, fontWeight: 'bold' }}
+                                  />
+                                  <ReferenceLine
+                                    y={result.calculated_tdh}
+                                    stroke="#22c55e"
+                                    strokeWidth={1.5}
+                                    strokeDasharray="3 3"
+                                    label={{ value: `Duty Head: ${result.calculated_tdh}m`, position: 'right', fill: '#16a34a', fontSize: 10, fontWeight: 'bold' }}
+                                  />
+                                  <ReferenceDot
+                                    x={result.exact_match.calculated_flow_m3h}
+                                    y={result.calculated_tdh}
+                                    r={6}
                                     fill="#22c55e"
-                                    shape="circle"
-                                    r={8}
+                                    stroke="#ffffff"
+                                    strokeWidth={2.5}
+                                    isFront={true}
                                   />
-                                  <Scatter
-                                    name="Design Required Target Flow"
-                                    data={[{ flow: result.target_flow_m3h || 0, head: result.calculated_tdh }]}
-                                    fill="#ef4444"
-                                    shape="triangle"
-                                    r={8}
-                                  />
-                                </ScatterChart>
+                                </ComposedChart>
                               </ResponsiveContainer>
                             </div>
                           </div>
 
-                          <div className="bg-muted/40 p-4 rounded-xl border border-dashed text-xs space-y-2">
-                            <p className="font-semibold text-foreground">AI Engineering Review Verdict:</p>
-                            <p className="italic text-muted-foreground">"{result.ai_reasoning || "Selected based on optimal efficiency for the specified Total Dynamic Head (TDH) and daily requirements."}"</p>
-                            <div className="grid grid-cols-2 gap-4 mt-2 border-t pt-2 font-mono">
-                              <div>• Flow at Design Head: <span className="font-bold text-primary">{result.exact_match.calculated_flow_m3h} m³/h</span></div>
-                              <div>• Pump Head Range: <span className="font-bold text-primary">{result.exact_match.maxHead} meters max</span></div>
+                          <div className="bg-muted/40 p-4 rounded-xl border space-y-3 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-foreground flex items-center gap-1.5">
+                                <Sparkles className="h-4 w-4 text-emerald-600" /> Hydraulic Analysis Breakdown
+                              </span>
+                              <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/30">
+                                Match Score: {result.exact_match.score}/100
+                              </Badge>
+                            </div>
+
+                            <p className="italic text-muted-foreground bg-background p-2.5 rounded-lg border border-border">
+                              "{result.ai_reasoning || "Selected based on optimal efficiency for the specified Total Dynamic Head (TDH) and daily requirements."}"
+                            </p>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                              <div className="bg-primary/5 p-2.5 rounded-lg border border-primary/20">
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Operating Flow Rate</span>
+                                <span className="text-sm font-bold text-primary font-mono">{result.exact_match.calculated_flow_m3h} m³/h</span>
+                              </div>
+                              <div className="bg-cyan-500/5 p-2.5 rounded-lg border border-cyan-500/20">
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Design Head (TDH)</span>
+                                <span className="text-sm font-bold text-cyan-600 font-mono">{result.calculated_tdh} meters</span>
+                              </div>
+                              <div className="bg-amber-500/5 p-2.5 rounded-lg border border-amber-500/20">
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Target Flow Need</span>
+                                <span className="text-sm font-bold text-amber-600 font-mono">{result.target_flow_m3h} m³/h</span>
+                              </div>
+                              <div className="bg-slate-500/5 p-2.5 rounded-lg border border-slate-500/20">
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Max Pump Head</span>
+                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300 font-mono">{result.exact_match.maxHead || result.calculated_tdh} meters</span>
+                              </div>
                             </div>
                           </div>
                         </TabsContent>
@@ -860,43 +1309,7 @@ export default function PumpSizingPage() {
                   </Card>
                 )}
 
-                {/* Alternatives grid */}
-                {result.alternatives && result.alternatives.length > 0 && (
-                  <div className="space-y-4 pt-2">
-                    <h3 className="font-semibold text-lg border-b pb-2 text-foreground font-heading">Alternative Pump Options</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {result.alternatives.map((alt: any, idx: number) => (
-                        <Card key={idx} className="hover:border-primary/30 transition-colors border shadow-sm">
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-base font-heading flex justify-between items-center">
-                              <span>{alt.model}</span>
-                              <Badge className="bg-slate-700 text-white text-[10px]">{alt.power}</Badge>
-                            </CardTitle>
-                            <CardDescription className="text-[11px]">{alt.firstCategory || alt.brand}</CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-3 pt-1">
-                            <div className="grid grid-cols-3 gap-1.5 text-[10px] text-center font-mono">
-                              <div className="bg-muted p-1.5 rounded">
-                                <span className="text-muted-foreground block text-[8px] uppercase">TDH Flow</span>
-                                <span className="font-bold text-foreground">{alt.calculated_flow_m3h || 0} m³/h</span>
-                              </div>
-                              <div className="bg-muted p-1.5 rounded">
-                                <span className="text-muted-foreground block text-[8px] uppercase">Daily Yield</span>
-                                <span className="font-bold text-foreground">{alt.daily_water_yield_m3 || 0} m³</span>
-                              </div>
-                              <div className="bg-muted p-1.5 rounded">
-                                <span className="text-muted-foreground block text-[8px] uppercase">Package Price</span>
-                                <span className="font-bold text-primary">
-                                  ${alt.equipment ? alt.equipment.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0).toLocaleString() : 0}
-                                </span>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
+
 
               </div>
             ) : (
@@ -907,7 +1320,95 @@ export default function PumpSizingPage() {
               </div>
             )}
           </div>
-          
+        </div>
+
+          {result?.exact_match && (
+            <Card id="customer-data-section" className="w-full border-2 border-emerald-500/30 shadow-xl overflow-hidden mt-6 scroll-mt-20">
+              <CardHeader className="bg-emerald-500/5 border-b pb-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <Badge className="bg-emerald-600 text-white font-mono text-[10px] uppercase mb-1">
+                      Step 2: Save Lead Information
+                    </Badge>
+                    <CardTitle className="text-xl font-bold font-heading flex items-center gap-2 text-foreground">
+                      <UserCheck className="h-5 w-5 text-emerald-600" />
+                      Quick Lead Details
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Enter basic client details to save this sizing as a lead. When the customer agrees, promote it from the Proposals tab to fill the full site assessment.
+                    </CardDescription>
+                  </div>
+                  <Button onClick={handleSaveProposal} disabled={savingProposal} className="gap-2 font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg text-sm px-6 py-3 h-auto">
+                    {savingProposal ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShoppingCart className="h-5 w-5" />}
+                    Save Lead
+                  </Button>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-xs font-semibold">Client / Farm Name *</Label>
+                    <Input
+                      placeholder="e.g. Abebe Farms / Chala K."
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
+                      className="bg-background border-border font-semibold text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold">Site Address / Location</Label>
+                    <Input
+                      placeholder="e.g. Arba Minch, Gamo"
+                      value={clientAddress}
+                      onChange={(e) => setClientAddress(e.target.value)}
+                      className="bg-background border-border"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold">Water Source Type</Label>
+                    <select
+                      value={waterSource}
+                      onChange={(e) => setWaterSource(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none"
+                    >
+                      <option value="Borehole">Borehole</option>
+                      <option value="Open Well">Open Well</option>
+                      <option value="River / Stream">River / Stream</option>
+                      <option value="Lake / Reservoir">Lake / Reservoir</option>
+                      <option value="Spring">Spring</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-xs font-semibold">Contact Person</Label>
+                    <Input
+                      placeholder="Representative name"
+                      value={dataCollection.generalSite.contactPerson}
+                      onChange={(e) => setDataCollection({...dataCollection, generalSite: {...dataCollection.generalSite, contactPerson: e.target.value}})}
+                      className="bg-background border-border"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold">Phone Number</Label>
+                    <Input
+                      placeholder="e.g. 0911000000"
+                      value={dataCollection.generalSite.phone}
+                      onChange={(e) => setDataCollection({...dataCollection, generalSite: {...dataCollection.generalSite, phone: e.target.value}})}
+                      className="bg-background border-border font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-muted/30 p-3 rounded-lg border text-xs text-muted-foreground flex items-center gap-2">
+                  <Info className="h-4 w-4 text-primary shrink-0" />
+                  <span>Sizing specs (pump model, head, pipe, coordinates) are saved automatically from the calculator above. After saving, go to <strong>Proposals & Logs</strong> and click <strong>"Promote to Customer"</strong> when the client agrees to fill the full assessment.</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       ) : (
         /* PROPOSALS LIST VIEW */
@@ -938,8 +1439,8 @@ export default function PumpSizingPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {proposals.map((p) => {
-                const isTM = hasAccess(["fieldwork", "manager"]);
-                const isFinance = hasAccess(["finance", "manager"]);
+                const isTM = hasAccess(["fieldwork"]);
+                const isFinance = hasAccess(["finance"]);
 
                 const statusColors: Record<string, string> = {
                   DRAFT: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-700",
@@ -947,6 +1448,7 @@ export default function PumpSizingPage() {
                   REJECTED_TM: "bg-red-50 text-red-800 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50",
                   APPROVED_TM: "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50",
                   PAID: "bg-green-50 text-green-800 border-green-200 dark:bg-green-950/20 dark:text-green-400 dark:border-green-900/50",
+                  FIELDWORK_INITIATED: "bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900/50",
                   FIELDWORK_CREATED: "bg-teal-50 text-teal-800 border-teal-200 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/50",
                   COMPLETED: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50",
                 };
@@ -956,7 +1458,8 @@ export default function PumpSizingPage() {
                   PENDING_TM: "Awaiting TM Check",
                   REJECTED_TM: "Rejected by TM",
                   APPROVED_TM: "TM Approved (Payable)",
-                  PAID: "Paid (Awaiting Crew)",
+                  PAID: "Paid (Awaiting Dispatch)",
+                  FIELDWORK_INITIATED: "Fieldwork Initiated (TTL Planning)",
                   FIELDWORK_CREATED: "Fieldwork In Progress",
                   COMPLETED: "Sale Completed",
                 };
@@ -1026,14 +1529,24 @@ export default function PumpSizingPage() {
 
                     {/* Actions block */}
                     <CardFooter className="pt-3 pb-3 border-t bg-muted/10 flex flex-wrap justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Button size="sm" variant="outline" onClick={() => { setFileModalProposal(p); setFileModalOpen(true); }} className="gap-1 text-xs font-semibold">
-                        <Info className="h-3.5 w-3.5 text-primary" /> Full Client File
+                      <Button size="sm" variant="outline" onClick={() => { setFileModalProposal(p); setIsClientFileModalOpen(true); }} className="gap-1 text-xs font-semibold">
+                        <Info className="h-3.5 w-3.5 text-primary" /> Data Sheet
+                      </Button>
+
+                      <Button size="sm" variant="outline" onClick={() => { setFileModalProposal(p); setIsPdfModalOpen(true); }} className="gap-1 text-xs font-semibold text-sky-600 border-sky-500/30">
+                        <FileText className="h-3.5 w-3.5" /> Proposal PDF
+                      </Button>
+
+                      <Button size="sm" variant="outline" onClick={() => navigate(`/customers/${p.clientName}`)} className="gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10">
+                        <Users className="h-3.5 w-3.5" /> Full 360 Dossier
                       </Button>
 
                       {(p.status === "DRAFT" || p.status === "REJECTED_TM") && (
-                        <Button size="sm" onClick={() => handleSubmitToTm(p.id)} className="w-full bg-primary hover:bg-primary/95 font-semibold gap-1 text-white">
-                          Submit to TM for Check
-                        </Button>
+                        <div className="flex gap-2 w-full">
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/fieldwork/sizing/assessment/${p.id}`)} className="flex-1 gap-1 text-xs font-semibold text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/10">
+                            <Sparkles className="h-3.5 w-3.5" /> Promote to Customer
+                          </Button>
+                        </div>
                       )}
                       
                       {p.status === "PENDING_TM" && isTM && (
@@ -1061,8 +1574,14 @@ export default function PumpSizingPage() {
                           setSelectedProposal(p);
                           setIsFieldworkDialogOpen(true);
                         }} className="w-full bg-blue-600 hover:bg-blue-700 font-semibold text-white">
-                          Create Fieldwork Job
+                          Initiate Field Work & Assign TTL
                         </Button>
+                      )}
+
+                      {p.status === "FIELDWORK_INITIATED" && (
+                        <div className="w-full text-center text-[10px] text-purple-600 dark:text-purple-400 font-semibold bg-purple-500/10 py-1 rounded border border-purple-500/20">
+                          Initiated — Waiting for TTL Proposal & Checklist
+                        </div>
                       )}
 
                       {p.status === "FIELDWORK_CREATED" && (
@@ -1405,7 +1924,12 @@ export default function PumpSizingPage() {
 
             <DialogFooter className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setSelectedProposal(null)}>Close Details</Button>
-              {selectedProposal.status === 'PENDING_TM' && hasAccess(["fieldwork", "manager"]) && (
+              {(selectedProposal.status === 'DRAFT' || selectedProposal.status === 'REJECTED_TM') && (
+                <Button onClick={() => { setSelectedProposal(null); navigate(`/fieldwork/sizing/assessment/${selectedProposal.id}`); }} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold gap-1">
+                  <Sparkles className="h-3.5 w-3.5" /> Promote to Customer → Fill Assessment
+                </Button>
+              )}
+              {selectedProposal.status === 'PENDING_TM' && hasAccess(["fieldwork"]) && (
                 <>
                   <Button onClick={() => {
                     setIsRejectDialogOpen(true);
@@ -1420,7 +1944,7 @@ export default function PumpSizingPage() {
                   </Button>
                 </>
               )}
-              {selectedProposal.status === 'APPROVED_TM' && hasAccess(["finance", "manager"]) && (
+              {selectedProposal.status === 'APPROVED_TM' && hasAccess(["finance"]) && (
                 <Button onClick={() => {
                   handleFinancePay(selectedProposal.id);
                   setSelectedProposal(null);
@@ -1428,7 +1952,7 @@ export default function PumpSizingPage() {
                   Mark Paid
                 </Button>
               )}
-              {selectedProposal.status === 'PAID' && hasAccess(["fieldwork", "manager"]) && (
+              {selectedProposal.status === 'PAID' && hasAccess(["fieldwork"]) && (
                 <Button onClick={() => {
                   setIsFieldworkDialogOpen(true);
                 }} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold gap-1">
@@ -1890,8 +2414,14 @@ export default function PumpSizingPage() {
       </Dialog>
 
       <ClientFileModal
-        open={fileModalOpen}
-        onOpenChange={setFileModalOpen}
+        open={isClientFileModalOpen}
+        onOpenChange={setIsClientFileModalOpen}
+        proposal={fileModalProposal}
+      />
+
+      <SizingProposalPdfModal
+        open={isPdfModalOpen}
+        onOpenChange={setIsPdfModalOpen}
         proposal={fileModalProposal}
       />
     </div>

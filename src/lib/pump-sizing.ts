@@ -70,18 +70,28 @@ export function calculateRequiredFlow(dailyNeed: number, sunHours: number = 5): 
 
 export function getFlowAtHead(pump: PumpProduct, head: number): number {
   const table = pump.performanceTable;
+  if (!table || table.length === 0) return 0;
+  
   const sorted = [...table].sort((a, b) => a.head - b.head);
   if (head <= sorted[0].head) return sorted[0].flow;
   if (head >= sorted[sorted.length - 1].head) return 0;
-  for (let i = 0; i < sorted.length - 1; i++) {
-    const p1 = sorted[i];
-    const p2 = sorted[i+1];
-    if (head >= p1.head && head <= p2.head) {
-      const flow = p1.flow + ((head - p1.head) * (p2.flow - p1.flow) / (p2.head - p1.head));
-      return Number(flow.toFixed(1));
+
+  // Binary search to find the interpolation segment: sorted[low].head <= head <= sorted[high].head
+  let low = 0;
+  let high = sorted.length - 1;
+  while (high - low > 1) {
+    const mid = Math.floor((low + high) / 2);
+    if (sorted[mid].head <= head) {
+      low = mid;
+    } else {
+      high = mid;
     }
   }
-  return 0;
+
+  const p1 = sorted[low];
+  const p2 = sorted[high];
+  const flow = p1.flow + ((head - p1.head) * (p2.flow - p1.flow) / (p2.head - p1.head));
+  return Number(flow.toFixed(1));
 }
 
 export type MatchResult = {

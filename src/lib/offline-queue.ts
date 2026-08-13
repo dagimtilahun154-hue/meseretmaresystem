@@ -98,6 +98,10 @@ export async function flushOfflineQueue() {
   let flushed = 0;
 
   for (const mutation of mutations.sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
+    if (mutation.retryCount >= 3) {
+      console.warn(`Sidelining mutation ${mutation.id} (endpoint: ${mutation.endpoint}) due to repeated failures (${mutation.retryCount} retries)`);
+      continue;
+    }
     try {
       await apiClient.request({
         url: mutation.endpoint,

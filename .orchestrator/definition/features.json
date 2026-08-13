@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "status": "draft",
+  "items": [
+    {
+      "id": "dashboard",
+      "name": "Dashboard",
+      "scope": "MVP",
+      "description": "Overview of sales, costs, tasks, and EOD text entry."
+    },
+    {
+      "id": "inbox",
+      "name": "Inbox Alerts",
+      "scope": "MVP",
+      "description": "Combines pending HierarchyRequests and notifications."
+    },
+    {
+      "id": "chat",
+      "name": "Team Chat",
+      "scope": "MVP",
+      "description": "Socket.io real-time chat with channels and DMs."
+    },
+    {
+      "id": "pos",
+      "name": "Point of Sale",
+      "scope": "MVP",
+      "description": "Barcoded checkouts, custom discounts, tax, and quick sizing integration."
+    },
+    {
+      "id": "inventory",
+      "name": "Inventory Manager",
+      "scope": "MVP",
+      "description": "Tracks stock, costs, sell prices, low-stock alerts, and restocking requests."
+    },
+    {
+      "id": "catalog",
+      "name": "Pump Catalog",
+      "scope": "MVP",
+      "description": "Manufacturer data and dynamic scatter plots of flow vs head."
+    },
+    {
+      "id": "sizing",
+      "name": "Pump Sizing Calculator",
+      "scope": "MVP",
+      "description": "AI-driven hydraulic computations utilizing NASA solar databases and Groq API Llama 3 models."
+    },
+    {
+      "id": "finance",
+      "name": "Finance Center",
+      "scope": "MVP",
+      "description": "Balance sheets, ledger cash flow charts, VAT tracker, and Peachtree CSV export bridge."
+    },
+    {
+      "id": "hr",
+      "name": "HR & Biometrics",
+      "scope": "Supporting",
+      "description": "Registry, department config, fingerprint registration log, and clock-in interface."
+    },
+    {
+      "id": "sync",
+      "name": "Offline Sync Protocol",
+      "scope": "MVP",
+      "description": "Client-side queueing and background flushing with server-side conflict resolution."
+    }
+  ],
+  "updated_at": "2026-08-03T12:19:59.846213+00:00"
+}

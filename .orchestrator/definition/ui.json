@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "status": "draft",
+  "items": [],
+  "updated_at": "2026-08-03T12:19:59.846213+00:00",
+  "design_tokens": {
+    "colors": "HSL tailored color variables (in index.css)",
+    "typography": "Google Fonts (Inter / Outfit / Roboto)",
+    "theme": "Sleek Dark Mode & Glassmorphism widgets"
+  },
+  "layouts": {
+    "sidebar": "Responsive Sidebar with conditional role filters",
+    "dashboard": "Active task board and KPI cards",
+    "modals": "Leaflet map overlay z-index fixed to 10"
+  }
+}

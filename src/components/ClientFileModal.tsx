@@ -1,4 +1,6 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { ExecutiveDocumentPdfTemplate } from "@/components/pdf/ExecutiveDocumentPdfTemplate";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +34,7 @@ import {
   Clock,
   Layers,
   Printer,
+  ExternalLink,
 } from "lucide-react";
 
 interface ClientFileModalProps {
@@ -41,6 +44,7 @@ interface ClientFileModalProps {
 }
 
 export function ClientFileModal({ open, onOpenChange, proposal }: ClientFileModalProps) {
+  const navigate = useNavigate();
   if (!proposal) return null;
 
   const data = proposal.dataCollection || {};
@@ -66,7 +70,69 @@ export function ClientFileModal({ open, onOpenChange, proposal }: ClientFileModa
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-6">
-        <DialogHeader className="border-b pb-4">
+        {/* Printable Executive PDF Template (Only visible when printing) */}
+        <div className="hidden print:block">
+          <ExecutiveDocumentPdfTemplate
+            data={{
+              documentTitle: "SolarFlow Master Client Information Sheet",
+              subtitle: "Technical & Commercial Pump Sizing Dossier",
+              refNumber: proposal.id || "SZ-1001",
+              date: proposal.createdAt ? new Date(proposal.createdAt).toLocaleDateString() : new Date().toLocaleDateString(),
+              clientSection: {
+                title: "CLIENT / FARM OWNER INFORMATION",
+                fields: [
+                  { label: "Client / Farm Name", value: proposal.clientName },
+                  { label: "Contact Person", value: site.contactPerson },
+                  { label: "Phone Number", value: site.phone },
+                  { label: "Region / Zone", value: `${site.region || "—"} / ${site.zone || "—"}` },
+                  { label: "Woreda / Kebele", value: `${site.woreda || "—"} / ${site.kebele || "—"}` },
+                  { label: "Village / Location", value: site.village || proposal.address },
+                  { label: "GPS Coordinates", value: proposal.latitude ? `${Number(proposal.latitude).toFixed(4)}, ${Number(proposal.longitude).toFixed(4)}` : "—" },
+                  { label: "Road Access", value: site.roadAccessibility || "Good" },
+                ]
+              },
+              secondarySection: {
+                title: "HYDRAULIC & WATER SOURCE SPECIFICATIONS",
+                fields: [
+                  { label: "Selected Pump Model", value: proposal.selectedPumpModel || req.proposedPumpCapacity },
+                  { label: "Daily Water Demand", value: `${proposal.dailyWaterNeed || req.dailyWaterDemand || 0} m³/day` },
+                  { label: "Total Dynamic Lift", value: `${proposal.verticalLift || req.totalPumpingHead || 0} Meters` },
+                  { label: "Water Source Type", value: water.sourceType || proposal.waterSource || "Borehole" },
+                  { label: "Total Well Depth", value: water.wellDepth ? `${water.wellDepth} Meters` : "—" },
+                  { label: "Static Water Level", value: water.staticWaterLevel ? `${water.staticWaterLevel} Meters` : "—" },
+                  { label: "Dynamic Water Level", value: water.dynamicWaterLevel ? `${water.dynamicWaterLevel} Meters` : "—" },
+                  { label: "Total Beneficiaries", value: site.beneficiaries?.total ? `${site.beneficiaries.total} People (M: ${site.beneficiaries.male || 0}, F: ${site.beneficiaries.female || 0})` : "—" },
+                  { label: "Solar Array Power", value: `${solar.solarWattage || 1200} Watts` },
+                  { label: "Turnkey Package Price", value: formatMoney(proposal.totalPrice) },
+                ]
+              },
+              tableData: {
+                title: "ITEMIZED EQUIPMENT BILL OF MATERIALS (BOM)",
+                headers: ["ITEM NAME", "CATEGORY", "QTY", "UNIT PRICE", "TOTAL PRICE"],
+                rows: equipment.map((item: any) => [
+                  item.name || item.productName || "Equipment Item",
+                  item.category || "Consumables",
+                  item.qty || item.quantity || 1,
+                  formatMoney(item.price),
+                  formatMoney((item.qty || item.quantity || 1) * item.price),
+                ]),
+              },
+              financials: {
+                totalFee: proposal.totalPrice || 250000,
+                adjustments: 0,
+                totalDue: proposal.totalPrice || 250000,
+                payment1: proposal.status === "PAID" ? proposal.totalPrice : 0,
+                payment2: 0,
+                balanceDue: proposal.status === "PAID" ? 0 : proposal.totalPrice,
+              }
+            }}
+          />
+        </div>
+
+        {/* Modal UI Header */}
+        <div className="print:hidden border-b pb-4 space-y-4">
+          <DialogTitle className="sr-only">Client Sizing Dossier - {proposal.clientName || 'Proposal'}</DialogTitle>
+          <DialogDescription className="sr-only">Detailed client sizing proposal report</DialogDescription>
           <div className="flex justify-between items-start">
             <div>
               <div className="flex items-center gap-2">
@@ -110,11 +176,16 @@ export function ClientFileModal({ open, onOpenChange, proposal }: ClientFileModa
                 )}
               </DialogDescription>
             </div>
-            <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1 text-xs">
-              <Printer className="h-3.5 w-3.5" /> Print Dossier
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => { onOpenChange(false); navigate(`/customers/${encodeURIComponent(proposal.clientName)}`); }} className="gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10">
+                <ExternalLink className="h-3.5 w-3.5" /> Full 360 Dossier
+              </Button>
+              <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1 text-xs">
+                <Printer className="h-3.5 w-3.5" /> Print Dossier
+              </Button>
+            </div>
           </div>
-        </DialogHeader>
+        </div>
 
         {/* Client Master Details Summary Grid */}
         <div className="grid grid-cols-4 gap-3 bg-muted/20 p-4 rounded-xl border border-border/50 text-xs">

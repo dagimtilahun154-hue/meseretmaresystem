@@ -12,19 +12,19 @@ export class UsersController {
     return this.usersService.findAll(request.user.organizationId);
   }
 
-  @Roles("manager")
+  @Roles("admin")
   @Post()
   create(@Body() dto: any, @Req() request: { user: AuthUser }) {
     return this.usersService.create(dto, request.user.organizationId);
   }
 
-  @Roles("manager")
+  @Roles("admin")
   @Put(":id")
   update(@Param("id") id: string, @Body() dto: any, @Req() request: { user: AuthUser }) {
     return this.usersService.update(id, dto, request.user.organizationId);
   }
 
-  @Roles("manager")
+  @Roles("admin")
   @Delete(":id")
   delete(@Param("id") id: string, @Req() request: { user: AuthUser }) {
     return this.usersService.delete(id, request.user.organizationId);

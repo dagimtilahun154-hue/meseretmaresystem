@@ -34,12 +34,19 @@ export interface Account {
 export interface Customer {
   id: string;
   name: string;
-  phone: string;
-  email: string;
-  address: string;
-  tin: string;
-  creditLimit: number;
-  balance: number;
+  phone?: string;
+  email?: string;
+  address?: string;
+  tin?: string;
+  contact?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  creditLimit?: number;
+  balance?: number;
+  installedPumpModel?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Vendor {
@@ -358,15 +365,22 @@ export const financeStore = {
 };
 
 // Initialize all finance data from the backend
-export async function initFinanceStore() {
-  await Promise.all([
+export async function initFinanceStore(isFinanceOrManager: boolean = false) {
+  const promises: Promise<any>[] = [
     financeStore.loadCustomers(),
     financeStore.loadVendors(),
-    financeStore.loadAccounts(),
-    financeStore.loadInvoices(),
-    financeStore.loadBills(),
-    financeStore.loadPayments(),
-    financeStore.loadExpenses(),
-    financeStore.loadJournalEntries(),
-  ]);
+  ];
+
+  if (isFinanceOrManager) {
+    promises.push(
+      financeStore.loadAccounts(),
+      financeStore.loadInvoices(),
+      financeStore.loadBills(),
+      financeStore.loadPayments(),
+      financeStore.loadExpenses(),
+      financeStore.loadJournalEntries()
+    );
+  }
+
+  await Promise.all(promises);
 }

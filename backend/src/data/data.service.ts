@@ -262,43 +262,50 @@ export class DataService {
 
   async saveSale(sale: any) {
     const items = Array.isArray(sale.items) ? sale.items : [];
+    const saleId = sale.id || `SALE-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    const customerName = sale.customerName || sale.customer_name || "Walk-in Customer";
+    const paymentMethod = sale.paymentMethod || sale.payment_method || "Cash";
+    const bankName = sale.bankName || sale.bank_name || null;
+    const createdBy = sale.createdBy || sale.created_by || "Sales Agent";
+    const saleDate = sale.date ? new Date(sale.date) : new Date();
+
     await this.prisma.$transaction(async (tx) => {
-      const existingSale = await tx.posSale.findUnique({ where: { id: sale.id } });
+      const existingSale = await tx.posSale.findUnique({ where: { id: saleId } });
 
       await tx.posSale.upsert({
-        where: { id: sale.id },
+        where: { id: saleId },
         update: {
-          date: new Date(sale.date),
-          customerName: sale.customer_name,
-          paymentMethod: sale.payment_method,
-          bankName: sale.bank_name,
+          date: saleDate,
+          customerName,
+          paymentMethod,
+          bankName,
           subtotal: asNumber(sale.subtotal),
           discount: asNumber(sale.discount),
           tax: asNumber(sale.tax),
           total: asNumber(sale.total),
           note: sale.note,
-          createdBy: sale.created_by,
+          createdBy,
           items,
         },
         create: {
-          id: sale.id,
-          date: new Date(sale.date),
-          customerName: sale.customer_name,
-          paymentMethod: sale.payment_method,
-          bankName: sale.bank_name,
+          id: saleId,
+          date: saleDate,
+          customerName,
+          paymentMethod,
+          bankName,
           subtotal: asNumber(sale.subtotal),
           discount: asNumber(sale.discount),
           tax: asNumber(sale.tax),
           total: asNumber(sale.total),
           note: sale.note,
-          createdBy: sale.created_by,
+          createdBy,
           items,
         },
       });
 
       if (!existingSale) {
         for (const item of items) {
-          const productId = item.productId || item.product_id;
+          const productId = item.productId || item.product_id || item.id;
           const quantity = asNumber(item.quantity);
           if (!productId || quantity <= 0) continue;
 
@@ -331,30 +338,30 @@ export class DataService {
             : sale.payment_method || "Cash";
 
       await tx.payment.upsert({
-        where: { id: `PAY-POS-${sale.id}` },
+        where: { id: `PAY-POS-${saleId}` },
         update: {
-          reference: sale.id,
+          reference: saleId,
           entityId: sale.customer_id || sale.customerId,
-          entityName: sale.customer_name,
-          invoiceOrBillId: sale.id,
+          entityName: customerName,
+          invoiceOrBillId: saleId,
           amount: asNumber(sale.total),
           method,
-          bankName: sale.bank_name,
+          bankName,
           note: "POS Sale",
-          date: new Date(sale.date),
+          date: saleDate,
           type: "received",
         },
         create: {
-          id: `PAY-POS-${sale.id}`,
-          reference: sale.id,
+          id: `PAY-POS-${saleId}`,
+          reference: saleId,
           entityId: sale.customer_id || sale.customerId,
-          entityName: sale.customer_name,
-          invoiceOrBillId: sale.id,
+          entityName: customerName,
+          invoiceOrBillId: saleId,
           amount: asNumber(sale.total),
           method,
-          bankName: sale.bank_name,
+          bankName,
           note: "POS Sale",
-          date: new Date(sale.date),
+          date: saleDate,
           type: "received",
         },
       });
@@ -457,7 +464,128 @@ export class DataService {
 
   async customers() {
     const list = await this.prisma.customer.findMany({ orderBy: { name: "asc" } });
-    return list.map(toPlain);
+    const sizings = await this.prisma.sizingRequest.findMany({ orderBy: { createdAt: "desc" } });
+    const fieldWorks = await this.prisma.fieldWorkJob.findMany({ orderBy: { createdAt: "desc" } });
+    const invoices = await this.prisma.invoice.findMany({ orderBy: { createdAt: "desc" } });
+    const posSales = await this.prisma.posSale.findMany({ orderBy: { date: "desc" } });
+
+    const customerMap = new Map<string, any>();
+
+    // 1. Add explicitly created Customer rows
+    list.forEach((c) => {
+      const plain = toPlain(c);
+      const nameKey = (c.name || "").toLowerCase().trim();
+      if (nameKey) {
+        customerMap.set(nameKey, {
+          ...plain,
+          installedPumpModel: "Solar Pump System",
+        });
+      }
+    });
+
+    // 2. Add Sizing Request customers
+    sizings.forEach((sz: any) => {
+      const clientName = (sz.clientName || "").trim();
+      const nameKey = clientName.toLowerCase();
+      if (!nameKey) return;
+
+      if (!customerMap.has(nameKey)) {
+        customerMap.set(nameKey, {
+          id: `CUST-SZ-${sz.id.slice(-6)}`,
+          name: clientName,
+          phone: sz.phoneNumber || null,
+          email: sz.email || null,
+          address: sz.location || null,
+          city: sz.location || null,
+          creditLimit: 0,
+          balance: 0,
+          installedPumpModel: sz.selectedPumpModel || "Solar Pump System",
+          createdAt: sz.createdAt ? new Date(sz.createdAt).toISOString() : new Date().toISOString(),
+        });
+      } else {
+        const existing = customerMap.get(nameKey);
+        if (sz.selectedPumpModel && existing.installedPumpModel === "Solar Pump System") {
+          existing.installedPumpModel = sz.selectedPumpModel;
+        }
+        if (!existing.phone && sz.phoneNumber) existing.phone = sz.phoneNumber;
+        if (!existing.address && sz.location) existing.address = sz.location;
+      }
+    });
+
+    // 3. Add FieldWork customers
+    fieldWorks.forEach((fw: any) => {
+      const custName = (fw.customerName || "").trim();
+      const nameKey = custName.toLowerCase();
+      if (!nameKey) return;
+      const fwPayload = fw.payload && typeof fw.payload === "object" ? (fw.payload as any) : {};
+      const pump = fwPayload.selectedPumpModel || fw.pumpModel || null;
+
+      if (!customerMap.has(nameKey)) {
+        customerMap.set(nameKey, {
+          id: `CUST-FW-${fw.id.slice(-6)}`,
+          name: custName,
+          phone: fwPayload.phone || null,
+          email: null,
+          address: fw.location || null,
+          city: fw.location || null,
+          creditLimit: 0,
+          balance: 0,
+          installedPumpModel: pump || "Solar Pump System",
+          createdAt: fw.createdAt ? new Date(fw.createdAt).toISOString() : new Date().toISOString(),
+        });
+      } else {
+        const existing = customerMap.get(nameKey);
+        if (pump && existing.installedPumpModel === "Solar Pump System") {
+          existing.installedPumpModel = pump;
+        }
+        if (!existing.address && fw.location) existing.address = fw.location;
+      }
+    });
+
+    // 4. Add Invoice customers
+    invoices.forEach((inv: any) => {
+      const custName = (inv.customerName || "").trim();
+      const nameKey = custName.toLowerCase();
+      if (!nameKey) return;
+
+      if (!customerMap.has(nameKey)) {
+        customerMap.set(nameKey, {
+          id: `CUST-INV-${inv.id.slice(-6)}`,
+          name: custName,
+          phone: null,
+          email: null,
+          address: null,
+          creditLimit: 0,
+          balance: Number(inv.total || inv.subtotal || 0),
+          installedPumpModel: "Solar Pump System",
+          createdAt: inv.createdAt ? new Date(inv.createdAt).toISOString() : new Date().toISOString(),
+        });
+      }
+    });
+
+    // 5. Add POS Sales customers
+    posSales.forEach((sale: any) => {
+      const custName = (sale.customerName || "").trim();
+      const nameKey = custName.toLowerCase();
+      if (!nameKey || nameKey === "walk-in customer") return;
+
+      if (!customerMap.has(nameKey)) {
+        customerMap.set(nameKey, {
+          id: `CUST-POS-${sale.id.slice(-6)}`,
+          name: custName,
+          phone: null,
+          email: null,
+          address: null,
+          city: null,
+          creditLimit: 0,
+          balance: 0,
+          installedPumpModel: "Solar Pump System",
+          createdAt: sale.date ? new Date(sale.date).toISOString() : new Date().toISOString(),
+        });
+      }
+    });
+
+    return Array.from(customerMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async saveCustomer(customer: any) {
@@ -484,6 +612,287 @@ export class DataService {
       create: { ...customer, creditLimit: asNumber(customer.creditLimit), balance: asNumber(customer.balance) },
     });
     return { success: true };
+  }
+
+  async getCustomer360(id: string) {
+    let customer: any = null;
+
+    // 1. Check if customer exists in Customer table
+    try {
+      customer = await this.prisma.customer.findUnique({
+        where: { id },
+        include: {
+          notes: {
+            include: {
+              user: { select: { id: true, displayName: true, username: true } }
+            },
+            orderBy: { createdAt: "desc" }
+          }
+        }
+      });
+    } catch (e) {
+      customer = null;
+    }
+
+    if (!customer) {
+      try {
+        const customers = await this.prisma.customer.findMany({
+          include: {
+            notes: {
+              include: {
+                user: { select: { id: true, displayName: true, username: true } }
+              },
+              orderBy: { createdAt: "desc" }
+            }
+          }
+        });
+        customer = customers.find(c => (c.name || "").toLowerCase().trim() === id.toLowerCase().trim()) || null;
+      } catch (e) {
+        customer = null;
+      }
+    }
+
+    // 2. Fetch all entity records
+    const sizings = await this.prisma.sizingRequest.findMany({ orderBy: { createdAt: "desc" } });
+    const invoices = await this.prisma.invoice.findMany({ orderBy: { createdAt: "desc" } });
+    const fieldWorks = await this.prisma.fieldWorkJob.findMany({ orderBy: { createdAt: "desc" } });
+    const peachtreeImports = await this.prisma.peachtreeImport.findMany({ orderBy: { createdAt: "desc" } });
+    const posSales = await this.prisma.posSale.findMany({ orderBy: { date: "desc" } });
+
+    // 3. Fallback/virtual customer lookup if not directly in Customer table
+    if (!customer) {
+      if (id.startsWith("CUST-SZ-")) {
+        const rawId = id.replace("CUST-SZ-", "");
+        const matchSz: any = sizings.find(s => s.id.endsWith(rawId) || s.id === rawId);
+        if (matchSz) {
+          const dColl = matchSz.dataCollection && typeof matchSz.dataCollection === "object" ? matchSz.dataCollection : {};
+          customer = {
+            id,
+            name: matchSz.clientName,
+            phone: dColl.phone || dColl.phoneNumber || null,
+            email: dColl.email || null,
+            address: matchSz.address,
+            city: matchSz.address,
+            creditLimit: 0,
+            balance: 0,
+            createdAt: matchSz.createdAt,
+            updatedAt: matchSz.updatedAt,
+            notes: [],
+          };
+        }
+      } else if (id.startsWith("CUST-FW-")) {
+        const rawId = id.replace("CUST-FW-", "");
+        const matchFw: any = fieldWorks.find(f => f.id.endsWith(rawId) || f.id === rawId);
+        if (matchFw) {
+          const payload = matchFw.payload && typeof matchFw.payload === "object" ? matchFw.payload : {};
+          customer = {
+            id,
+            name: matchFw.customerName || "Client Site",
+            phone: payload.phone,
+            email: null,
+            address: matchFw.location,
+            city: matchFw.location,
+            creditLimit: 0,
+            balance: 0,
+            createdAt: matchFw.createdAt,
+            updatedAt: matchFw.updatedAt,
+            notes: [],
+          };
+        }
+      } else if (id.startsWith("CUST-INV-")) {
+        const rawId = id.replace("CUST-INV-", "");
+        const matchInv: any = invoices.find(inv => inv.id.endsWith(rawId) || inv.id === rawId);
+        if (matchInv) {
+          customer = {
+            id,
+            name: matchInv.customerName || "Customer Account",
+            phone: null,
+            email: null,
+            address: null,
+            city: null,
+            creditLimit: 0,
+            balance: Number(matchInv.total || matchInv.subtotal || 0),
+            createdAt: matchInv.createdAt,
+            updatedAt: matchInv.updatedAt,
+            notes: [],
+          };
+        }
+      } else if (id.startsWith("CUST-POS-")) {
+        const rawId = id.replace("CUST-POS-", "");
+        const matchSale: any = posSales.find(s => s.id.endsWith(rawId) || s.id === rawId);
+        if (matchSale) {
+          customer = {
+            id,
+            name: matchSale.customerName || "POS Customer",
+            phone: null,
+            email: null,
+            address: null,
+            city: null,
+            creditLimit: 0,
+            balance: 0,
+            createdAt: matchSale.date ? new Date(matchSale.date).toISOString() : new Date().toISOString(),
+            updatedAt: matchSale.date ? new Date(matchSale.date).toISOString() : new Date().toISOString(),
+            notes: [],
+          };
+        }
+      }
+
+      // Final fallback if still null
+      if (!customer) {
+        const firstSizing: any = sizings.find(s => s.id === id || (s.clientName || "").toLowerCase().trim() === id.toLowerCase().trim());
+        if (firstSizing) {
+          const dColl = firstSizing.dataCollection && typeof firstSizing.dataCollection === "object" ? firstSizing.dataCollection : {};
+          customer = {
+            id,
+            name: firstSizing.clientName,
+            phone: dColl.phone || dColl.phoneNumber || null,
+            email: dColl.email || null,
+            address: firstSizing.address,
+            city: firstSizing.address,
+            creditLimit: 0,
+            balance: 0,
+            createdAt: firstSizing.createdAt,
+            updatedAt: firstSizing.updatedAt,
+            notes: [],
+          };
+        } else {
+          const firstFw = fieldWorks.find(f => (f.customerName || "").toLowerCase().trim() === id.toLowerCase().trim());
+          if (firstFw) {
+            const payload = firstFw.payload && typeof firstFw.payload === "object" ? (firstFw.payload as any) : {};
+            customer = {
+              id,
+              name: firstFw.customerName || "Client Site",
+              phone: payload.phone || null,
+              email: null,
+              address: firstFw.location,
+              city: firstFw.location,
+              creditLimit: 0,
+              balance: 0,
+              createdAt: firstFw.createdAt,
+              updatedAt: firstFw.updatedAt,
+              notes: [],
+            };
+          } else {
+            customer = {
+              id,
+              name: "Customer Account",
+              phone: null,
+              email: null,
+              address: null,
+              city: null,
+              creditLimit: 0,
+              balance: 0,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              notes: [],
+            };
+          }
+        }
+      }
+    }
+
+    const cName = (customer.name || "").toLowerCase().trim();
+
+    // 4. Match all sizing proposals, invoices, POS sales, field works, and Peachtree ledgers
+    const customerSizings = sizings.filter((s: any) => {
+      const name = (s.clientName || "").toLowerCase().trim();
+      return name && (name.includes(cName) || cName.includes(name) || (cName.length > 2 && name.length > 2 && cName.split(" ")[0] === name.split(" ")[0]));
+    });
+
+    const customerInvoices = invoices.filter((inv: any) => {
+      const name = (inv.customerName || "").toLowerCase().trim();
+      return name && (name.includes(cName) || cName.includes(name));
+    });
+
+    const customerPosSales = posSales.filter((s: any) => {
+      const name = (s.customerName || "").toLowerCase().trim();
+      return name && (name.includes(cName) || cName.includes(name));
+    });
+
+    const customerFieldWorks = fieldWorks.filter((f: any) => {
+      const name = (f.customerName || "").toLowerCase().trim();
+      return name && (name.includes(cName) || cName.includes(name));
+    });
+
+    const peachtreeInvoices: any[] = [];
+    peachtreeImports.forEach((p: any) => {
+      const pData: any = p.parsedData || {};
+      const invs = pData.invoices || [];
+      invs.forEach((inv: any) => {
+        const invCust = String(inv.customerName || "").toLowerCase().trim();
+        if (invCust && (invCust.includes(cName) || cName.includes(invCust))) {
+          peachtreeInvoices.push(inv);
+        }
+      });
+
+      const rows = pData.rows || [];
+      rows.forEach((row: any) => {
+        const invCust = String(row["Customer Name"] || row["CustomerName"] || row["Customer"] || row["Name"] || "").toLowerCase().trim();
+        if (invCust && (invCust.includes(cName) || cName.includes(invCust))) {
+          peachtreeInvoices.push({
+            id: row["Invoice Number"] || row["Invoice #"] || row["Ref"] || row["Invoice ID"] || p.id,
+            customerId: row["Customer ID"] || row["Customer ID/Name"] || row["Customer"] || "",
+            customerName: row["Customer Name"] || row["CustomerName"] || row["Name"] || "",
+            date: row["Date"] || row["Invoice Date"] || row["Transaction Date"] || p.createdAt.toISOString(),
+            total: Number(row["Amount"] || row["Total"] || row["Invoice Amount"] || row["Net Amount"] || 0),
+            status: row["Status"] || "Imported",
+            ...row
+          });
+        }
+      });
+    });
+
+    // Combine invoices & POS sales into salesInvoices
+    const salesInvoices = [
+      ...customerInvoices.map(toPlain),
+      ...customerPosSales.map((s: any) => ({
+        ...toPlain(s),
+        customerName: s.customerName,
+        total: Number(s.total || 0),
+        amount: Number(s.total || 0),
+        items: s.items || [],
+        createdAt: s.date ? new Date(s.date).toISOString() : new Date().toISOString(),
+      }))
+    ];
+
+    return {
+      customer: toPlain(customer),
+      sizingHistory: customerSizings.map(toPlain),
+      salesInvoices,
+      peachtreeRecords: peachtreeInvoices,
+      fieldWorkOperations: customerFieldWorks.map((fw: any) => {
+        const plain = toPlain(fw);
+        const payload = plain.payload && typeof plain.payload === "object" ? plain.payload : {};
+        return {
+          ...plain,
+          pumpModel: plain.pumpModel || payload.selectedPumpModel || payload.pumpModel || null,
+        };
+      }),
+      notes: (customer.notes || []).map((n: any) => ({
+        ...toPlain(n),
+        user: toPlain(n.user)
+      }))
+    };
+  }
+
+  async addCustomerNote(customerId: string, userId: string, noteText: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      include: { roles: { include: { role: true } } }
+    });
+
+    return this.prisma.customerNote.create({
+      data: {
+        customerId,
+        userId,
+        userRole: user.roles[0]?.role?.name || "General",
+        department: user.department || "General",
+        note: noteText
+      },
+      include: {
+        user: { select: { id: true, displayName: true, username: true } }
+      }
+    });
   }
 
   async deleteCustomer(id: string) {
@@ -1358,19 +1767,114 @@ export class DataService {
 
   async createEodReport(userId: string, data: any) {
     const creator = await this.prisma.user.findUniqueOrThrow({
-      where: { id: userId }
+      where: { id: userId },
+      include: { roles: { include: { role: true } } }
     });
 
-    return this.prisma.eodReport.create({
+    const userRole = creator.roles[0]?.role?.name || "general";
+    let targetRole = "manager";
+    if (["technician", "fieldwork"].includes(userRole)) targetRole = "ttl";
+    else if (["accountant", "cashier"].includes(userRole)) targetRole = "finance";
+
+    const report = await this.prisma.eodReport.create({
       data: {
         id: `EOD-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
         date: data.date || new Date().toISOString().slice(0, 10),
         department: creator.department || "GENERAL",
         submittedById: userId,
-        content: data.content,
+        content: data.content || data.workAccomplished || "",
+        workAccomplished: data.workAccomplished || data.content || "",
+        additionalComments: data.additionalComments || "",
+        targetRole: data.targetRole || targetRole,
+        status: "SUBMITTED",
         metrics: data.metrics ? JSON.parse(JSON.stringify(data.metrics)) : undefined,
+      },
+      include: {
+        submittedBy: { select: { id: true, username: true, displayName: true, department: true } }
       }
     });
+
+    const targetUsers = await this.prisma.userRole.findMany({
+      where: { role: { name: targetRole } },
+      select: { userId: true }
+    });
+    for (const tu of targetUsers) {
+      await this.prisma.notification.create({
+        data: {
+          userId: tu.userId,
+          type: "EOD_SUBMITTED",
+          title: "New EOD Accomplishment Report",
+          content: `${creator.displayName} submitted daily report for ${report.date}.`,
+          link: "/reports"
+        }
+      });
+    }
+
+    return report;
+  }
+
+  async forwardEodReportToGm(reportId: string, departmentLeadId: string, summaryNote: string) {
+    const lead = await this.prisma.user.findUniqueOrThrow({ where: { id: departmentLeadId } });
+    const report = await this.prisma.eodReport.update({
+      where: { id: reportId },
+      data: {
+        status: "FORWARDED_TO_GM",
+        targetRole: "manager",
+        departmentSummary: summaryNote
+      },
+      include: { submittedBy: true }
+    });
+
+    const gmUsers = await this.prisma.userRole.findMany({
+      where: { role: { name: "manager" } },
+      select: { userId: true }
+    });
+    for (const g of gmUsers) {
+      await this.prisma.notification.create({
+        data: {
+          userId: g.userId,
+          type: "EOD_ESCALATED",
+          title: "Department EOD Consolidated Report",
+          content: `${lead.displayName} consolidated and forwarded EOD report of ${report.submittedBy.displayName} to General Manager.`,
+          link: "/reports"
+        }
+      });
+    }
+
+    return report;
+  }
+
+  async addEodComment(reportId: string, userId: string, commentText: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const report = await this.prisma.eodReport.findUniqueOrThrow({
+      where: { id: reportId },
+      include: { submittedBy: true }
+    });
+
+    const comment = await this.prisma.eodComment.create({
+      data: {
+        reportId,
+        userId,
+        comment: commentText
+      },
+      include: {
+        user: { select: { id: true, displayName: true, username: true } }
+      }
+    });
+
+    if (report.submittedById !== userId) {
+      await this.prisma.notification.create({
+        data: {
+          userId: report.submittedById,
+          type: "EOD_REPLY",
+          title: "Feedback on your EOD Report",
+          content: `${user.displayName} commented: "${commentText.slice(0, 40)}..."`,
+          link: "/reports"
+        }
+      });
+    }
+
+    return comment;
   }
 
   async getEodReports(date?: string) {
@@ -1379,6 +1883,12 @@ export class DataService {
       include: {
         submittedBy: {
           select: { id: true, username: true, displayName: true, department: true }
+        },
+        comments: {
+          include: {
+            user: { select: { id: true, displayName: true, username: true } }
+          },
+          orderBy: { createdAt: "asc" }
         }
       },
       orderBy: { createdAt: "desc" }

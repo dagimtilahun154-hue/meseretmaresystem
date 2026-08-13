@@ -11,6 +11,17 @@ import type {
   JournalEntry,
 } from "./finance-hub-store";
 
+export type {
+  Account,
+  Customer,
+  Vendor,
+  Invoice,
+  Bill,
+  Payment,
+  Expense,
+  JournalEntry,
+};
+
 async function apiFetch(endpoint: string, options: any = {}) {
   const method = options.method || "GET";
   const data = options.body ? JSON.parse(options.body) : options.data;
@@ -177,6 +188,8 @@ export const hrDB = {
 
 export const customersDB = {
   getAll: async (): Promise<Customer[]> => apiFetch("/customers"),
+  get360: async (id: string) => apiFetch(`/customers/${id}/360`),
+  addNote: async (id: string, note: string) => apiFetch(`/customers/${id}/notes`, { method: "POST", body: JSON.stringify({ note }) }),
   save: async (customer: Customer): Promise<boolean> => !!(await apiFetch("/customers", { method: "POST", body: JSON.stringify(customer) }))?.success,
   delete: async (id: string): Promise<boolean> => !!(await apiFetch(`/customers/${id}`, { method: "DELETE" }))?.success,
 };
@@ -295,4 +308,6 @@ export const userPresenceDB = {
 export const eodReportsDB = {
   getAll: async (date?: string) => apiFetch(`/eod-reports${date ? `?date=${date}` : ""}`),
   create: async (report: any) => apiFetch("/eod-reports", { method: "POST", body: JSON.stringify(report) }),
+  forwardToGm: async (reportId: string, summaryNote: string) => apiFetch(`/eod-reports/${reportId}/forward`, { method: "POST", body: JSON.stringify({ summaryNote }) }),
+  addComment: async (reportId: string, comment: string) => apiFetch(`/eod-reports/${reportId}/comments`, { method: "POST", body: JSON.stringify({ comment }) }),
 };

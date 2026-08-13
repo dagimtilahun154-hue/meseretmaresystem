@@ -129,82 +129,94 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       };
     });
 
-  const mapDbFieldWorks = (dbField: any[]): FieldWork[] =>
-    dbField.map((dbf) => {
-      const payload = typeof dbf.payload === "string"
-        ? JSON.parse(dbf.payload)
-        : dbf.payload;
-      const dailyReports = typeof dbf.dailyReports === "string"
-        ? JSON.parse(dbf.dailyReports)
-        : Array.isArray(dbf.dailyReports)
-          ? dbf.dailyReports
-          : [];
-      const returnsApproved = !!dbf.returnsApproved;
-      if (payload) {
-        const workers = Array.isArray(payload.workers) ? payload.workers : [];
-        const rawEq = Array.isArray(payload.equipment) ? payload.equipment : [];
-        const equipment = rawEq.map((eq: any) => ({
-          productId: eq.productId || eq.id || "",
-          name: eq.name || eq.productName || "",
-          quantityTaken: Number(eq.quantityTaken || eq.qty || eq.quantity || 0),
+  const mapDbFieldWorks = (dbWorks: any[]): FieldWork[] =>
+    (dbWorks || []).map((dbf: any) => {
+    const payload = dbf.payload && typeof dbf.payload === "object" ? dbf.payload : {};
+    const customerName = dbf.customer_name || dbf.customerName || payload.customerName || payload.clientName || "";
+    const assignedTo = dbf.assigned_to || dbf.assignedTo || payload.assignedTo || "";
+
+    const workers = Array.isArray(payload.workers)
+      ? payload.workers.map((w: any) => ({
+          name: w.name || w.fullName || "",
+          id: w.id || w.workerId || "",
+          position: w.position || "Tech",
+          perDiem: Number(w.perDiem || 0),
+        }))
+      : [];
+
+    const equipment = Array.isArray(payload.equipment)
+      ? payload.equipment.map((eq: any) => ({
+          productId: eq.productId || eq.id,
+          name: eq.name || eq.productName || "Equipment",
+          quantityTaken: Number(eq.quantityTaken || eq.qty || eq.quantity || 1),
           quantityReturned: Number(eq.quantityReturned || 0),
           quantityUsed: Number(eq.quantityUsed || 0),
           unit: eq.unit || "Piece",
-        }));
-        const returnForms = Array.isArray(payload.returnForms) ? payload.returnForms : [];
-        const saleId = payload.sizingRequestId || payload.saleId || undefined;
+        }))
+      : [];
 
-        return {
-          startDate: dbf.scheduled_date || payload.startDate || "",
-          endDate: dbf.completed_date || payload.endDate || "",
-          location: dbf.location || payload.location || "",
-          pumpModel: dbf.title || payload.pumpModel || "",
-          notes: dbf.notes || payload.notes || "",
-          ...payload,
-          id: dbf.id,
-          status: dbf.status as any,
-          workers,
-          equipment,
-          returnForms,
-          saleId,
-          dailyReports,
-          returnsApproved,
-        };
-      }
-      return {
-        id: dbf.id,
-        startDate: dbf.scheduled_date || "",
-        endDate: dbf.completed_date || "",
-        location: dbf.location || "",
-        status: dbf.status as any,
-        pumpModel: dbf.title,
-        notes: dbf.notes || "",
-        workers: [],
-        equipment: [],
-        returnForms: [],
-        dailyReports,
-        returnsApproved,
-      };
-    });
+    const dailyReports = Array.isArray(dbf.dailyReports) ? dbf.dailyReports : (Array.isArray(payload.dailyReports) ? payload.dailyReports : []);
+    const returnForms = Array.isArray(payload.returnForms) ? payload.returnForms : [];
+    const returnsApproved = Boolean(dbf.returnsApproved || payload.returnsApproved);
+    const saleId = payload.sizingRequestId || payload.saleId || undefined;
+
+    return {
+      id: dbf.id,
+      startDate: dbf.scheduled_date || payload.startDate || new Date().toISOString().slice(0, 10),
+      endDate: dbf.completed_date || payload.endDate || new Date().toISOString().slice(0, 10),
+      location: dbf.location || payload.location || "Site",
+      pumpModel: dbf.title || payload.pumpModel || "Solar Pump",
+      customerName,
+      assignedTo,
+      cost: Number(dbf.cost || payload.cost || 0),
+      notes: dbf.notes || payload.notes || "",
+      payload,
+      status: dbf.status as any,
+      workers,
+      equipment,
+      returnForms,
+      saleId,
+      dailyReports,
+      returnsApproved,
+    };
+  });
 
   const refreshProductsSalesPayments = async () => {
-    const [dbProds, dbSales, dbPayments] = await Promise.all([
+    const userRoles = currentUser?.roles || (currentUser?.role ? [currentUser.role] : []);
+    const isFinanceOrManager = userRoles.includes("admin") || userRoles.includes("finance");
+
+    const promises: Promise<any>[] = [
       productsDB.getAll(),
       salesDB.getAll(),
-      financeStore.loadPayments(),
-    ]);
+    ];
+    if (isFinanceOrManager) {
+      promises.push(financeStore.loadPayments());
+    } else {
+      promises.push(Promise.resolve([]));
+    }
+
+    const [dbProds, dbSales, dbPayments] = await Promise.all(promises);
     setProducts(mapDbProducts(dbProds));
     setSales(mapDbSales(dbSales));
     setFinancePayments(Array.isArray(dbPayments) ? dbPayments.map(normalizePayment) : []);
   };
 
   const refreshStoreData = async () => {
-    const [dbProds, dbSales, dbField, dbPayments] = await Promise.all([
+    const userRoles = currentUser?.roles || (currentUser?.role ? [currentUser.role] : []);
+    const isFinanceOrManager = userRoles.includes("admin") || userRoles.includes("finance");
+
+    const promises: Promise<any>[] = [
       productsDB.getAll(),
       salesDB.getAll(),
       fieldWorkDB.getAll(),
-      financeStore.loadPayments(),
-    ]);
+    ];
+    if (isFinanceOrManager) {
+      promises.push(financeStore.loadPayments());
+    } else {
+      promises.push(Promise.resolve([]));
+    }
+
+    const [dbProds, dbSales, dbField, dbPayments] = await Promise.all(promises);
 
     setProducts(mapDbProducts(dbProds));
     setSales(mapDbSales(dbSales));
@@ -217,12 +229,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!currentUser) return;
     const loadData = async () => {
       try {
-        const [dbProds, dbSales, dbField, dbPayments] = await Promise.all([
+        const userRoles = currentUser.roles || [currentUser.role];
+        const isFinanceOrManager = userRoles.includes("admin") || userRoles.includes("finance");
+
+        const promises: Promise<any>[] = [
           productsDB.getAll(),
           salesDB.getAll(),
           fieldWorkDB.getAll(),
-          financeStore.loadPayments(),
-        ]);
+        ];
+        if (isFinanceOrManager) {
+          promises.push(financeStore.loadPayments());
+        } else {
+          promises.push(Promise.resolve([]));
+        }
+
+        const [dbProds, dbSales, dbField, dbPayments] = await Promise.all(promises);
         
         setProducts(mapDbProducts(dbProds));
         setSales(mapDbSales(dbSales));

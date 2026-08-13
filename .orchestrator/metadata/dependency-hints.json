@@ -1,0 +1,1567 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-08-03T12:17:41.591471+00:00",
+  "generator": "software-orchestrator/index_repo.py",
+  "repository": {
+    "root_name": "solarflow-manager-main",
+    "commit": "3172699f740e3a6647f30125a67c178cd48ec644",
+    "branch": "main",
+    "fingerprint": "5bb962950fc43c4f5378b8ea75b47e01db0cc6baec454469c8c334bbf6a8b31d"
+  },
+  "imports_by_file": {
+    "capacitor.config.ts": [
+      "@capacitor/cli",
+      "type"
+    ],
+    "eslint.config.js": [
+      "@eslint/js",
+      "eslint-plugin-react-hooks",
+      "eslint-plugin-react-refresh",
+      "globals",
+      "js",
+      "reactHooks",
+      "reactRefresh",
+      "tseslint",
+      "typescript-eslint"
+    ],
+    "playwright.config.ts": [
+      "@playwright/test"
+    ],
+    "tailwind.config.ts": [
+      "tailwindAnimate",
+      "tailwindcss",
+      "tailwindcss-animate",
+      "type"
+    ],
+    "vite.config.ts": [
+      "@vitejs/plugin-legacy",
+      "@vitejs/plugin-react-swc",
+      "legacy",
+      "path",
+      "react",
+      "vite"
+    ],
+    "vitest.config.ts": [
+      "@vitejs/plugin-react-swc",
+      "path",
+      "react",
+      "vitest/config"
+    ],
+    "ai-engine/extract_catalog.py": [
+      "dotenv",
+      "fitz",
+      "glob",
+      "groq",
+      "json",
+      "math",
+      "os",
+      "re",
+      "time"
+    ],
+    "ai-engine/main.py": [
+      "dotenv",
+      "fastapi",
+      "fastapi.middleware.cors",
+      "groq",
+      "json",
+      "logging",
+      "math",
+      "os",
+      "pydantic",
+      "requests",
+      "typing",
+      "uvicorn"
+    ],
+    "android/app/src/androidTest/java/com/getcapacitor/myapp/ExampleInstrumentedTest.java": [
+      "android.content.Context",
+      "androidx.test.ext.junit.runners.AndroidJUnit4",
+      "androidx.test.platform.app.InstrumentationRegistry",
+      "org.junit.Test",
+      "org.junit.runner.RunWith",
+      "static"
+    ],
+    "android/app/src/main/java/com/solarflow/management/MainActivity.java": [
+      "android.os.Bundle",
+      "com.getcapacitor.BridgeActivity"
+    ],
+    "android/app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java": [
+      "org.junit.Test",
+      "static"
+    ],
+    "backend/prisma/check_pumps.js": [
+      "@prisma/client"
+    ],
+    "backend/prisma/inspect_db.js": [
+      "@prisma/client"
+    ],
+    "backend/prisma/seed-pumps.ts": [
+      "@prisma/client",
+      "fs",
+      "path"
+    ],
+    "backend/prisma/seed-supplemental.ts": [
+      "@prisma/client"
+    ],
+    "backend/prisma/seed.ts": [
+      "@prisma/client",
+      "argon2"
+    ],
+    "backend/prisma/seed_extracted_pumps.ts": [
+      "@prisma/client",
+      "fs",
+      "path"
+    ],
+    "backend/prisma/seed_pumps.js": [
+      "@prisma/client"
+    ],
+    "backend/prisma/seed_pumps.ts": [
+      "@prisma/client"
+    ],
+    "backend/src/app.module.ts": [
+      "./analytics/analytics.module",
+      "./assets/assets.module",
+      "./auth/auth.module",
+      "./chat/chat.module",
+      "./comments/comments.module",
+      "./common/guards/company-access.guard",
+      "./common/guards/jwt-auth.guard",
+      "./common/guards/roles.guard",
+      "./companies/companies.module",
+      "./data/data.module",
+      "./health/health.module",
+      "./notifications/notifications.module",
+      "./prisma/prisma.module",
+      "./sizing/sizing.module",
+      "./sync/sync.module",
+      "./tasks/tasks.module",
+      "./users/users.module",
+      "@nestjs/common",
+      "@nestjs/config",
+      "@nestjs/core"
+    ],
+    "backend/src/main.ts": [
+      "./app.module",
+      "./common/filters/http-exception.filter",
+      "@nestjs/common",
+      "@nestjs/config",
+      "@nestjs/core",
+      "@nestjs/platform-express",
+      "helmet",
+      "path"
+    ],
+    "backend/src/analytics/analytics.controller.ts": [
+      "./analytics.service",
+      "@nestjs/common"
+    ],
+    "backend/src/analytics/analytics.module.ts": [
+      "./analytics.controller",
+      "./analytics.service",
+      "@nestjs/common"
+    ],
+    "backend/src/analytics/analytics.service.ts": [
+      "../prisma/prisma.service",
+      "@nestjs/common"
+    ],
+    "backend/src/assets/assets.controller.ts": [
+      "../common/decorators/roles.decorator",
+      "../common/types/auth-user",
+      "./assets.service",
+      "@nestjs/common"
+    ],
+    "backend/src/assets/assets.module.ts": [
+      "../prisma/prisma.module",
+      "./assets.controller",
+      "./assets.service",
+      "@nestjs/common"
+    ],
+    "backend/src/assets/assets.service.ts": [
+      "../prisma/prisma.service",
+      "@nestjs/common"
+    ],
+    "backend/src/auth/auth.controller.ts": [
+      "../common/decorators/public.decorator",
+      "../common/types/auth-user",
+      "./auth.service",
+      "./dto/login.dto",
+      "./dto/refresh-token.dto",
+      "@nestjs/common",
+      "express"
+    ],
+    "backend/src/auth/auth.module.ts": [
+      "./auth.controller",
+      "./auth.service",
+      "./jwt.strategy",
+      "@nestjs/common",
+      "@nestjs/config",
+      "@nestjs/jwt",
+      "@nestjs/passport"
+    ],
+    "backend/src/auth/auth.service.ts": [
+      "../common/types/auth-user",
+      "../prisma/prisma.service",
+      "./dto/login.dto",
+      "@nestjs/common",
+      "@nestjs/config",
+      "@nestjs/jwt",
+      "@prisma/client",
+      "argon2",
+      "crypto",
+      "express"
+    ],
+    "backend/src/auth/jwt.strategy.ts": [
+      "../prisma/prisma.service",
+      "@nestjs/common",
+      "@nestjs/config",
+      "@nestjs/passport",
+      "passport-jwt"
+    ],
+    "backend/src/auth/dto/login.dto.ts": [
+      "class-validator"
+    ],
+    "backend/src/auth/dto/refresh-token.dto.ts": [
+      "class-validator"
+    ],
+    "backend/src/chat/chat.controller.ts": [
+      "../common/types/auth-user",
+      "./chat.service",
+      "@nestjs/common"
+    ],
+    "backend/src/chat/chat.gateway.ts": [
+      "../prisma/prisma.service",
+      "@nestjs/websockets",
+      "socket.io"
+    ],
+    "backend/src/chat/chat.module.ts": [
+      "../prisma/prisma.module",
+      "./chat.controller",
+      "./chat.gateway",
+      "./chat.service",
+      "@nestjs/common"
+    ],
+    "backend/src/chat/chat.service.ts": [
+      "../prisma/prisma.service",
+      "@nestjs/common"
+    ],
+    "backend/src/comments/comments.controller.ts": [
+      "../common/types/auth-user",
+      "./comments.service",
+      "@nestjs/common"
+    ],
+    "backend/src/comments/comments.module.ts": [
+      "../prisma/prisma.module",
+      "./comments.controller",
+      "./comments.service",
+      "@nestjs/common"
+    ],
+    "backend/src/comments/comments.service.ts": [
+      "../prisma/prisma.service",
+      "@nestjs/common"
+    ],
+    "backend/src/common/decorators/public.decorator.ts": [
+      "@nestjs/common"
+    ],
+    "backend/src/common/decorators/roles.decorator.ts": [
+      "@nestjs/common"
+    ],
+    "backend/src/common/filters/http-exception.filter.ts": [
+      "@nestjs/common",
+      "express"
+    ],
+    "backend/src/common/guards/api-key.guard.ts": [
+      "@nestjs/common",
+      "@nestjs/config",
+      "express"
+    ],
+    "backend/src/common/guards/company-access.guard.ts": [
+      "../decorators/public.decorator",
+      "../types/auth-user",
+      "@nestjs/common",
+      "@nestjs/core"
+    ],
+    "backend/src/common/guards/jwt-auth.guard.ts": [
+      "../decorators/public.decorator",
+      "@nestjs/common",
+      "@nestjs/core",
+      "@nestjs/passport"
+    ],
+    "backend/src/common/guards/roles.guard.ts": [
+      "../decorators/public.decorator",
+      "../decorators/roles.decorator",
+      "../types/auth-user",
+      "@nestjs/common",
+      "@nestjs/core"
+    ],
+    "backend/src/companies/companies.controller.ts": [
+      "../common/types/auth-user",
+      "./companies.service",
+      "@nestjs/common"
+    ],
+    "backend/src/companies/companies.module.ts": [
+      "./companies.controller",
+      "./companies.service",
+      "@nestjs/common"
+    ],
+    "backend/src/companies/companies.service.ts": [
+      "../prisma/prisma.service",
+      "@nestjs/common"
+    ],
+    "backend/src/data/data.controller.ts": [
+      "../common/decorators/roles.decorator",
+      "./data.service",
+      "@nestjs/common",
+      "@nestjs/platform-express"
+    ],
+    "backend/src/data/data.module.ts": [
+      "./data.controller",
+      "./data.service",
+      "@nestjs/common"
+    ],
+    "backend/src/data/data.service.ts": [
+      "../prisma/prisma.service",
+      "@nestjs/common",
+      "crypto"
+    ],
+    "backend/src/health/health.controller.ts": [
+      "../common/decorators/public.decorator",
+      "@nestjs/common"
+    ],
+    "backend/src/health/health.module.ts": [
+      "./health.controller",
+      "@nestjs/common"
+    ],
+    "backend/src/notifications/notifications.controller.ts": [
+      "../common/types/auth-user",
+      "./notifications.service",
+      "@nestjs/common"
+    ],
+    "backend/src/notifications/notifications.module.ts": [
+      "../prisma/prisma.module",
+      "./notifications.controller",
+      "./notifications.service",
+      "@nestjs/common"
+    ],
+    "backend/src/notifications/notifications.service.ts": [
+      "../prisma/prisma.service",
+      "@nestjs/common"
+    ],
+    "backend/src/prisma/prisma.module.ts": [
+      "./prisma.service",
+      "@nestjs/common"
+    ],
+    "backend/src/prisma/prisma.service.ts": [
+      "@nestjs/common",
+      "@prisma/client"
+    ],
+    "backend/src/sizing/sizing.controller.ts": [
+      "../common/decorators/roles.decorator",
+      "../common/types/auth-user",
+      "./sizing.service",
+      "@nestjs/common"
+    ],
+    "backend/src/sizing/sizing.module.ts": [
+      "../prisma/prisma.module",
+      "./sizing.controller",
+      "./sizing.service",
+      "@nestjs/common"
+    ],
+    "backend/src/sizing/sizing.service.ts": [
+      "../prisma/prisma.service",
+      "@nestjs/common",
+      "@prisma/client"
+    ],
+    "backend/src/sync/sync.controller.ts": [
+      "../common/decorators/public.decorator",
+      "../common/guards/api-key.guard",
+      "./sync.service",
+      "@nestjs/common"
+    ],
+    "backend/src/sync/sync.module.ts": [
+      "./sync.controller",
+      "./sync.service",
+      "@nestjs/common"
+    ],
+    "backend/src/sync/sync.service.ts": [
+      "../prisma/prisma.service",
+      "@nestjs/common"
+    ],
+    "backend/src/tasks/tasks.controller.ts": [
+      "../common/types/auth-user",
+      "./tasks.service",
+      "@nestjs/common"
+    ],
+    "backend/src/tasks/tasks.module.ts": [
+      "../prisma/prisma.module",
+      "./tasks.controller",
+      "./tasks.service",
+      "@nestjs/common"
+    ],
+    "backend/src/tasks/tasks.service.ts": [
+      "../prisma/prisma.service",
+      "@nestjs/common"
+    ],
+    "backend/src/users/users.controller.ts": [
+      "../common/decorators/roles.decorator",
+      "../common/types/auth-user",
+      "./users.service",
+      "@nestjs/common"
+    ],
+    "backend/src/users/users.module.ts": [
+      "./users.controller",
+      "./users.service",
+      "@nestjs/common"
+    ],
+    "backend/src/users/users.service.ts": [
+      "../prisma/prisma.service",
+      "@nestjs/common",
+      "argon2"
+    ],
+    "e2e/dashboards.spec.ts": [
+      "@playwright/test"
+    ],
+    "e2e/main.spec.ts": [
+      "@playwright/test"
+    ],
+    "server/index.js": [
+      "cors",
+      "dotenv",
+      "express",
+      "mysql2/promise"
+    ],
+    "server/seed.js": [
+      "dotenv",
+      "mysql2/promise"
+    ],
+    "src/App.tsx": [
+      "./pages/NotFound",
+      "@/components/AppLayout",
+      "@/components/hr/pages/AttendanceScan",
+      "@/components/hr/pages/Dashboard",
+      "@/components/hr/pages/FingerprintRegistration",
+      "@/components/hr/pages/Reports",
+      "@/components/hr/pages/Settings",
+      "@/components/hr/pages/Workers",
+      "@/components/ui/sonner",
+      "@/components/ui/toaster",
+      "@/components/ui/tooltip",
+      "@/context/AuthContext",
+      "@/context/StoreContext",
+      "@/context/WebSocketProvider",
+      "@/lib/finance-hub-store",
+      "@/lib/offline-queue",
+      "@/pages/Dashboard",
+      "@/pages/DedicatedInboxPage",
+      "@/pages/FieldWorkPage",
+      "@/pages/FinanceCenterPage",
+      "@/pages/InventoryPage",
+      "@/pages/LoginPage",
+      "@/pages/POSPage",
+      "@/pages/PeachtreePage",
+      "@/pages/PumpDetailPage",
+      "@/pages/PumpProductsPage",
+      "@/pages/ReportsPage",
+      "@/pages/TeamChatPage",
+      "@/pages/UserAccountsPage",
+      "@/pages/VATPage",
+      "@tanstack/react-query",
+      "AppLayout",
+      "AttendanceScan",
+      "Dashboard",
+      "DedicatedInboxPage",
+      "FieldWorkPage",
+      "FinanceCenterPage",
+      "FingerprintRegistration",
+      "HRDashboard",
+      "HRReports",
+      "HRSettings",
+      "InventoryPage",
+      "LoginPage",
+      "NotFound",
+      "POSPage",
+      "PeachtreePage",
+      "PumpDetailPage",
+      "PumpProductsPage",
+      "ReportsPage",
+      "TeamChatPage",
+      "UserAccountsPage",
+      "VATPage",
+      "Workers",
+      "react",
+      "react-router-dom"
+    ],
+    "src/main.tsx": [
+      "./App.tsx",
+      "App",
+      "react-dom/client"
+    ],
+    "src/components/AppLayout.tsx": [
+      "@/components/AppSidebar",
+      "@/components/ui/sidebar",
+      "react"
+    ],
+    "src/components/AppSidebar.tsx": [
+      "@/components/NavLink",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/sidebar",
+      "@/context/AuthContext",
+      "@/context/StoreContext",
+      "@/context/WebSocketProvider",
+      "@/lib/api/client",
+      "@/lib/utils",
+      "framer-motion",
+      "lucide-react",
+      "react",
+      "react-router-dom"
+    ],
+    "src/components/ApprovalsInbox.tsx": [
+      "./NotificationsList",
+      "./TaskBoard",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/select",
+      "@/components/ui/table",
+      "@/components/ui/tabs",
+      "@/components/ui/textarea",
+      "@/context/AuthContext",
+      "@/lib/db-service",
+      "lucide-react",
+      "react",
+      "sonner"
+    ],
+    "src/components/ClientFileModal.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/table",
+      "@/components/ui/tabs",
+      "React",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/CustomerDossierModal.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/dialog",
+      "@/components/ui/tabs",
+      "@/context/StoreContext",
+      "React",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/NavLink.tsx": [
+      "@/lib/utils",
+      "react",
+      "react-router-dom"
+    ],
+    "src/components/NotificationsList.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/lib/api/communication",
+      "React",
+      "lucide-react",
+      "react",
+      "react-router-dom",
+      "sonner"
+    ],
+    "src/components/PrintableInvoice.tsx": [
+      "@/lib/data"
+    ],
+    "src/components/SecurityCodeDialog.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/context/AuthContext",
+      "lucide-react",
+      "react",
+      "sonner"
+    ],
+    "src/components/TaskBoard.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/select",
+      "@/components/ui/textarea",
+      "@/context/AuthContext",
+      "@/lib/api/communication",
+      "React",
+      "lucide-react",
+      "react",
+      "sonner"
+    ],
+    "src/components/WorkflowStepper.tsx": [
+      "@/lib/utils",
+      "React",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/accounting/hub/pages/ChartOfAccounts.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/select",
+      "@/lib/finance-hub-store",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/accounting/hub/pages/Customers.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/lib/finance-hub-store",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/accounting/hub/pages/Dashboard.tsx": [
+      "@/components/ui/card",
+      "@/lib/finance-hub-store",
+      "lucide-react",
+      "react",
+      "recharts"
+    ],
+    "src/components/accounting/hub/pages/Expenses.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/select",
+      "@/lib/finance-hub-store",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/accounting/hub/pages/JournalEntries.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/select",
+      "@/lib/finance-hub-store",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/accounting/hub/pages/PaymentsMade.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/select",
+      "@/lib/finance-hub-store",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/accounting/hub/pages/PaymentsReceived.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/select",
+      "@/lib/finance-hub-store",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/accounting/hub/pages/PurchaseBills.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/select",
+      "@/lib/finance-hub-store",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/accounting/hub/pages/Reports.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/tabs",
+      "@/lib/finance-hub-store",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/accounting/hub/pages/SalesInvoices.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/select",
+      "@/lib/finance-hub-store",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/accounting/hub/pages/VatManagement.tsx": [
+      "@/components/ui/card",
+      "@/lib/finance-hub-store",
+      "lucide-react"
+    ],
+    "src/components/accounting/hub/pages/Vendors.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/lib/finance-hub-store",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/dashboards/AdminHubDashboard.tsx": [
+      "./widgets/DashboardHeaderBanner",
+      "./widgets/EodActivityWidget",
+      "./widgets/StatCardGrid",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/context/StoreContext",
+      "React",
+      "lucide-react",
+      "react",
+      "react-router-dom"
+    ],
+    "src/components/dashboards/FinanceHubDashboard.tsx": [
+      "./widgets/DashboardHeaderBanner",
+      "./widgets/EodActivityWidget",
+      "./widgets/StatCardGrid",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/context/StoreContext",
+      "@/lib/api/client",
+      "@/lib/data",
+      "React",
+      "lucide-react",
+      "react",
+      "react-router-dom",
+      "sonner"
+    ],
+    "src/components/dashboards/GMHubDashboard.tsx": [
+      "./widgets/DashboardHeaderBanner",
+      "./widgets/EodActivityWidget",
+      "./widgets/RecentTransactionsWidget",
+      "./widgets/SalesTrendChartWidget",
+      "./widgets/StatCardGrid",
+      "@/components/ApprovalsInbox",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/context/StoreContext",
+      "@/lib/data",
+      "ApprovalsInbox",
+      "React",
+      "lucide-react",
+      "react",
+      "react-router-dom"
+    ],
+    "src/components/dashboards/SalesHubDashboard.tsx": [
+      "./widgets/DashboardHeaderBanner",
+      "./widgets/EodActivityWidget",
+      "./widgets/StatCardGrid",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/input",
+      "@/context/StoreContext",
+      "@/lib/data",
+      "React",
+      "lucide-react",
+      "react",
+      "react-router-dom"
+    ],
+    "src/components/dashboards/TTLHubDashboard.tsx": [
+      "./widgets/DashboardHeaderBanner",
+      "./widgets/EodActivityWidget",
+      "./widgets/StatCardGrid",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/context/StoreContext",
+      "React",
+      "lucide-react",
+      "react",
+      "react-router-dom"
+    ],
+    "src/components/dashboards/TechHubDashboard.tsx": [
+      "./widgets/DashboardHeaderBanner",
+      "./widgets/EodActivityWidget",
+      "./widgets/StatCardGrid",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/context/StoreContext",
+      "React",
+      "lucide-react",
+      "react",
+      "react-router-dom"
+    ],
+    "src/components/dashboards/widgets/DashboardHeaderBanner.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "React",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/dashboards/widgets/EodActivityWidget.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/textarea",
+      "@/lib/db-service",
+      "React",
+      "lucide-react",
+      "react",
+      "sonner"
+    ],
+    "src/components/dashboards/widgets/RecentTransactionsWidget.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/select",
+      "@/lib/data",
+      "React",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/dashboards/widgets/SalesTrendChartWidget.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/lib/data",
+      "React",
+      "lucide-react",
+      "react",
+      "recharts"
+    ],
+    "src/components/dashboards/widgets/StatCardGrid.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/card",
+      "React",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/hr/pages/AttendanceScan.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/select",
+      "@/components/ui/use-toast",
+      "@/lib/db-service",
+      "date-fns",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/hr/pages/Dashboard.tsx": [
+      "@/components/ui/card",
+      "@/components/ui/table",
+      "@/lib/db-service",
+      "date-fns",
+      "lucide-react",
+      "react",
+      "recharts"
+    ],
+    "src/components/hr/pages/FingerprintRegistration.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/input",
+      "@/components/ui/select",
+      "@/components/ui/table",
+      "@/components/ui/use-toast",
+      "@/lib/db-service",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/hr/pages/Reports.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/select",
+      "@/components/ui/table",
+      "@/lib/db-service",
+      "date-fns",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/hr/pages/Settings.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/table",
+      "@/components/ui/use-toast",
+      "@/lib/db-service",
+      "lucide-react",
+      "react",
+      "uuid"
+    ],
+    "src/components/hr/pages/Workers.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/select",
+      "@/components/ui/table",
+      "@/components/ui/use-toast",
+      "@/lib/db-service",
+      "lucide-react",
+      "react",
+      "uuid"
+    ],
+    "src/components/ui/accordion.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-accordion",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/alert-dialog.tsx": [
+      "@/components/ui/button",
+      "@/lib/utils",
+      "@radix-ui/react-alert-dialog",
+      "react"
+    ],
+    "src/components/ui/alert.tsx": [
+      "@/lib/utils",
+      "class-variance-authority",
+      "react"
+    ],
+    "src/components/ui/aspect-ratio.tsx": [
+      "@radix-ui/react-aspect-ratio"
+    ],
+    "src/components/ui/avatar.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-avatar",
+      "react"
+    ],
+    "src/components/ui/badge.tsx": [
+      "@/lib/utils",
+      "class-variance-authority",
+      "react"
+    ],
+    "src/components/ui/breadcrumb.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-slot",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/button.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-slot",
+      "class-variance-authority",
+      "react"
+    ],
+    "src/components/ui/calendar.tsx": [
+      "@/components/ui/button",
+      "@/lib/utils",
+      "lucide-react",
+      "react",
+      "react-day-picker"
+    ],
+    "src/components/ui/card.tsx": [
+      "@/lib/utils",
+      "react"
+    ],
+    "src/components/ui/carousel.tsx": [
+      "@/components/ui/button",
+      "@/lib/utils",
+      "embla-carousel-react",
+      "lucide-react",
+      "react",
+      "useEmblaCarousel"
+    ],
+    "src/components/ui/chart.tsx": [
+      "@/lib/utils",
+      "react",
+      "recharts"
+    ],
+    "src/components/ui/checkbox.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-checkbox",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/collapsible.tsx": [
+      "@radix-ui/react-collapsible"
+    ],
+    "src/components/ui/command.tsx": [
+      "@/components/ui/dialog",
+      "@/lib/utils",
+      "@radix-ui/react-dialog",
+      "cmdk",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/context-menu.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-context-menu",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/dialog.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-dialog",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/drawer.tsx": [
+      "@/lib/utils",
+      "react",
+      "vaul"
+    ],
+    "src/components/ui/dropdown-menu.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-dropdown-menu",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/form.tsx": [
+      "@/components/ui/label",
+      "@/lib/utils",
+      "@radix-ui/react-label",
+      "@radix-ui/react-slot",
+      "react",
+      "react-hook-form"
+    ],
+    "src/components/ui/hover-card.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-hover-card",
+      "react"
+    ],
+    "src/components/ui/input-otp.tsx": [
+      "@/lib/utils",
+      "input-otp",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/input.tsx": [
+      "@/lib/utils",
+      "react"
+    ],
+    "src/components/ui/label.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-label",
+      "class-variance-authority",
+      "react"
+    ],
+    "src/components/ui/menubar.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-menubar",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/navigation-menu.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-navigation-menu",
+      "class-variance-authority",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/pagination.tsx": [
+      "@/components/ui/button",
+      "@/lib/utils",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/popover.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-popover",
+      "react"
+    ],
+    "src/components/ui/progress.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-progress",
+      "react"
+    ],
+    "src/components/ui/radio-group.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-radio-group",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/resizable.tsx": [
+      "@/lib/utils",
+      "lucide-react",
+      "react-resizable-panels"
+    ],
+    "src/components/ui/scroll-area.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-scroll-area",
+      "react"
+    ],
+    "src/components/ui/select.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-select",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/separator.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-separator",
+      "react"
+    ],
+    "src/components/ui/sheet.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-dialog",
+      "class-variance-authority",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/sidebar.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/input",
+      "@/components/ui/separator",
+      "@/components/ui/sheet",
+      "@/components/ui/skeleton",
+      "@/components/ui/tooltip",
+      "@/hooks/use-mobile",
+      "@/lib/utils",
+      "@radix-ui/react-slot",
+      "class-variance-authority",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/skeleton.tsx": [
+      "@/lib/utils"
+    ],
+    "src/components/ui/slider.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-slider",
+      "react"
+    ],
+    "src/components/ui/sonner.tsx": [
+      "next-themes",
+      "sonner"
+    ],
+    "src/components/ui/switch.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-switch",
+      "react"
+    ],
+    "src/components/ui/table.tsx": [
+      "@/lib/utils",
+      "react"
+    ],
+    "src/components/ui/tabs.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-tabs",
+      "react"
+    ],
+    "src/components/ui/textarea.tsx": [
+      "@/lib/utils",
+      "react"
+    ],
+    "src/components/ui/toast.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-toast",
+      "class-variance-authority",
+      "lucide-react",
+      "react"
+    ],
+    "src/components/ui/toaster.tsx": [
+      "@/components/ui/toast",
+      "@/hooks/use-toast"
+    ],
+    "src/components/ui/toggle-group.tsx": [
+      "@/components/ui/toggle",
+      "@/lib/utils",
+      "@radix-ui/react-toggle-group",
+      "class-variance-authority",
+      "react"
+    ],
+    "src/components/ui/toggle.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-toggle",
+      "class-variance-authority",
+      "react"
+    ],
+    "src/components/ui/tooltip.tsx": [
+      "@/lib/utils",
+      "@radix-ui/react-tooltip",
+      "react"
+    ],
+    "src/components/ui/use-toast.ts": [
+      "@/hooks/use-toast"
+    ],
+    "src/context/AuthContext.tsx": [
+      "@/lib/api/auth",
+      "@/lib/api/client",
+      "React",
+      "react",
+      "sonner"
+    ],
+    "src/context/StoreContext.tsx": [
+      "@/context/AuthContext",
+      "@/lib/data",
+      "@/lib/db-service",
+      "@/lib/fieldwork-data",
+      "@/lib/finance-hub-store",
+      "React",
+      "react",
+      "sonner"
+    ],
+    "src/context/WebSocketProvider.tsx": [
+      "./AuthContext",
+      "@/lib/api/client",
+      "React",
+      "react",
+      "socket.io-client",
+      "sonner"
+    ],
+    "src/hooks/use-mobile.tsx": [
+      "react"
+    ],
+    "src/hooks/use-toast.ts": [
+      "@/components/ui/toast",
+      "react",
+      "type"
+    ],
+    "src/lib/accounting-system.ts": [
+      "@/lib/finance-hub-store"
+    ],
+    "src/lib/db-service.ts": [
+      "./finance-hub-store",
+      "@/lib/api/client",
+      "@/lib/offline-queue",
+      "type"
+    ],
+    "src/lib/finance-hub-store.ts": [
+      "./db-service",
+      "date-fns"
+    ],
+    "src/lib/inventory-requests.ts": [
+      "./finance-data"
+    ],
+    "src/lib/offline-queue.ts": [
+      "@/lib/api/client"
+    ],
+    "src/lib/pump-sizing.ts": [
+      "./data"
+    ],
+    "src/lib/utils.ts": [
+      "clsx",
+      "tailwind-merge"
+    ],
+    "src/lib/api/auth.ts": [
+      "./client"
+    ],
+    "src/lib/api/client.ts": [
+      "axios"
+    ],
+    "src/lib/api/communication.ts": [
+      "./client"
+    ],
+    "src/pages/Dashboard.tsx": [
+      "@/components/ApprovalsInbox",
+      "@/components/dashboards/AdminHubDashboard",
+      "@/components/dashboards/FinanceHubDashboard",
+      "@/components/dashboards/GMHubDashboard",
+      "@/components/dashboards/SalesHubDashboard",
+      "@/components/dashboards/TTLHubDashboard",
+      "@/components/dashboards/TechHubDashboard",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/select",
+      "@/components/ui/textarea",
+      "@/context/AuthContext",
+      "@/context/StoreContext",
+      "@/lib/api/communication",
+      "@/lib/data",
+      "@/lib/db-service",
+      "@/lib/fieldwork-data",
+      "@/lib/finance-hub-store",
+      "@/lib/offline-queue",
+      "ApprovalsInbox",
+      "date-fns",
+      "lucide-react",
+      "react",
+      "react-router-dom",
+      "recharts",
+      "sonner"
+    ],
+    "src/pages/DedicatedInboxPage.tsx": [
+      "@/components/ApprovalsInbox",
+      "ApprovalsInbox"
+    ],
+    "src/pages/FieldWorkPage.tsx": [
+      "./PumpSizingPage",
+      "@/components/ApprovalsInbox",
+      "@/components/ClientFileModal",
+      "@/components/SecurityCodeDialog",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/calendar",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/popover",
+      "@/components/ui/select",
+      "@/components/ui/textarea",
+      "@/context/AuthContext",
+      "@/context/StoreContext",
+      "@/lib/api/client",
+      "@/lib/db-service",
+      "@/lib/fieldwork-data",
+      "@/lib/pump-sizing",
+      "@/lib/utils",
+      "ApprovalsInbox",
+      "PumpSizingPage",
+      "date-fns",
+      "lucide-react",
+      "react",
+      "react-router-dom",
+      "recharts",
+      "sonner"
+    ],
+    "src/pages/FinanceCenterPage.tsx": [
+      "@/components/ClientFileModal",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/progress",
+      "@/components/ui/select",
+      "@/components/ui/table",
+      "@/components/ui/tabs",
+      "@/components/ui/textarea",
+      "@/context/AuthContext",
+      "@/context/StoreContext",
+      "@/lib/accounting-system",
+      "@/lib/api/client",
+      "@/lib/data",
+      "@/lib/db-service",
+      "@/lib/export-utils",
+      "@/lib/finance-data",
+      "@/lib/finance-hub-store",
+      "@/lib/inventory-requests",
+      "@/pages/PeachtreePage",
+      "PeachtreePage",
+      "lucide-react",
+      "react",
+      "react-router-dom",
+      "recharts",
+      "sonner"
+    ],
+    "src/pages/InboxPage.tsx": [
+      "@/components/ApprovalsInbox",
+      "ApprovalsInbox"
+    ],
+    "src/pages/InventoryPage.tsx": [
+      "@/components/SecurityCodeDialog",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/select",
+      "@/components/ui/table",
+      "@/components/ui/tabs",
+      "@/components/ui/textarea",
+      "@/context/AuthContext",
+      "@/context/StoreContext",
+      "@/lib/data",
+      "@/lib/db-service",
+      "@/lib/inventory-requests",
+      "lucide-react",
+      "react",
+      "sonner"
+    ],
+    "src/pages/LoginPage.tsx": [
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/context/AuthContext",
+      "@/context/StoreContext",
+      "lucide-react",
+      "react",
+      "sonner"
+    ],
+    "src/pages/NotFound.tsx": [
+      "react",
+      "react-router-dom"
+    ],
+    "src/pages/POSPage.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/calendar",
+      "@/components/ui/card",
+      "@/components/ui/checkbox",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/popover",
+      "@/components/ui/select",
+      "@/components/ui/tabs",
+      "@/components/ui/textarea",
+      "@/context/StoreContext",
+      "@/lib/data",
+      "@/lib/db-service",
+      "@/lib/pump-data",
+      "@/lib/pump-sizing",
+      "@/lib/utils",
+      "date-fns",
+      "lucide-react",
+      "react",
+      "react-router-dom",
+      "recharts",
+      "sonner"
+    ],
+    "src/pages/PeachtreePage.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/table",
+      "@/components/ui/tabs",
+      "@/context/StoreContext",
+      "@/lib/db-service",
+      "lucide-react",
+      "react",
+      "sonner"
+    ],
+    "src/pages/PumpDetailPage.tsx": [
+      "@/components/SecurityCodeDialog",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/select",
+      "@/context/StoreContext",
+      "@/lib/db-service",
+      "@/lib/pump-data",
+      "lucide-react",
+      "react",
+      "react-router-dom",
+      "sonner"
+    ],
+    "src/pages/PumpProductsPage.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/select",
+      "@/components/ui/textarea",
+      "@/context/AuthContext",
+      "@/context/StoreContext",
+      "@/lib/db-service",
+      "lucide-react",
+      "react",
+      "react-router-dom",
+      "sonner"
+    ],
+    "src/pages/PumpSizingPage.tsx": [
+      "@/components/ClientFileModal",
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/tabs",
+      "@/context/AuthContext",
+      "@/lib/api/client",
+      "L",
+      "leaflet",
+      "lucide-react",
+      "react",
+      "react-leaflet",
+      "recharts",
+      "sonner"
+    ],
+    "src/pages/ReportsPage.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/select",
+      "@/components/ui/tabs",
+      "@/context/StoreContext",
+      "@/lib/data",
+      "@/lib/fieldwork-data",
+      "date-fns",
+      "lucide-react",
+      "react",
+      "recharts"
+    ],
+    "src/pages/TeamChatPage.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/context/AuthContext",
+      "@/context/WebSocketProvider",
+      "@/lib/api/communication",
+      "React",
+      "lucide-react",
+      "react",
+      "sonner"
+    ],
+    "src/pages/UserAccountsPage.tsx": [
+      "@/components/ui/badge",
+      "@/components/ui/button",
+      "@/components/ui/card",
+      "@/components/ui/dialog",
+      "@/components/ui/input",
+      "@/components/ui/label",
+      "@/components/ui/select",
+      "@/components/ui/table",
+      "@/context/AuthContext",
+      "lucide-react",
+      "react",
+      "sonner"
+    ],
+    "src/pages/VATPage.tsx": [
+      "@/components/ui/card",
+      "@/context/StoreContext",
+      "@/lib/data",
+      "lucide-react",
+      "react"
+    ],
+    "src/test/example.test.ts": [
+      "vitest"
+    ],
+    "src/test/export.test.ts": [
+      "../lib/export-utils",
+      "vitest"
+    ],
+    "tools/peachtree-sync-agent/sync_agent.py": [
+      "datetime",
+      "dotenv",
+      "json",
+      "os",
+      "pyodbc",
+      "requests",
+      "sqlite3",
+      "time"
+    ],
+    "tools/peachtree-uploader/peachtree_uploader.py": [
+      "argparse",
+      "datetime",
+      "hashlib",
+      "pathlib",
+      "requests",
+      "sqlite3",
+      "time"
+    ]
+  }
+}

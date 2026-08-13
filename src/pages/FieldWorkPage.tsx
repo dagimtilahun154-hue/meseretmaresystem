@@ -23,6 +23,11 @@ import {
   Briefcase,
   LayoutDashboard,
   CheckCircle2,
+  Camera,
+  Users,
+  Truck,
+  Send,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +38,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { ExecutiveDocumentPdfTemplate } from "@/components/pdf/ExecutiveDocumentPdfTemplate";
+import { NasaSolarResearchWidget } from "@/components/research/NasaSolarResearchWidget";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { SecurityCodeDialog } from "@/components/SecurityCodeDialog";
@@ -49,6 +56,13 @@ import ApprovalsInbox from "@/components/ApprovalsInbox";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { CardHeader, CardTitle } from "@/components/ui/card";
 import PumpSizingPage from "./PumpSizingPage";
+
+const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:4000/api/v1").replace("/api/v1", "");
+const getFullImgUrl = (url: string) => {
+  if (!url) return "";
+  return url.startsWith("/uploads/") ? `${API_BASE}${url}` : url;
+};
+
 type WorkerWithPosition = FieldWorker & {
   position?: string;
 };
@@ -64,13 +78,22 @@ type CompletedSalePumpOption = {
 };
 
 const isPumpProduct = (item: any) => {
-  const name = String(item.productName || "").toLowerCase();
-  // Check if item name contains "pump" safely
-  const hasPumpName = name.includes("pump") && !name.includes("controller") && !name.includes("accessory");
-
-  // Also check if the item is explicitly in a pump-related category if we have that info
-  // For now we'll stick to name matching but make it slightly more flexible
-  return hasPumpName;
+  const name = String(item.productName || item.name || "").toLowerCase();
+  const category = String(item.category || "").toLowerCase();
+  return (
+    name.includes("pump") ||
+    category.includes("pump") ||
+    name.includes("solar") ||
+    name.includes("difful") ||
+    name.includes("water") ||
+    name.includes("3spsp") ||
+    name.includes("4spsp") ||
+    name.includes("deep") ||
+    name.includes("well") ||
+    name.includes("surface") ||
+    name.includes("ac") ||
+    name.includes("dc")
+  );
 };
 
 const getInclusiveDays = (startDate: string, endDate: string) => {
@@ -100,12 +123,13 @@ const statusLabels: Record<string, string> = {
   checked_tm: "Awaiting GM Approval",
   approved_gm: "Awaiting Finance Approval",
   "Approved and ready to go": "Approved & Ready to Go",
+  crew_dispatched: "Crew Dispatched & Active",
   completed_ttl: "Awaiting TM Return Sign-off",
   completed: "Installation Completed",
   done: "Completed & Done",
 };
 
-export default function FieldWorkPage() {
+export default function FieldWorkPage({ standalone = true, preSelectedCustomerId }: any) {
   const { section } = useParams<{ section: string }>();
   const { currentUser, users = [], hasAccess } = useAuth();
   const { fieldWorks, addFieldWork, updateFieldWork, deleteFieldWork: dbDeleteFieldWork, addReturnForm, sales = [], refreshStoreData } = useStore() as any;
@@ -175,6 +199,8 @@ export default function FieldWorkPage() {
   const [planNotes, setPlanNotes] = useState("");
   const [planFuelAmount, setPlanFuelAmount] = useState<string>("");
   const [planFuelPrice, setPlanFuelPrice] = useState<string>("");
+  const [planStartDate, setPlanStartDate] = useState<string>("");
+  const [planEndDate, setPlanEndDate] = useState<string>("");
 
   const refreshPlanningData = async () => {
     try {
@@ -231,6 +257,8 @@ export default function FieldWorkPage() {
         companyTools: selectedPlanTools,
         fuelAmount: planFuelAmount ? parseFloat(planFuelAmount) : undefined,
         fuelPrice: planFuelPrice ? parseFloat(planFuelPrice) : undefined,
+        startDate: planStartDate || undefined,
+        endDate: planEndDate || undefined,
       });
       toast.success("Fieldwork plan submitted & tools checked out.");
       setSelectedPlanWorkers([]);
@@ -238,6 +266,8 @@ export default function FieldWorkPage() {
       setPlanNotes("");
       setPlanFuelAmount("");
       setPlanFuelPrice("");
+      setPlanStartDate("");
+      setPlanEndDate("");
       setPlanningFwId(null);
       if (refreshStoreData) await refreshStoreData();
       await refreshPlanningData();
@@ -280,21 +310,83 @@ export default function FieldWorkPage() {
   };
 
   const [dailyReportText, setDailyReportText] = useState<Record<string, string>>({});
+  const [dailyReportImage, setDailyReportImage] = useState<Record<string, string>>({});
+  const [eodAchievements, setEodAchievements] = useState<Record<string, string>>({});
+  const [eodChallenges, setEodChallenges] = useState<Record<string, string>>({});
+  const [eodNextDayPlan, setEodNextDayPlan] = useState<Record<string, string>>({});
+  const [eodPhotos, setEodPhotos] = useState<Record<string, string>>({});
+  const [eodPhotoFiles, setEodPhotoFiles] = useState<{ [jobId: string]: File[] }>({});
+  const [isUploadingEod, setIsUploadingEod] = useState<{ [jobId: string]: boolean }>({});
 
-  const handleSendDailyReport = async (jobId: string) => {
-    const text = dailyReportText[jobId];
-    if (!text?.trim()) return;
+  const handleSendStructuredEodReport = async (jobId: string) => {
+    const achievements = eodAchievements[jobId] || dailyReportText[jobId] || "";
+    const challenges = eodChallenges[jobId] || "";
+    const nextDayPlan = eodNextDayPlan[jobId] || "";
+    const rawPhotos = eodPhotos[jobId] || dailyReportImage[jobId] || "";
+    const existingPhotosList = rawPhotos.split(",").map(p => p.trim()).filter(Boolean);
+
+    if (!achievements.trim()) {
+      toast.error("Please describe today's work & achievements.");
+      return;
+    }
+
+    setIsUploadingEod(prev => ({ ...prev, [jobId]: true }));
+    let uploadedUrls: string[] = [];
+    try {
+      if (eodPhotoFiles[jobId] && eodPhotoFiles[jobId].length > 0) {
+        const formData = new FormData();
+        eodPhotoFiles[jobId].forEach(f => formData.append('photos', f));
+        const uploadRes = await apiClient.post('/fieldwork/upload-photos', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        uploadedUrls = uploadRes.data.urls || [];
+      }
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to upload photos");
+      setIsUploadingEod(prev => ({ ...prev, [jobId]: false }));
+      return;
+    }
+
+    const finalPhotosList = [...existingPhotosList, ...uploadedUrls];
+
     try {
       await apiClient.post(`/fieldwork/${jobId}/daily-report`, {
-        content: text,
+        achievements,
+        challenges,
+        nextDayPlan,
+        photos: finalPhotosList,
+        content: achievements,
         submittedBy: currentUser?.displayName || currentUser?.username || "TTL",
       });
-      toast.success("Daily report submitted successfully!");
+      toast.success("Structured EOD Daily Progress Report submitted & notified to GM!");
+      setEodAchievements(prev => ({ ...prev, [jobId]: "" }));
+      setEodChallenges(prev => ({ ...prev, [jobId]: "" }));
+      setEodNextDayPlan(prev => ({ ...prev, [jobId]: "" }));
+      setEodPhotos(prev => ({ ...prev, [jobId]: "" }));
       setDailyReportText(prev => ({ ...prev, [jobId]: "" }));
+      setDailyReportImage(prev => ({ ...prev, [jobId]: "" }));
+      setEodPhotoFiles(prev => ({ ...prev, [jobId]: [] }));
+      setIsUploadingEod(prev => ({ ...prev, [jobId]: false }));
       if (refreshStoreData) await refreshStoreData();
       await refreshPlanningData();
     } catch (e: any) {
-      toast.error(e.response?.data?.message || "Failed to submit daily report");
+      toast.error(e.response?.data?.message || "Failed to submit EOD report");
+      setIsUploadingEod(prev => ({ ...prev, [jobId]: false }));
+    }
+  };
+
+  const handleSendDailyReport = async (jobId: string) => {
+    await handleSendStructuredEodReport(jobId);
+  };
+
+  const handleDispatchCrew = async (jobId: string) => {
+    try {
+      await apiClient.patch(`/fieldwork/${jobId}/dispatch`);
+      toast.success("Crew departure confirmed! Status updated to Crew Dispatched & Active.");
+      if (refreshStoreData) await refreshStoreData();
+      await refreshPlanningData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to confirm departure");
     }
   };
 
@@ -309,10 +401,14 @@ export default function FieldWorkPage() {
     }
   };
 
-  const handleCompleteJobTTL = async (jobId: string) => {
+  const handleCompleteJobTTL = async (jobId: string, formPayload?: any) => {
     try {
-      await apiClient.patch(`/fieldwork/${jobId}/complete`);
-      toast.success("Fieldwork marked completed by TTL. Awaiting TM review of returns.");
+      const photos = formPayload?.completionPhotos || [];
+      await apiClient.patch(`/fieldwork/${jobId}/complete`, {
+        completionPhotos: photos,
+        notes: formPayload?.comments || formPayload?.otherNotes,
+      });
+      toast.success("Fieldwork marked completed with site photos! Sent for Storekeeper verification.");
       if (refreshStoreData) await refreshStoreData();
       await refreshPlanningData();
     } catch (e: any) {
@@ -320,10 +416,21 @@ export default function FieldWorkPage() {
     }
   };
 
+  const handleStorekeeperVerify = async (jobId: string) => {
+    try {
+      await apiClient.patch(`/fieldwork/${jobId}/storekeeper-verify`);
+      toast.success("Returned tools & fuel verified by Storekeeper! Sent to Technical Manager for final sign-off.");
+      if (refreshStoreData) await refreshStoreData();
+      await refreshPlanningData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to verify returned assets");
+    }
+  };
+
   const handleApproveReturns = async (jobId: string) => {
     try {
       await apiClient.patch(`/fieldwork/${jobId}/approve-returns`);
-      toast.success("Returns approved. Fieldwork job is finalized and sale is complete!");
+      toast.success("Completion photos & site report approved by TM! Fieldwork job is officially completed.");
       if (refreshStoreData) await refreshStoreData();
       await refreshPlanningData();
     } catch (e: any) {
@@ -346,28 +453,29 @@ export default function FieldWorkPage() {
     sales.forEach((sale: any) => {
       if (assignedSaleIds.has(sale.id)) return;
       const saleItems = Array.isArray(sale.items) ? sale.items : [];
-      const pumpItem = saleItems.find((item: any) => isPumpProduct(item));
+      if (saleItems.length === 0) return;
 
-      if (!pumpItem) return;
+      const pumpItem = saleItems.find((item: any) => isPumpProduct(item)) || saleItems[0];
+      const pumpName = pumpItem.productName || pumpItem.name || `Sale ${sale.id} Package`;
 
-      const customerName = sale.customer?.name || "Unknown Customer";
+      const customerName = sale.customerName || sale.customer?.name || "Customer";
       const location = [
         sale.customer?.location,
         sale.customer?.woreda,
         sale.customer?.region
-      ].filter(Boolean).join(", ") || "N/A";
+      ].filter(Boolean).join(", ") || sale.location || "Site";
 
-      const methodLabel = sale.paymentMethod === "Bank" ? ` (${sale.bankName})` :
-        sale.paymentMethod === "Telebirr" ? " (Telebirr)" : " (Cash)";
+      const methodLabel = sale.paymentMethod === "Bank" ? ` (${sale.bankName || "Bank"})` :
+        sale.paymentMethod === "Telebirr" ? " (Telebirr)" : sale.paymentMethod ? ` (${sale.paymentMethod})` : "";
 
       result.push({
         id: sale.id,
         saleId: sale.id,
-        pumpName: pumpItem.productName,
+        pumpName,
         customerName,
         location,
         items: saleItems,
-        label: `${pumpItem.productName} — ${customerName} — ${location} — Sale ${sale.id}${methodLabel}`,
+        label: `${pumpName} — ${customerName} — ${location} — Sale ${sale.id}${methodLabel}`,
       });
     });
 
@@ -387,13 +495,28 @@ export default function FieldWorkPage() {
   }, [fieldWorks]);
 
   const filtered = fieldWorks.filter((fw: FieldWork) => {
-    const workerNames = fw.workers.map((w) => w.name.toLowerCase()).join(" ");
-    const workerPositions = fw.workers.map((w: any) => (w.position || "").toLowerCase()).join(" ");
+    const userRoles = currentUser?.roles || [currentUser?.role];
+    const isTtlOnly = userRoles.includes("ttl") && !userRoles.includes("fieldwork") && !userRoles.includes("admin") && !userRoles.includes("manager");
+    if (isTtlOnly && fw.assignedTo !== currentUser?.username) {
+      return false;
+    }
+
+    const workerNames = (fw.workers || []).map((w) => (w.name || "").toLowerCase()).join(" ");
+    const workerPositions = (fw.workers || []).map((w: any) => (w.position || "").toLowerCase()).join(" ");
+    const pumpModel = (fw.pumpModel || "").toLowerCase();
+    const location = (fw.location || "").toLowerCase();
+    const customerName = (fw.customerName || "").toLowerCase();
+    const assignedTo = (fw.assignedTo || "").toLowerCase();
+
+    const query = search.toLowerCase().trim();
     const matchSearch =
-      workerNames.includes(search.toLowerCase()) ||
-      workerPositions.includes(search.toLowerCase()) ||
-      fw.pumpModel.toLowerCase().includes(search.toLowerCase()) ||
-      fw.location.toLowerCase().includes(search.toLowerCase());
+      !query ||
+      workerNames.includes(query) ||
+      workerPositions.includes(query) ||
+      pumpModel.includes(query) ||
+      location.includes(query) ||
+      customerName.includes(query) ||
+      assignedTo.includes(query);
 
     const matchStatus = filterStatus === "all" || fw.status === filterStatus;
     return matchSearch && matchStatus;
@@ -405,7 +528,7 @@ export default function FieldWorkPage() {
 
   const totalPerDiemAll = fieldWorks.reduce((sum: number, fw: FieldWork) => {
     const days = getInclusiveDays(fw.startDate, fw.endDate);
-    const fwTotal = fw.workers.reduce((workerSum, worker) => workerSum + worker.perDiem * days, 0);
+    const fwTotal = fw.workers.reduce((workerSum, worker) => workerSum + Number(worker.perDiem) * days, 0);
     return sum + fwTotal;
   }, 0);
 
@@ -450,9 +573,6 @@ export default function FieldWorkPage() {
   };
 
   // --- Section routing ---
-  if (section === "overview") {
-    return <OverviewSection fieldWorks={fieldWorks} />;
-  }
   if (section === "sizing") {
     return <PumpSizingPage />;
   }
@@ -462,7 +582,7 @@ export default function FieldWorkPage() {
 
   // Default: "jobs" section — existing field work content
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in print:hidden">
       <SecurityCodeDialog
         open={securityOpen}
         onOpenChange={setSecurityOpen}
@@ -731,10 +851,10 @@ export default function FieldWorkPage() {
                                   <td className="py-2 font-medium">{w.name}</td>
                                   <td className="py-2 text-muted-foreground">{w.id}</td>
                                   <td className="py-2">{w.position || "-"}</td>
-                                  <td className="py-2 text-right">{w.perDiem.toLocaleString()} ETB</td>
+                                  <td className="py-2 text-right">{Number(w.perDiem).toLocaleString()} ETB</td>
                                   <td className="py-2 text-right">{totalDays}</td>
                                   <td className="py-2 text-right font-medium">
-                                    {(w.perDiem * totalDays).toLocaleString()} ETB
+                                    {(Number(w.perDiem) * totalDays).toLocaleString()} ETB
                                   </td>
                                 </tr>
                               ))}
@@ -814,76 +934,250 @@ export default function FieldWorkPage() {
                         </div>
                       )}
 
-                      {/* Daily Progress Reports Section */}
-                      <div className="rounded-lg border bg-card p-4 space-y-4 mt-4">
-                        <div className="flex items-center justify-between border-b pb-2">
-                          <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                            <CalendarIcon className="h-4 w-4 text-primary" /> Daily Progress Reports
-                          </p>
-                          <Badge variant="outline" className="text-xs">
-                            {(fw.dailyReports || []).length} reports
-                          </Badge>
+                      {/* ═══════════════ DAILY EOD PROGRESS REPORTS — FULL-PAGE SECTION ═══════════════ */}
+                      <div className="mt-6 space-y-5">
+                        {/* Section Header */}
+                        <div className="flex items-center justify-between border-b-2 border-purple-500/30 pb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-purple-600 flex items-center justify-center shadow-lg">
+                              <CalendarIcon className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-bold text-foreground tracking-tight">Daily EOD Field Reports</h3>
+                              <p className="text-xs text-muted-foreground">Detailed end-of-day progress reports from the field crew</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-purple-600/15 text-purple-700 dark:text-purple-300 border-purple-500/30 font-bold px-3 py-1">
+                              {(fw.dailyReports || []).length} {(fw.dailyReports || []).length === 1 ? 'Report' : 'Reports'} Filed
+                            </Badge>
+                            {fw.status === "crew_dispatched" && (
+                              <Badge className="bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30 animate-pulse font-semibold px-3 py-1">
+                                <Truck className="h-3 w-3 mr-1" /> Active On-Site
+                              </Badge>
+                            )}
+                          </div>
                         </div>
 
-                        {/* Reports List */}
+                        {/* ── Reports List (Full Width, No Scroll Constraint) ── */}
                         {fw.dailyReports && fw.dailyReports.length > 0 ? (
-                          <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                            {fw.dailyReports.map((report: any) => (
-                              <div key={report.id} className="p-3 border rounded-lg bg-slate-50 dark:bg-slate-900/40 space-y-1.5">
-                                <div className="flex items-center justify-between text-xs">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-semibold text-foreground">{report.submittedBy}</span>
-                                    <span className="text-muted-foreground">•</span>
-                                    <span className="text-muted-foreground">
-                                      {format(report.date ? new Date(report.date) : new Date(), "yyyy-MM-dd HH:mm")}
-                                    </span>
+                          <div className="space-y-5">
+                            {fw.dailyReports.map((report: any, reportIdx: number) => (
+                              <div key={report.id} className="rounded-2xl border-2 border-purple-500/20 bg-gradient-to-br from-slate-50 to-purple-50/30 dark:from-slate-900/60 dark:to-purple-950/20 shadow-md overflow-hidden">
+                                {/* Report Header Bar */}
+                                <div className="bg-purple-600/10 dark:bg-purple-900/30 px-6 py-3 border-b border-purple-500/20 flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded-lg bg-purple-600 text-white flex items-center justify-center font-bold text-sm shadow">
+                                      {reportIdx + 1}
+                                    </div>
+                                    <div>
+                                      <span className="text-sm font-bold text-foreground block">Day {reportIdx + 1} — End of Day Report</span>
+                                      <span className="text-xs text-muted-foreground font-mono">
+                                        {format(report.date ? new Date(report.date) : new Date(), "EEEE, MMMM d, yyyy 'at' HH:mm")}
+                                      </span>
+                                    </div>
                                   </div>
-                                  <div>
-                                    {report.forwardedToGm ? (
-                                      <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[10px]">
-                                        Forwarded to GM
-                                      </Badge>
-                                    ) : (
-                                       hasAccess(["fieldwork", "manager"]) && (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => handleForwardReport(fw.id, report.id)}
-                                          className="h-6 text-[10px] px-2 py-0 border-primary text-primary hover:bg-primary/5"
-                                        >
-                                          Forward to GM
-                                        </Button>
-                                      )
-                                    )}
+                                  <div className="flex items-center gap-2">
+                                    <Badge className="bg-purple-600 text-white font-mono text-[10px] px-2 py-0.5">EOD REPORT</Badge>
+                                    <span className="text-xs text-muted-foreground">by <strong className="text-foreground">{report.submittedBy}</strong></span>
                                   </div>
                                 </div>
-                                <p className="text-xs text-foreground whitespace-pre-wrap">{report.content}</p>
+
+                                {/* Report Body — Full Width Detailed Sections */}
+                                <div className="px-6 py-5 space-y-5">
+                                  {/* Section 1: Today's Achievements */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                      <span className="font-bold text-sm text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">Today's Work & Achievements</span>
+                                    </div>
+                                    <div className="bg-white dark:bg-slate-800/50 rounded-xl border border-emerald-500/20 p-4 text-sm text-foreground whitespace-pre-wrap leading-relaxed shadow-sm">
+                                      {report.achievements || report.content}
+                                    </div>
+                                  </div>
+
+                                  {/* Section 2: Site Challenges */}
+                                  {report.challenges && (
+                                    <div className="space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <AlertTriangle className="h-4 w-4 text-amber-600" />
+                                        <span className="font-bold text-sm text-amber-700 dark:text-amber-400 uppercase tracking-wide">Site Challenges & Impediments</span>
+                                      </div>
+                                      <div className="bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-500/25 p-4 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                                        {report.challenges}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Section 3: Tomorrow's Plan */}
+                                  {report.nextDayPlan && (
+                                    <div className="space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <Compass className="h-4 w-4 text-sky-600" />
+                                        <span className="font-bold text-sm text-sky-700 dark:text-sky-400 uppercase tracking-wide">Tomorrow's Planned Tasks</span>
+                                      </div>
+                                      <div className="bg-sky-50 dark:bg-sky-950/20 rounded-xl border border-sky-500/25 p-4 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                                        {report.nextDayPlan}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Section 4: Attached Photos */}
+                                  {((Array.isArray(report.photos) && report.photos.length > 0) || report.imageUrl) && (
+                                    <div className="space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <Camera className="h-4 w-4 text-indigo-600" />
+                                        <span className="font-bold text-sm text-indigo-700 dark:text-indigo-400 uppercase tracking-wide">
+                                          Attached Progress Photos ({(report.photos && report.photos.length > 0 ? report.photos : [report.imageUrl]).length})
+                                        </span>
+                                      </div>
+                                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        {(report.photos && report.photos.length > 0 ? report.photos : [report.imageUrl]).map((imgUrl: string, idx: number) => {
+                                          const fullUrl = getFullImgUrl(imgUrl);
+                                          return (
+                                            <Dialog key={idx}>
+                                              <DialogTrigger asChild>
+                                                <button type="button" className="bg-white dark:bg-slate-800/50 rounded-xl border-2 border-indigo-500/15 overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer group relative text-left">
+                                                  <div className="h-28 bg-muted overflow-hidden flex items-center justify-center">
+                                                    {imgUrl && (imgUrl.startsWith("http") || imgUrl.startsWith("/")) ? (
+                                                      <img src={fullUrl} alt={`Day ${reportIdx + 1} Photo ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" onError={(e) => {
+                                                        (e.target as HTMLElement).style.display = 'none';
+                                                      }} />
+                                                    ) : null}
+                                                  </div>
+                                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Eye className="h-6 w-6 text-white" />
+                                                  </div>
+                                                  <div className="p-2 text-center bg-white dark:bg-slate-800">
+                                                    <span className="text-[10px] font-bold text-muted-foreground">Photo #{idx + 1}</span>
+                                                    <p className="text-[9px] text-muted-foreground truncate font-mono" title={imgUrl}>{imgUrl.split('/').pop() || imgUrl}</p>
+                                                  </div>
+                                                </button>
+                                              </DialogTrigger>
+                                              <DialogContent className="max-w-4xl bg-transparent border-none shadow-none p-0 flex flex-col items-center justify-center h-[90vh]">
+                                                <DialogTitle className="sr-only">Photo Preview</DialogTitle>
+                                                <img src={fullUrl} alt="Preview" className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
+                                                <a href={fullUrl} download={`FieldWork-Photo-${idx+1}.jpg`} target="_blank" rel="noreferrer" className="mt-4">
+                                                  <Button variant="secondary" className="gap-2 shadow-lg hover:scale-105 transition-transform"><Download className="h-4 w-4" /> Download Photo</Button>
+                                                </a>
+                                              </DialogContent>
+                                            </Dialog>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-muted-foreground py-2 italic">No daily progress reports submitted yet.</p>
+                          <div className="text-center py-10 rounded-xl border-2 border-dashed border-muted-foreground/20 bg-muted/5">
+                            <CalendarIcon className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                            <p className="text-sm text-muted-foreground font-medium">No daily progress reports submitted yet</p>
+                            <p className="text-xs text-muted-foreground/60 mt-1">EOD reports will appear here once the field crew starts submitting them.</p>
+                          </div>
                         )}
 
-                        {/* Submit progress report if the job is active and logged user is TTL */}
-                        {fw.status === "Approved and ready to go" && currentUser?.username === fw.assignedTo && (
-                          <div className="space-y-2 border-t pt-3">
-                            <Label className="text-xs font-semibold">Submit Daily Progress Report</Label>
-                            <div className="flex gap-2">
-                              <Textarea
-                                placeholder="Type today's work progress, site challenges, or achievements..."
-                                value={dailyReportText[fw.id] || ""}
-                                onChange={(e) => setDailyReportText({ ...dailyReportText, [fw.id]: e.target.value })}
-                                className="text-xs min-h-[60px] bg-background"
-                              />
-                              <Button
-                                size="sm"
-                                onClick={() => handleSendDailyReport(fw.id)}
-                                className="self-end bg-primary text-white h-9 px-4 font-semibold"
-                                disabled={!dailyReportText[fw.id]?.trim()}
-                              >
-                                Submit
-                              </Button>
+                        {/* ── Structured EOD Submission Form (TTL Only, When Dispatched) ── */}
+                        {fw.status === "crew_dispatched" && currentUser?.username === fw.assignedTo && (
+                          <div className="rounded-2xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-50 to-indigo-50/30 dark:from-purple-950/20 dark:to-indigo-950/10 p-6 space-y-5 shadow-lg">
+                            <div className="flex items-center justify-between border-b border-purple-500/20 pb-3">
+                              <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-xl bg-purple-600 flex items-center justify-center shadow-lg">
+                                  <Send className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                  <h4 className="text-sm font-bold text-purple-800 dark:text-purple-200">Submit Daily End-of-Day (EOD) Progress Report</h4>
+                                  <p className="text-xs text-muted-foreground">This will be report #{(fw.dailyReports || []).length + 1} — automatically forwarded to the General Manager</p>
+                                </div>
+                              </div>
+                              <Badge className="bg-purple-600/15 text-purple-700 dark:text-purple-300 border-purple-500/30 font-semibold">
+                                Auto-Sends to GM
+                              </Badge>
+                            </div>
+
+                            <div className="space-y-4">
+                              <div>
+                                <Label className="text-sm font-semibold block mb-2 text-foreground">1. Today's Achievements & Installed Work <span className="text-red-500">*</span></Label>
+                                <Textarea
+                                  placeholder="Detail today's progress (e.g. Completed trenching, mounted 12 solar panels, connected controller cabling)..."
+                                  value={eodAchievements[fw.id] !== undefined ? eodAchievements[fw.id] : dailyReportText[fw.id] || ""}
+                                  onChange={(e) => {
+                                    setEodAchievements({ ...eodAchievements, [fw.id]: e.target.value });
+                                    setDailyReportText({ ...dailyReportText, [fw.id]: e.target.value });
+                                  }}
+                                  className="min-h-[100px] bg-white dark:bg-slate-800/50 text-sm"
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label className="text-sm font-semibold block mb-2 text-foreground">2. Site Challenges & Impediments <span className="text-muted-foreground text-xs">(Optional)</span></Label>
+                                  <Textarea
+                                    placeholder="e.g. Heavy rain delayed pipe laying by 2 hours, rocky terrain required different drill bits..."
+                                    value={eodChallenges[fw.id] || ""}
+                                    onChange={(e) => setEodChallenges({ ...eodChallenges, [fw.id]: e.target.value })}
+                                    className="min-h-[80px] bg-white dark:bg-slate-800/50 text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-sm font-semibold block mb-2 text-foreground">3. Tomorrow's Planned Tasks <span className="text-muted-foreground text-xs">(Optional)</span></Label>
+                                  <Textarea
+                                    placeholder="e.g. Lower submersible pump into borehole, complete wiring from panels to controller, test water flow..."
+                                    value={eodNextDayPlan[fw.id] || ""}
+                                    onChange={(e) => setEodNextDayPlan({ ...eodNextDayPlan, [fw.id]: e.target.value })}
+                                    className="min-h-[80px] bg-white dark:bg-slate-800/50 text-sm"
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <Label className="text-sm font-semibold block mb-2 text-foreground">4. Attached Daily Photos <span className="text-muted-foreground text-xs">(Max 4 images)</span></Label>
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-3">
+                                    <Input
+                                      type="file"
+                                      accept="image/*"
+                                      multiple
+                                      onChange={(e) => {
+                                        if (e.target.files) {
+                                          const filesArray = Array.from(e.target.files).slice(0, 4);
+                                          setEodPhotoFiles({ ...eodPhotoFiles, [fw.id]: filesArray });
+                                        }
+                                      }}
+                                      className="bg-white dark:bg-slate-800/50 text-sm w-full file:bg-indigo-50 file:text-indigo-700 file:border-0 file:rounded-md file:px-4 file:py-1 file:mr-4 file:font-semibold hover:file:bg-indigo-100 cursor-pointer"
+                                    />
+                                    {eodPhotoFiles[fw.id]?.length > 0 && (
+                                      <Button variant="ghost" size="sm" onClick={() => setEodPhotoFiles({...eodPhotoFiles, [fw.id]: []})} className="text-red-500 hover:bg-red-50 hover:text-red-600">Clear</Button>
+                                    )}
+                                  </div>
+                                  {eodPhotoFiles[fw.id]?.length > 0 && (
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                      {eodPhotoFiles[fw.id].map((file, idx) => (
+                                        <div key={idx} className="relative group rounded-xl border border-border overflow-hidden bg-muted/30 aspect-video">
+                                          <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
+                                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <span className="text-white text-xs font-medium truncate px-2">{file.name}</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex justify-end pt-3 border-t border-purple-500/15">
+                                <Button
+                                  size="lg"
+                                  onClick={() => handleSendStructuredEodReport(fw.id)}
+                                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm px-8 py-3 flex items-center gap-2.5 shadow-lg rounded-xl transition-all"
+                                  disabled={!(eodAchievements[fw.id] || dailyReportText[fw.id])?.trim() || isUploadingEod[fw.id]}
+                                >
+                                  {isUploadingEod[fw.id] ? <div className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <Send className="h-4 w-4" />}
+                                  {isUploadingEod[fw.id] ? "Uploading & Submitting..." : "Submit EOD Report & Notify GM"}
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         )}
@@ -919,7 +1213,7 @@ export default function FieldWorkPage() {
                         {fw.status === "pending" && (
                           <div className="space-y-3">
                             <p className="text-xs text-muted-foreground">Awaiting Technical Manager review. Select a Technical Team Leader to assign this fieldwork installation job.</p>
-                            {hasAccess(["fieldwork", "manager"]) ? (
+                            {hasAccess(["fieldwork"]) ? (
                               <div className="flex items-center gap-3">
                                 <Select
                                   value={assigningTtlId[fw.id] || (ttlCandidates[0]?.username || "tech_leader")}
@@ -946,38 +1240,33 @@ export default function FieldWorkPage() {
                           </div>
                         )}
 
-                        {/* 2. Status: PLANNING (Assigned to TTL, Awaiting Acceptance) */}
-                        {fw.status === "planning" && (
-                          <div className="space-y-3">
-                            <p className="text-xs text-muted-foreground">Assigned to: <strong className="text-foreground">{fw.assignedTo}</strong>. TTL must accept the fieldwork request to begin budget & crew allocation.</p>
-                            {currentUser?.username === fw.assignedTo ? (
-                              <Button size="sm" onClick={() => handleAcceptJob(fw.id)} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold">
-                                Accept Fieldwork Job
-                              </Button>
-                            ) : (
-                              <Badge className="bg-muted text-muted-foreground">Awaiting acceptance by assigned TTL...</Badge>
-                            )}
-                          </div>
-                        )}
-
-                        {/* 3. Status: ACCEPTED (TTL Planning Form) */}
-                        {fw.status === "accepted" && (
+                        {/* 2. Status: PLANNING or ACCEPTED (TTL Planning Form) */}
+                        {(fw.status === "planning" || fw.status === "accepted") && (
                           <div className="space-y-4">
-                            <p className="text-xs text-muted-foreground">Job accepted by TTL. Enter crew configuration, daily per diem pricing, travel fuel budgets, and check out company tools.</p>
+                            <p className="text-xs text-muted-foreground">
+                              Assigned to: <strong className="text-foreground">{fw.assignedTo || "Technical Team Leader"}</strong>. Enter crew configuration, daily per diem rates, travel fuel budgets, and check out company tools.
+                            </p>
                             
-                            {currentUser?.username === fw.assignedTo ? (
+                            {currentUser?.username === fw.assignedTo || hasAccess(["fieldwork"]) ? (
                               <div className="space-y-4">
                                 {planningFwId !== fw.id ? (
-                                  <Button size="sm" onClick={() => {
-                                    setPlanningFwId(fw.id);
-                                    setSelectedPlanWorkers([]);
-                                    setSelectedPlanTools([]);
-                                    setPlanNotes("");
-                                    setPlanFuelAmount("");
-                                    setPlanFuelPrice("");
-                                  }} className="bg-purple-600 hover:bg-purple-700 text-white font-semibold">
-                                    Configure Crew, Budget & Tools
-                                  </Button>
+                                  <div className="flex items-center gap-3">
+                                    <Button size="sm" onClick={() => {
+                                      setPlanningFwId(fw.id);
+                                      setSelectedPlanWorkers([]);
+                                      setSelectedPlanTools([]);
+                                      setPlanNotes("");
+                                      setPlanFuelAmount("");
+                                      setPlanFuelPrice("");
+                                    }} className="bg-purple-600 hover:bg-purple-700 text-white font-semibold">
+                                      Configure Crew, Budget & Tools
+                                    </Button>
+                                    {fw.status === "planning" && (
+                                      <Button size="sm" variant="outline" onClick={() => handleAcceptJob(fw.id)}>
+                                        Mark Job Accepted
+                                      </Button>
+                                    )}
+                                  </div>
                                 ) : (
                                   <Card className="p-4 border bg-background space-y-4">
                                     <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground border-b pb-1">Trip Planning & Budget Config</h4>
@@ -1103,20 +1392,54 @@ export default function FieldWorkPage() {
                                       />
                                     </div>
 
-                                    {/* Calculated budget sum */}
-                                    <div className="bg-primary/5 p-3 rounded border border-primary/20 flex justify-between items-center text-xs">
-                                      <div>
-                                        <span className="font-semibold text-primary block">Estimated Planning Budget</span>
-                                        <span className="text-[10px] text-muted-foreground">Includes per-diem ({totalDays} days) + fuel requests.</span>
-                                      </div>
-                                      <div className="text-sm font-bold font-mono text-primary">
-                                        {(
-                                          selectedPlanWorkers.reduce((s, w) => s + (w.perDiem || 0) * totalDays, 0) +
-                                          (parseFloat(planFuelAmount) || 0) * (parseFloat(planFuelPrice) || 0)
-                                        ).toLocaleString()}{" "}
-                                        ETB
-                                      </div>
-                                    </div>
+                                    {/* Trip Duration & Dates Selection */}
+                                     <div className="space-y-1 bg-purple-500/5 p-3 rounded-lg border border-purple-500/20">
+                                       <Label className="text-xs font-semibold text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                                         <CalendarIcon className="h-3.5 w-3.5" /> Trip Schedule & Duration Selection
+                                       </Label>
+                                       <div className="grid grid-cols-2 gap-3 pt-1">
+                                         <div className="space-y-1">
+                                           <span className="text-[10px] text-muted-foreground block">Installation Start Date</span>
+                                           <Input
+                                             type="date"
+                                             value={planStartDate}
+                                             onChange={(e) => setPlanStartDate(e.target.value)}
+                                             className="h-8 text-xs bg-background"
+                                           />
+                                         </div>
+                                         <div className="space-y-1">
+                                           <span className="text-[10px] text-muted-foreground block">Expected Completion Date</span>
+                                           <Input
+                                             type="date"
+                                             value={planEndDate}
+                                             onChange={(e) => setPlanEndDate(e.target.value)}
+                                             className="h-8 text-xs bg-background"
+                                           />
+                                         </div>
+                                       </div>
+                                     </div>
+
+                                     {/* Calculated budget sum */}
+                                     {(() => {
+                                       const plannedDays = (planStartDate && planEndDate)
+                                         ? Math.max(1, Math.ceil((new Date(planEndDate).getTime() - new Date(planStartDate).getTime()) / (1000 * 60 * 60 * 24)) + 1)
+                                         : totalDays;
+                                       return (
+                                         <div className="bg-primary/5 p-3 rounded border border-primary/20 flex justify-between items-center text-xs">
+                                           <div>
+                                             <span className="font-semibold text-primary block">Estimated Planning Budget</span>
+                                             <span className="text-[10px] text-muted-foreground">Includes per-diem ({plannedDays} days) + fuel requests.</span>
+                                           </div>
+                                           <div className="text-sm font-bold font-mono text-primary">
+                                             {(
+                                               selectedPlanWorkers.reduce((s, w) => s + (w.perDiem || 0) * plannedDays, 0) +
+                                               (parseFloat(planFuelAmount) || 0) * (parseFloat(planFuelPrice) || 0)
+                                             ).toLocaleString()}{" "}
+                                             ETB
+                                           </div>
+                                         </div>
+                                       );
+                                     })()}
 
                                     {/* Submit actions */}
                                     <div className="flex justify-end gap-2">
@@ -1149,7 +1472,7 @@ export default function FieldWorkPage() {
                               <p className="font-bold text-primary">• Total Travel Budget: {Number(fw.cost).toLocaleString()} ETB</p>
                             </div>
 
-                            {hasAccess(["fieldwork", "manager"]) ? (
+                            {hasAccess(["fieldwork"]) ? (
                               <Button size="sm" onClick={() => handleTmCheck(fw.id)} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold">
                                 TM Check & Sign Fieldwork Plan
                               </Button>
@@ -1208,7 +1531,28 @@ export default function FieldWorkPage() {
                               <span>Approved and ready to go! Per diem budget released. Field crew is authorized.</span>
                             </div>
                             
-                            <p className="text-xs text-muted-foreground">Once installation is completed at the client site, click "Add Return Form" below to check back all checked out tools.</p>
+                            <p className="text-xs text-muted-foreground font-medium">To begin the field trip and unlock reporting, the Technical Team Leader (TTL) must confirm departure below.</p>
+                            
+                            {currentUser?.username === fw.assignedTo && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleDispatchCrew(fw.id)}
+                                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold flex items-center gap-1.5 mt-2"
+                              >
+                                <Truck className="h-4 w-4 animate-bounce" /> Confirm Departure & Start Journey
+                              </Button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 7.5. Status: crew_dispatched (Active in the field) */}
+                        {fw.status === "crew_dispatched" && (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400 bg-purple-500/10 p-3 rounded border border-purple-500/20 text-xs font-semibold animate-pulse">
+                              <Truck className="h-4 w-4" />
+                              <span>Crew Dispatched & Active in the Field!</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">The crew has departed and is currently active on-site. TTL must submit EOD progress reports below. When the job is completed, submit the Return Form.</p>
                           </div>
                         )}
 
@@ -1217,16 +1561,63 @@ export default function FieldWorkPage() {
                           <div className="space-y-3">
                             <div className="flex items-center gap-2 text-teal-700 dark:text-teal-400 bg-teal-500/10 p-3 rounded border border-teal-500/20 text-xs font-semibold">
                               <CheckCircle2 className="h-4 w-4" />
-                              <span>Installation marked as completed by TTL. Awaiting TM review of return forms.</span>
+                              <span>Site installation completed by TTL! 4 completion photos & return form submitted. Awaiting Storekeeper asset check.</span>
                             </div>
-                            <p className="text-xs text-muted-foreground">Technical Manager must verify the returned tools/materials details and approve returns to complete the sale.</p>
+
+                            {/* Display 4 Completion Photos if present */}
+                            {Array.isArray((fw as any).payload?.completionPhotos) && (fw as any).payload.completionPhotos.length > 0 && (
+                              <div className="space-y-1.5 p-3 rounded border bg-muted/20">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Submitted Site Completion Photos</span>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                  {(fw as any).payload.completionPhotos.map((url: string, idx: number) => (
+                                    <div key={idx} className="p-1 border rounded bg-background text-[10px] truncate">
+                                      <span className="font-semibold block text-primary">Photo #{idx + 1}</span>
+                                      <span className="text-muted-foreground truncate block">{url}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             
-                            {hasAccess(["fieldwork", "manager"]) ? (
-                              <Button size="sm" onClick={() => handleApproveReturns(fw.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
-                                Approve Returns & Complete Sale
+                            {(currentUser?.role === 'storekeeper' || currentUser?.roles?.includes('storekeeper') || currentUser?.role === 'admin') ? (
+                              <Button size="sm" onClick={() => handleStorekeeperVerify(fw.id)} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold">
+                                Verify Returned Warehouse Assets & Fuel
                               </Button>
                             ) : (
-                              <Badge className="bg-muted text-muted-foreground">Awaiting Technical Manager verification and sign-off...</Badge>
+                              <Badge className="bg-muted text-muted-foreground">Awaiting Storekeeper warehouse return verification...</Badge>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 9. Status: VERIFIED_STOREKEEPER */}
+                        {fw.status === "verified_storekeeper" && (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400 bg-indigo-500/10 p-3 rounded border border-indigo-500/20 text-xs font-semibold">
+                              <CheckCircle2 className="h-4 w-4" />
+                              <span>Storekeeper verified returned warehouse assets. Awaiting Technical Manager (TM) final review & sign-off.</span>
+                            </div>
+
+                            {/* Display 4 Completion Photos if present */}
+                            {Array.isArray((fw as any).payload?.completionPhotos) && (fw as any).payload.completionPhotos.length > 0 && (
+                              <div className="space-y-1.5 p-3 rounded border bg-muted/20">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Verified Site Completion Photos</span>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                  {(fw as any).payload.completionPhotos.map((url: string, idx: number) => (
+                                    <div key={idx} className="p-1 border rounded bg-background text-[10px] truncate">
+                                      <span className="font-semibold block text-primary">Photo #{idx + 1}</span>
+                                      <span className="text-muted-foreground truncate block">{url}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {(currentUser?.role === 'manager' || currentUser?.roles?.includes('manager')) ? (
+                              <Button size="sm" onClick={() => handleApproveReturns(fw.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+                                Review Completion Photos & Sign Off Fieldwork
+                              </Button>
+                            ) : (
+                              <Badge className="bg-muted text-muted-foreground">Awaiting Technical Manager final sign-off...</Badge>
                             )}
                           </div>
                         )}
@@ -1246,7 +1637,7 @@ export default function FieldWorkPage() {
                             <Edit className="h-4 w-4 mr-1" /> Edit
                           </Button>
                         )}
-                        {fw.status === "Approved and ready to go" && currentUser?.username === fw.assignedTo && (
+                        {(fw.status === "Approved and ready to go" || fw.status === "crew_dispatched") && currentUser?.username === fw.assignedTo && (
                           <>
                             <Button size="sm" variant="outline" onClick={() => openReturnForm(fw)}>
                               <RotateCcw className="h-4 w-4 mr-1" /> Add Return Form
@@ -1303,7 +1694,7 @@ export default function FieldWorkPage() {
               fieldWork={returnFormFW}
               onSave={async (form) => {
                 await addReturnForm(returnFormFW.id, form);
-                await handleCompleteJobTTL(returnFormFW.id);
+                await handleCompleteJobTTL(returnFormFW.id, form);
                 setReturnFormOpen(false);
               }}
               onCancel={() => setReturnFormOpen(false)}
@@ -1317,6 +1708,60 @@ export default function FieldWorkPage() {
         onOpenChange={setFileModalOpen}
         proposal={fileModalProposal}
       />
+
+      {/* Printable Executive PDF Template for Fieldwork Page (Only visible on Print) */}
+      <div className="hidden print:block">
+        {filtered.length > 0 && (
+          <ExecutiveDocumentPdfTemplate
+            data={{
+              documentTitle: "SolarFlow Field Work Operations & Asset Release Sheet",
+              subtitle: "Field Engineering & Installation Operations Summary",
+              refNumber: filtered[0].id,
+              date: new Date().toLocaleDateString(),
+              clientSection: {
+                title: "CLIENT & SITE OPERATIONS PROFILE",
+                fields: [
+                  { label: "Client Full Name", value: filtered[0].customerName || "Client Site" },
+                  { label: "Site Location", value: filtered[0].location },
+                  { label: "Solar Pump Model", value: filtered[0].pumpModel || "Solar Pump System" },
+                  { label: "Assigned Team Leader", value: filtered[0].assignedTo || "Technical Team Leader" },
+                  { label: "Scheduled Duration", value: `${filtered[0].startDate} to ${filtered[0].endDate}` },
+                  { label: "Operation Status", value: (filtered[0].status || "IN-PROGRESS").toUpperCase() },
+                ]
+              },
+              secondarySection: {
+                title: "CREW & PER DIEM BUDGET",
+                fields: [
+                  { label: "Assigned Crew Members", value: `${filtered[0].workers?.length || 1} Technicians` },
+                  { label: "Fuel Allocation", value: `${filtered[0].fuelAmount || 0} Liters @ ${filtered[0].fuelPrice || 0} ETB` },
+                  { label: "Warranty Days", value: `${filtered[0].warrantyDays || 365} Days` },
+                  { label: "Completion Date", value: filtered[0].completedDate || "Pending Completion" },
+                ]
+              },
+              tableData: {
+                title: "ASSIGNED WORKERS & CREW MEMBER DETAILS",
+                headers: ["WORKER NAME", "ID", "POSITION", "1 DAY PRICE", "TOTAL PER DIEM"],
+                rows: (filtered[0].workers || []).map((w: any) => [
+                  w.name,
+                  w.id,
+                  w.position,
+                  `${w.perDiem} ETB`,
+                  `${Number(w.perDiem || 0) * (differenceInCalendarDays(parseISO(filtered[0].endDate), parseISO(filtered[0].startDate)) + 1)} ETB`
+                ])
+              },
+              completionPhotos: filtered[0].payload?.completionPhotos || [],
+              financials: {
+                totalFee: totalPerDiemAll,
+                adjustments: 0,
+                totalDue: totalPerDiemAll,
+                payment1: totalPerDiemAll,
+                payment2: 0,
+                balanceDue: 0,
+              }
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -1402,8 +1847,18 @@ type SizingSuitability = "Suitable" | "Oversized" | "Low Capacity" | "Exceeds Li
 
 function PumpSizingSection() {
   const [pumpModels, setPumpModels] = useState<any[]>([]);
-  const [sizingData, setSizingData] = useState({
-    waterSource: "Borehole" as WaterSource,
+  const [sizingData, setSizingData] = useState<{
+    waterSource: WaterSource;
+    purpose: string;
+    dailyWaterNeed: number | "";
+    boreholeDepth: number | "";
+    staticWaterLevel: number | "";
+    tankHeight: number | "";
+    pipeDistance: number | "";
+    pipeSize: string;
+    sunHours: number | "";
+  }>({
+    waterSource: "Borehole",
     purpose: "Irrigation",
     dailyWaterNeed: 15000,
     boreholeDepth: 60,
@@ -1413,8 +1868,9 @@ function PumpSizingSection() {
     pipeSize: '1.5"',
     sunHours: 5,
   });
-  const [results, setResults] = useState<{ pump: any; flowAtHead: number; suitability: SizingSuitability; tdh: number; reqFlow: number }[]>([]);
+  const [results, setResults] = useState<{ pump: any; flowAtHead: number; suitability: SizingSuitability; tdh: number; reqFlow: number; score: number }[]>([]);
   const [summary, setSummary] = useState<{ tdh: number; reqFlowM3h: number; reqFlowLmin: number } | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<string>("ALL");
 
   useEffect(() => {
     const load = async () => {
@@ -1434,8 +1890,8 @@ function PumpSizingSection() {
   }, []);
 
   const runSizing = () => {
-    const tdh = sizingCalcTDH(sizingData.waterSource, sizingData.staticWaterLevel, sizingData.tankHeight, sizingData.pipeDistance, sizingData.pipeSize);
-    const reqFlowM3h = sizingCalcFlow(sizingData.dailyWaterNeed, sizingData.sunHours);
+    const tdh = sizingCalcTDH(sizingData.waterSource, Number(sizingData.staticWaterLevel) || 0, Number(sizingData.tankHeight) || 0, Number(sizingData.pipeDistance) || 0, sizingData.pipeSize);
+    const reqFlowM3h = sizingCalcFlow(Number(sizingData.dailyWaterNeed) || 0, Number(sizingData.sunHours) || 0);
     const reqFlowLmin = Number((reqFlowM3h * 1000 / 60).toFixed(1));
     setSummary({ tdh, reqFlowM3h: Number(reqFlowM3h.toFixed(2)), reqFlowLmin });
 
@@ -1450,15 +1906,57 @@ function PumpSizingSection() {
         else if (flowAtHead >= reqFlowM3h * 1.5) suitability = "Oversized";
         else if (flowAtHead >= reqFlowM3h * 0.8) suitability = "Suitable";
         else suitability = "Low Capacity";
-        return { pump, flowAtHead, suitability, tdh, reqFlow: reqFlowM3h };
+
+        const flowRatio = reqFlowM3h > 0 ? flowAtHead / reqFlowM3h : 0;
+        const watts = parsePowerToWatts(pump.power);
+        
+        let score = 0;
+        if (suitability === "Suitable") {
+          score = 100 - Math.abs(1.0 - flowRatio) * 40 - (watts > 0 ? (watts / 3000) * 10 : 0);
+        } else if (suitability === "Oversized") {
+          score = 70 - Math.abs(1.5 - flowRatio) * 20;
+        } else if (suitability === "Low Capacity") {
+          score = 40 * flowRatio;
+        } else {
+          score = 0;
+        }
+        score = Math.max(0, Math.min(99, Math.round(score)));
+
+        return { pump, flowAtHead, suitability, tdh, reqFlow: reqFlowM3h, score };
       })
       .sort((a, b) => {
         const order: Record<string, number> = { Suitable: 0, Oversized: 1, "Low Capacity": 2, "Exceeds Limit": 3 };
-        return (order[a.suitability] ?? 4) - (order[b.suitability] ?? 4);
+        const rankDiff = (order[a.suitability] ?? 4) - (order[b.suitability] ?? 4);
+        if (rankDiff !== 0) return rankDiff;
+        return b.score - a.score;
       });
+
     setResults(matched);
     if (matched.length === 0) toast.info("No pump models with performance data found.");
   };
+
+  const bestMatch = useMemo(() => {
+    if (!results || results.length === 0) return null;
+    const suitablePumps = results.filter(r => r.suitability === "Suitable");
+    return suitablePumps.length > 0 ? suitablePumps[0] : results[0];
+  }, [results]);
+
+  const brandSummary = useMemo(() => {
+    if (!results || results.length === 0) return {};
+    const map: Record<string, { suitable: number; total: number }> = {};
+    results.forEach(r => {
+      const b = r.pump.brand || "OTHER";
+      if (!map[b]) map[b] = { suitable: 0, total: 0 };
+      map[b].total += 1;
+      if (r.suitability === "Suitable") map[b].suitable += 1;
+    });
+    return map;
+  }, [results]);
+
+  const filteredResults = useMemo(() => {
+    if (selectedBrand === "ALL") return results;
+    return results.filter(r => (r.pump.brand || "").toUpperCase() === selectedBrand.toUpperCase());
+  }, [results, selectedBrand]);
 
   const suitColor = (s: SizingSuitability) => {
     if (s === "Suitable") return "border-green-400 bg-green-50 dark:bg-green-950/20";
@@ -1471,9 +1969,9 @@ function PumpSizingSection() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold font-heading flex items-center gap-2">
-          <Zap className="h-6 w-6 text-primary" /> Pump Sizing Tool
+          <Zap className="h-6 w-6 text-primary" /> Multi-Brand Pump Sizing & AI Match
         </h1>
-        <p className="text-sm text-muted-foreground">Calculate TDH and match suitable pump models</p>
+        <p className="text-sm text-muted-foreground">Calculate TDH, evaluate DIFFUL, REDBUD & other brands, and identify the #1 optimal pump recommendation.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1538,13 +2036,13 @@ function PumpSizingSection() {
             </div>
 
             <Button className="w-full h-11 font-bold" onClick={runSizing}>
-              <Zap className="h-4 w-4 mr-2" /> Match Suitable Pumps
+              <Zap className="h-4 w-4 mr-2" /> Match & Compare All Brands (DIFFUL / REDBUD)
             </Button>
           </CardContent>
         </Card>
 
         <div className="space-y-4">
-          <h3 className="text-xs font-black uppercase tracking-widest text-primary">Recommendations</h3>
+          <h3 className="text-xs font-black uppercase tracking-widest text-primary">Recommendations & Multi-Brand Analysis</h3>
           {summary && (
             <div className="grid grid-cols-3 gap-2 p-3 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20">
               <div className="text-center">
@@ -1562,24 +2060,76 @@ function PumpSizingSection() {
             </div>
           )}
 
-          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-            {results.length > 0 ? (
-              results.map((res) => (
+          {/* AI BEST MATCH HIGHLIGHT CARD */}
+          {bestMatch && (
+            <Card className="border-2 border-emerald-500 bg-gradient-to-br from-emerald-50/50 via-teal-50/30 to-emerald-50/10 dark:from-emerald-950/40 dark:to-teal-950/20 shadow-md">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge className="bg-emerald-600 text-white font-bold text-xs flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> ★ #1 AI BEST MATCH RECOMMENDATION
+                  </Badge>
+                  <Badge variant="outline" className="text-xs font-bold text-emerald-700 dark:text-emerald-300 border-emerald-500">
+                    {bestMatch.score}% Match Score
+                  </Badge>
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-base text-foreground">{bestMatch.pump.model}</h4>
+                  <p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
+                    Brand: <strong>{bestMatch.pump.brand}</strong> · Power: <strong>{bestMatch.pump.power}</strong> · Voltage: <strong>{bestMatch.pump.voltage || 'N/A'}</strong>
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-800/50">
+                  <strong>AI Rationale:</strong> Selected as top pump option for TDH = {bestMatch.tdh}m and Target Flow = {bestMatch.reqFlow.toFixed(2)} m³/h. Delivering <strong>{bestMatch.flowAtHead.toFixed(2)} m³/h</strong> at operating point with optimum power efficiency and high reliability.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* BRAND FILTER PILLS */}
+          {results.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-xs font-bold text-muted-foreground mr-1">Brand Filter:</span>
+              <Badge
+                className={cn("cursor-pointer text-xs font-bold transition-all", selectedBrand === "ALL" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}
+                onClick={() => setSelectedBrand("ALL")}
+              >
+                All Brands ({results.length})
+              </Badge>
+              {Object.entries(brandSummary).map(([brandName, stats]) => (
+                <Badge
+                  key={brandName}
+                  className={cn("cursor-pointer text-xs font-bold transition-all flex items-center gap-1", selectedBrand === brandName ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80")}
+                  onClick={() => setSelectedBrand(brandName)}
+                >
+                  {brandName} ({stats.suitable} suitable / {stats.total})
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+            {filteredResults.length > 0 ? (
+              filteredResults.map((res) => (
                 <div key={res.pump.id} className={cn("rounded-2xl border-2 p-4 transition-all", suitColor(res.suitability))}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-bold text-sm">{res.pump.model}</p>
-                      <p className="text-xs text-muted-foreground">{res.pump.brand} · {res.pump.power}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-sm">{res.pump.model}</p>
+                        <Badge variant="secondary" className="text-[10px] font-bold uppercase">{res.pump.brand}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{res.pump.firstCategory || res.pump.category || 'Pump'} · {res.pump.power}</p>
                     </div>
-                    <Badge variant="outline" className={cn(
-                      "text-xs font-bold",
-                      res.suitability === "Suitable" ? "bg-green-100 text-green-700" :
-                      res.suitability === "Oversized" ? "bg-yellow-100 text-yellow-700" :
-                      res.suitability === "Low Capacity" ? "bg-orange-100 text-orange-700" :
-                      "bg-red-100 text-red-700"
-                    )}>
-                      {res.suitability}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={cn(
+                        "text-xs font-bold",
+                        res.suitability === "Suitable" ? "bg-green-100 text-green-700" :
+                        res.suitability === "Oversized" ? "bg-yellow-100 text-yellow-700" :
+                        res.suitability === "Low Capacity" ? "bg-orange-100 text-orange-700" :
+                        "bg-red-100 text-red-700"
+                      )}>
+                        {res.suitability}
+                      </Badge>
+                    </div>
                   </div>
                   <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                     <div><span className="text-muted-foreground">Flow @ TDH:</span> <strong>{res.flowAtHead.toFixed(2)} m³/h</strong></div>
@@ -1590,7 +2140,7 @@ function PumpSizingSection() {
               ))
             ) : (
               <div className="text-center py-12 text-sm text-muted-foreground border-2 border-dashed rounded-lg">
-                Enter requirements and click "Match Suitable Pumps" to see results.
+                Enter requirements and click "Match & Compare All Brands" to see results.
               </div>
             )}
           </div>
@@ -1601,6 +2151,26 @@ function PumpSizingSection() {
 }
 
 // ─── RESEARCH SECTION ───
+const parsePowerToWatts = (powerStr: string): number => {
+  if (!powerStr) return 0;
+  const str = powerStr.toLowerCase().trim();
+  
+  if (str.includes("hp")) {
+    const num = parseFloat(str.replace("hp", ""));
+    return Number.isNaN(num) ? 0 : num * 746;
+  }
+  if (str.includes("kw")) {
+    const num = parseFloat(str.replace("kw", ""));
+    return Number.isNaN(num) ? 0 : num * 1000;
+  }
+  if (str.includes("w")) {
+    const num = parseFloat(str.replace("w", ""));
+    return Number.isNaN(num) ? 0 : num;
+  }
+  const num = parseFloat(str);
+  return Number.isNaN(num) ? 0 : num;
+};
+
 function ResearchSection() {
   const [pumps, setPumps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1632,6 +2202,46 @@ function ResearchSection() {
     return !q || p.model?.toLowerCase().includes(q) || p.brand?.toLowerCase().includes(q) || p.firstCategory?.toLowerCase().includes(q) || p.power?.toLowerCase().includes(q);
   });
 
+  const groupedPumps = useMemo(() => {
+    const brandMap: Record<string, any[]> = {};
+    filtered.forEach((pump) => {
+      const brand = (pump.brand || "Other Brands").trim().toUpperCase();
+      if (!brandMap[brand]) {
+        brandMap[brand] = [];
+      }
+      brandMap[brand].push(pump);
+    });
+
+    const result: Record<string, Record<string, any[]>> = {};
+    Object.keys(brandMap).sort().forEach((brand) => {
+      const pumpsInBrand = brandMap[brand];
+      const capacityMap: Record<string, any[]> = {};
+      
+      pumpsInBrand.forEach((pump) => {
+        const capacity = (pump.power || "Standard Capacity").trim();
+        if (!capacityMap[capacity]) {
+          capacityMap[capacity] = [];
+        }
+        capacityMap[capacity].push(pump);
+      });
+
+      const sortedCapacityMap: Record<string, any[]> = {};
+      Object.keys(capacityMap)
+        .sort((a, b) => {
+          if (a === "Standard Capacity") return 1;
+          if (b === "Standard Capacity") return -1;
+          return parsePowerToWatts(a) - parsePowerToWatts(b);
+        })
+        .forEach((cap) => {
+          sortedCapacityMap[cap] = capacityMap[cap];
+        });
+
+      result[brand] = sortedCapacityMap;
+    });
+
+    return result;
+  }, [filtered]);
+
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -1645,9 +2255,9 @@ function ResearchSection() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold font-heading flex items-center gap-2">
-            <FlaskConical className="h-6 w-6 text-primary" /> Pump Research
+            <FlaskConical className="h-6 w-6 text-primary" /> Pump Research & NASA Solar Exploration
           </h1>
-          <p className="text-sm text-muted-foreground">Browse and compare all pump models ({pumps.length} products)</p>
+          <p className="text-sm text-muted-foreground">Browse pump models ({pumps.length} products) and query NASA satellite solar radiation</p>
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1655,74 +2265,102 @@ function ResearchSection() {
         </div>
       </div>
 
+      {/* Live NASA POWER Satellite Solar Radiation Explorer Widget */}
+      <NasaSolarResearchWidget />
+
       {filtered.length === 0 ? (
         <div className="text-center py-12 text-sm text-muted-foreground border-2 border-dashed rounded-lg">
           No pump models match your search.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((pump) => {
-            const isExpanded = expandedId === pump.id;
-            const maxHead = pump.performanceData.length > 0 ? Math.max(...pump.performanceData.map((d: any) => d.head)) : 0;
-            const maxFlow = pump.performanceData.length > 0 ? Math.max(...pump.performanceData.map((d: any) => d.flow)) : 0;
-            return (
-              <Card key={pump.id} className={cn("transition-all cursor-pointer hover:shadow-lg", isExpanded && "col-span-1 md:col-span-2 lg:col-span-3")}>
-                <CardContent className="pt-5">
-                  <div className="flex items-start justify-between" onClick={() => setExpandedId(isExpanded ? null : pump.id)}>
-                    <div>
-                      <p className="font-bold text-base">{pump.model}</p>
-                      <p className="text-xs text-muted-foreground">{pump.brand} · {pump.firstCategory}</p>
-                      <div className="flex gap-2 mt-2">
-                        {pump.power && <Badge variant="outline" className="text-[10px]"><Zap className="h-3 w-3 mr-1" />{pump.power}</Badge>}
-                        {pump.voltage && <Badge variant="outline" className="text-[10px]"><Sun className="h-3 w-3 mr-1" />{pump.voltage}</Badge>}
-                      </div>
-                    </div>
-                    <div className="text-right text-xs text-muted-foreground">
-                      {maxHead > 0 && <p>Max Head: <strong>{maxHead}m</strong></p>}
-                      {maxFlow > 0 && <p>Max Flow: <strong>{maxFlow} m³/h</strong></p>}
+        <div className="space-y-8">
+          {Object.entries(groupedPumps).map(([brandName, capacities]) => (
+            <div key={brandName} className="space-y-6 border border-slate-100 rounded-2xl p-6 bg-slate-50/20 shadow-sm">
+              <div className="flex items-center gap-2 border-b pb-2">
+                <Badge className="bg-primary/10 text-primary hover:bg-primary/20 text-xs px-2.5 py-1 font-bold">
+                  {brandName} Brand
+                </Badge>
+                <span className="text-xs text-muted-foreground font-medium">
+                  ({Object.values(capacities).reduce((acc, curr) => acc + curr.length, 0)} models)
+                </span>
+              </div>
+
+              <div className="space-y-6">
+                {Object.entries(capacities).map(([capacityName, pumpList]) => (
+                  <div key={capacityName} className="space-y-3">
+                    <h3 className="text-xs font-bold uppercase text-muted-foreground tracking-wider flex items-center gap-1.5 pl-1">
+                      <Zap className="h-3.5 w-3.5 text-amber-500" />
+                      Capacity: {capacityName} ({pumpList.length} items)
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {pumpList.map((pump) => {
+                        const isExpanded = expandedId === pump.id;
+                        const maxHead = pump.performanceData.length > 0 ? Math.max(...pump.performanceData.map((d: any) => d.head)) : 0;
+                        const maxFlow = pump.performanceData.length > 0 ? Math.max(...pump.performanceData.map((d: any) => d.flow)) : 0;
+                        return (
+                          <Card key={pump.id} className={cn("transition-all cursor-pointer hover:shadow-lg", isExpanded && "col-span-1 md:col-span-2 lg:col-span-3")}>
+                            <CardContent className="pt-5">
+                              <div className="flex items-start justify-between" onClick={() => setExpandedId(isExpanded ? null : pump.id)}>
+                                <div>
+                                  <p className="font-bold text-base">{pump.model}</p>
+                                  <p className="text-xs text-muted-foreground">{pump.brand} · {pump.firstCategory}</p>
+                                  <div className="flex gap-2 mt-2">
+                                    {pump.power && <Badge variant="outline" className="text-[10px]"><Zap className="h-3 w-3 mr-1" />{pump.power}</Badge>}
+                                    {pump.voltage && <Badge variant="outline" className="text-[10px]"><Sun className="h-3 w-3 mr-1" />{pump.voltage}</Badge>}
+                                  </div>
+                                </div>
+                                <div className="text-right text-xs text-muted-foreground">
+                                  {maxHead > 0 && <p>Max Head: <strong>{maxHead}m</strong></p>}
+                                  {maxFlow > 0 && <p>Max Flow: <strong>{maxFlow} m³/h</strong></p>}
+                                </div>
+                              </div>
+
+                              {isExpanded && (
+                                <div className="mt-4 space-y-4 border-t pt-4 animate-in fade-in slide-in-from-top-1">
+                                  {pump.description && <p className="text-sm text-muted-foreground">{pump.description}</p>}
+
+                                  {pump.performanceData.length > 0 && (
+                                    <div>
+                                      <p className="text-xs font-bold uppercase text-muted-foreground mb-2">Performance Curve</p>
+                                      <div className="h-48">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                          <LineChart data={[...pump.performanceData].sort((a: any, b: any) => a.flow - b.flow)}>
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis dataKey="flow" label={{ value: "Flow (m³/h)", position: "insideBottom", offset: -5, fontSize: 10 }} tick={{ fontSize: 10 }} />
+                                            <YAxis label={{ value: "Head (m)", angle: -90, position: "insideLeft", fontSize: 10 }} tick={{ fontSize: 10 }} />
+                                            <Tooltip />
+                                            <Line type="monotone" dataKey="head" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
+                                          </LineChart>
+                                        </ResponsiveContainer>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {pump.equipment.length > 0 && (
+                                    <div>
+                                      <p className="text-xs font-bold uppercase text-muted-foreground mb-2">Kit Equipment ({pump.equipment.length} items)</p>
+                                      <div className="grid grid-cols-2 gap-1">
+                                        {pump.equipment.map((eq: any, i: number) => (
+                                          <div key={i} className="text-xs p-2 bg-muted rounded flex justify-between">
+                                            <span>{eq.name}</span>
+                                            <span className="font-mono text-muted-foreground">×{eq.quantity}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
                   </div>
-
-                  {isExpanded && (
-                    <div className="mt-4 space-y-4 border-t pt-4 animate-in fade-in slide-in-from-top-1">
-                      {pump.description && <p className="text-sm text-muted-foreground">{pump.description}</p>}
-
-                      {pump.performanceData.length > 0 && (
-                        <div>
-                          <p className="text-xs font-bold uppercase text-muted-foreground mb-2">Performance Curve</p>
-                          <div className="h-48">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <LineChart data={[...pump.performanceData].sort((a: any, b: any) => a.flow - b.flow)}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="flow" label={{ value: "Flow (m³/h)", position: "insideBottom", offset: -5, fontSize: 10 }} tick={{ fontSize: 10 }} />
-                                <YAxis label={{ value: "Head (m)", angle: -90, position: "insideLeft", fontSize: 10 }} tick={{ fontSize: 10 }} />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="head" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
-                              </LineChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </div>
-                      )}
-
-                      {pump.equipment.length > 0 && (
-                        <div>
-                          <p className="text-xs font-bold uppercase text-muted-foreground mb-2">Kit Equipment ({pump.equipment.length} items)</p>
-                          <div className="grid grid-cols-2 gap-1">
-                            {pump.equipment.map((eq: any, i: number) => (
-                              <div key={i} className="text-xs p-2 bg-muted rounded flex justify-between">
-                                <span>{eq.name}</span>
-                                <span className="font-mono text-muted-foreground">×{eq.quantity}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -1737,17 +2375,62 @@ function ReturnFormComponent({
   onCancel,
 }: {
   fieldWork: FieldWork;
-  onSave: (form: ReturnForm) => void | Promise<void>;
+  onSave: (form: ReturnForm & { completionPhotos?: string[] }) => void | Promise<void>;
   onCancel: () => void;
 }) {
   const [workerName, setWorkerName] = useState("");
   const [date, setDate] = useState<Date>(new Date());
-  const [materials, setMaterials] = useState<{ productId?: string; name: string; quantity: number; condition: string }[]>([
+  const [materials, setMaterials] = useState<{ productId?: string; name: string; quantity: number | ""; condition: string }[]>([
     { name: "", quantity: 1, condition: "Good" },
   ]);
   const [comments, setComments] = useState("");
   const [otherNotes, setOtherNotes] = useState("");
-  
+  const [photoInverter, setPhotoInverter] = useState("");
+  const [photoPanels, setPhotoPanels] = useState("");
+  const [photoPump, setPhotoPump] = useState("");
+  const [photoSite, setPhotoSite] = useState("");
+
+  const [uploadingInverter, setUploadingInverter] = useState(false);
+  const [uploadingPanels, setUploadingPanels] = useState(false);
+  const [uploadingPump, setUploadingPump] = useState(false);
+  const [uploadingSite, setUploadingSite] = useState(false);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    const formData = new FormData();
+    formData.append('photos', file);
+
+    if (field === 'inverter') setUploadingInverter(true);
+    if (field === 'panels') setUploadingPanels(true);
+    if (field === 'pump') setUploadingPump(true);
+    if (field === 'site') setUploadingSite(true);
+
+    try {
+      const res = await apiClient.post('/fieldwork/upload-photos', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const url = res.data.urls?.[0];
+      if (url) {
+        if (field === 'inverter') setPhotoInverter(url);
+        if (field === 'panels') setPhotoPanels(url);
+        if (field === 'pump') setPhotoPump(url);
+        if (field === 'site') setPhotoSite(url);
+        toast.success("Photo uploaded successfully!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to upload photo");
+    } finally {
+      if (field === 'inverter') setUploadingInverter(false);
+      if (field === 'panels') setUploadingPanels(false);
+      if (field === 'pump') setUploadingPump(false);
+      if (field === 'site') setUploadingSite(false);
+    }
+  };
+
   const [checkedOutTools, setCheckedOutTools] = useState<any[]>([]);
   const [toolReturns, setToolReturns] = useState<Record<string, { condition: string; notes: string }>>({});
 
@@ -1823,15 +2506,18 @@ function ReturnFormComponent({
       }
     }
 
+    const photos = [photoInverter, photoPanels, photoPump, photoSite].filter(Boolean);
+
     onSave({
       id: `RF${Date.now().toString().slice(-6)}`,
       fieldWorkId: fieldWork.id,
       workerName,
       date: format(date, "yyyy-MM-dd"),
-      returnedMaterials: validMaterials,
+      returnedMaterials: validMaterials.map(m => ({ ...m, quantity: Number(m.quantity) || 0 })),
       comments,
       otherNotes,
       status: "pending",
+      completionPhotos: photos,
     });
   };
 
@@ -1970,6 +2656,210 @@ function ReturnFormComponent({
         </div>
       )}
 
+      {/* 4 Completion Site Photos */}
+      <div className="space-y-2 border p-3 rounded-lg bg-emerald-500/5 border-emerald-500/20">
+        <Label className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1 uppercase tracking-wider">
+          <Camera className="h-4 w-4" /> Mandatory Site Completion Photos (4 Proof Photos)
+        </Label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          {/* Slot 1: Inverter */}
+          <div className="space-y-1 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+            <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">1. Inverter & Control Box</span>
+            {photoInverter ? (
+              <div className="relative h-20 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
+                <img src={getFullImgUrl(photoInverter)} alt="Inverter" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setPhotoInverter("")}
+                  className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-1 hover:bg-rose-700 shadow-md transition-colors"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="photo-inverter-upload"
+                  className="hidden"
+                  onChange={(e) => handlePhotoUpload(e, 'inverter')}
+                  disabled={uploadingInverter}
+                />
+                <label
+                  htmlFor="photo-inverter-upload"
+                  className={cn(
+                    "flex flex-col items-center justify-center h-20 border-2 border-dashed rounded-lg cursor-pointer transition-all duration-200",
+                    uploadingInverter 
+                      ? "bg-slate-100 border-indigo-300 dark:bg-slate-800/40" 
+                      : "border-slate-300 dark:border-slate-700 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/10 hover:border-indigo-500"
+                  )}
+                >
+                  {uploadingInverter ? (
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className="h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-[9px] font-semibold text-indigo-600">Uploading...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1">
+                      <Camera className="h-4 w-4 text-slate-400" />
+                      <span className="text-[9px] font-semibold text-slate-500">Upload Photo</span>
+                    </div>
+                  )}
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Slot 2: Panels */}
+          <div className="space-y-1 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+            <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">2. Solar Panel Array</span>
+            {photoPanels ? (
+              <div className="relative h-20 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
+                <img src={getFullImgUrl(photoPanels)} alt="Panels" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setPhotoPanels("")}
+                  className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-1 hover:bg-rose-700 shadow-md transition-colors"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="photo-panels-upload"
+                  className="hidden"
+                  onChange={(e) => handlePhotoUpload(e, 'panels')}
+                  disabled={uploadingPanels}
+                />
+                <label
+                  htmlFor="photo-panels-upload"
+                  className={cn(
+                    "flex flex-col items-center justify-center h-20 border-2 border-dashed rounded-lg cursor-pointer transition-all duration-200",
+                    uploadingPanels 
+                      ? "bg-slate-100 border-indigo-300 dark:bg-slate-800/40" 
+                      : "border-slate-300 dark:border-slate-700 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/10 hover:border-indigo-500"
+                  )}
+                >
+                  {uploadingPanels ? (
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className="h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-[9px] font-semibold text-indigo-600">Uploading...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1">
+                      <Camera className="h-4 w-4 text-slate-400" />
+                      <span className="text-[9px] font-semibold text-slate-500">Upload Photo</span>
+                    </div>
+                  )}
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Slot 3: Pump */}
+          <div className="space-y-1 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+            <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">3. Pump & Well Head</span>
+            {photoPump ? (
+              <div className="relative h-20 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
+                <img src={getFullImgUrl(photoPump)} alt="Pump" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setPhotoPump("")}
+                  className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-1 hover:bg-rose-700 shadow-md transition-colors"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="photo-pump-upload"
+                  className="hidden"
+                  onChange={(e) => handlePhotoUpload(e, 'pump')}
+                  disabled={uploadingPump}
+                />
+                <label
+                  htmlFor="photo-pump-upload"
+                  className={cn(
+                    "flex flex-col items-center justify-center h-20 border-2 border-dashed rounded-lg cursor-pointer transition-all duration-200",
+                    uploadingPump 
+                      ? "bg-slate-100 border-indigo-300 dark:bg-slate-800/40" 
+                      : "border-slate-300 dark:border-slate-700 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/10 hover:border-indigo-500"
+                  )}
+                >
+                  {uploadingPump ? (
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className="h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-[9px] font-semibold text-indigo-600">Uploading...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1">
+                      <Camera className="h-4 w-4 text-slate-400" />
+                      <span className="text-[9px] font-semibold text-slate-500">Upload Photo</span>
+                    </div>
+                  )}
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Slot 4: Site */}
+          <div className="space-y-1 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+            <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider">4. Overall Installed Site</span>
+            {photoSite ? (
+              <div className="relative h-20 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
+                <img src={getFullImgUrl(photoSite)} alt="Site" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setPhotoSite("")}
+                  className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-1 hover:bg-rose-700 shadow-md transition-colors"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="photo-site-upload"
+                  className="hidden"
+                  onChange={(e) => handlePhotoUpload(e, 'site')}
+                  disabled={uploadingSite}
+                />
+                <label
+                  htmlFor="photo-site-upload"
+                  className={cn(
+                    "flex flex-col items-center justify-center h-20 border-2 border-dashed rounded-lg cursor-pointer transition-all duration-200",
+                    uploadingSite 
+                      ? "bg-slate-100 border-indigo-300 dark:bg-slate-800/40" 
+                      : "border-slate-300 dark:border-slate-700 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/10 hover:border-indigo-500"
+                  )}
+                >
+                  {uploadingSite ? (
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className="h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-[9px] font-semibold text-indigo-600">Uploading...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1">
+                      <Camera className="h-4 w-4 text-slate-400" />
+                      <span className="text-[9px] font-semibold text-slate-500">Upload Photo</span>
+                    </div>
+                  )}
+                </label>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-1.5">
         <Label>Comments</Label>
         <Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="Work summary, observations..." />
@@ -2006,6 +2896,10 @@ function FieldWorkForm({
       ? (initialData.workers as WorkerWithPosition[])
       : [{ name: "", id: "", position: "", behaviorRating: 3, perDiem: "", payment: "" }]
   );
+  const [customerName, setCustomerName] = useState(initialData?.customerName || "");
+  const [customerPhone, setCustomerPhone] = useState((initialData?.payload as any)?.phone || "");
+  const [dailyWaterNeed, setDailyWaterNeed] = useState((initialData?.payload as any)?.dailyWaterNeed || "");
+  const [verticalLift, setVerticalLift] = useState((initialData?.payload as any)?.verticalLift || "");
   const [pumpModel, setPumpModel] = useState(initialData?.pumpModel || "");
   const [location, setLocation] = useState(initialData?.location || "");
   const [notes, setNotes] = useState(initialData?.notes || "");
@@ -2032,7 +2926,7 @@ function FieldWorkForm({
   const updateWorker = (
     index: number,
     field: keyof WorkerWithPosition,
-    value: string | number
+    value: string | number | ""
   ) => {
     setWorkers(workers.map((w, i) => (i === index ? { ...w, [field]: value } : w)));
   };
@@ -2047,6 +2941,7 @@ function FieldWorkForm({
     const selectedSale = completedSalePumpOptions.find((item) => item.saleId === saleId);
     if (!selectedSale) return;
 
+    setCustomerName(selectedSale.customerName || customerName);
     setPumpModel(selectedSale.pumpName);
     setLocation(selectedSale.location);
 
@@ -2081,18 +2976,18 @@ function FieldWorkForm({
       return;
     }
 
-    if (!selectedSaleId && !initialData) {
-      toast.error("Select completed sale pump product");
+    if (!selectedSaleId && !customerName.trim() && !initialData) {
+      toast.error("Enter client name or select completed sale pump product");
       return;
     }
 
-    if (equipment.length === 0) {
-      toast.error("No equipment loaded from completed sale");
-      return;
-    }
+    const finalEquipment = equipment.length > 0 
+      ? equipment 
+      : [{ name: pumpModel || "Solar Pump System Kit", quantityTaken: 1, quantityReturned: 0, quantityUsed: 1, unit: "Set" }];
 
     onSave({
       id: initialData?.id || `FW${Date.now().toString().slice(-6)}`,
+      customerName: customerName || "Client Site",
       startDate: format(startDate, "yyyy-MM-dd"),
       endDate: format(endDate, "yyyy-MM-dd"),
       workers: validWorkers.map((w) => ({
@@ -2100,24 +2995,95 @@ function FieldWorkForm({
         behaviorRating: 3,
         payment: "",
       })) as any,
-      pumpModel: pumpModel || "N/A",
-      location,
-      status: initialData?.status || "in-progress",
-      equipment,
+      pumpModel: pumpModel || "Solar Pump System",
+      location: location || "N/A",
+      status: initialData?.status || "planning",
+      equipment: finalEquipment,
       notes,
       saleId: selectedSaleId || initialData?.saleId || null,
       fuelAmount: fuelAmount === "" ? undefined : Number(fuelAmount),
       fuelPrice: fuelPrice === "" ? undefined : Number(fuelPrice),
+      payload: {
+        phone: customerPhone,
+        dailyWaterNeed,
+        verticalLift,
+        selectedPumpModel: pumpModel,
+      } as any
     });
   };
 
   return (
     <div className="space-y-5">
+      {/* Client & Site Details Section */}
+      <Card className="p-4 border bg-amber-500/5 border-amber-500/20 space-y-3">
+        <h4 className="font-bold text-xs uppercase tracking-wider text-amber-700 dark:text-amber-300 flex items-center gap-1.5 border-b pb-1">
+          <Users className="h-4 w-4 text-amber-500" /> Client & Installation Site Details
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Client / Customer Full Name</Label>
+            <Input
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder="e.g. Abebe Bikila"
+              className="h-8 text-xs bg-background"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Client Contact Phone</Label>
+            <Input
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value)}
+              placeholder="e.g. +251 911 234 567"
+              className="h-8 text-xs bg-background"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Site Location / City / Region</Label>
+            <Input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="e.g. Gondar, Amhara"
+              className="h-8 text-xs bg-background"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Solar Pump Model</Label>
+            <Input
+              value={pumpModel}
+              onChange={(e) => setPumpModel(e.target.value)}
+              placeholder="e.g. SP-1000 or P3000-HD"
+              className="h-8 text-xs bg-background"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Daily Water Requirement (m³/day)</Label>
+            <Input
+              type="number"
+              value={dailyWaterNeed}
+              onChange={(e) => setDailyWaterNeed(e.target.value)}
+              placeholder="e.g. 50"
+              className="h-8 text-xs bg-background"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Total Vertical Head Lift (Meters)</Label>
+            <Input
+              type="number"
+              value={verticalLift}
+              onChange={(e) => setVerticalLift(e.target.value)}
+              placeholder="e.g. 120"
+              className="h-8 text-xs bg-background"
+            />
+          </div>
+        </div>
+      </Card>
+
       <div className="space-y-1.5">
-        <Label>Completed Sale Pump Product</Label>
+        <Label>Or Select Completed Sale Pump Product (Auto-Fill)</Label>
         <Select value={selectedSaleId} onValueChange={handleCompletedSaleSelect} disabled={!!initialData}>
           <SelectTrigger>
-            <SelectValue placeholder="Select completed sale pump product" />
+            <SelectValue placeholder="Select completed sale pump product..." />
           </SelectTrigger>
           <SelectContent>
             {completedSalePumpOptions.length > 0 ? (
@@ -2193,12 +3159,12 @@ function FieldWorkForm({
 
               <div className="space-y-1">
                 <Label className="text-xs">Total Per Diem</Label>
-                <Input value={`${(w.perDiem * totalDays).toLocaleString()} ETB`} readOnly />
+                <Input value={`${(Number(w.perDiem) * totalDays).toLocaleString()} ETB`} readOnly />
               </div>
 
               <div className="sm:col-span-2 lg:col-span-5 flex items-end justify-between">
                 <p className="text-xs text-muted-foreground">
-                  {totalDays} day(s) × {w.perDiem.toLocaleString()} ETB = {(w.perDiem * totalDays).toLocaleString()} ETB
+                  {totalDays} day(s) × {Number(w.perDiem).toLocaleString()} ETB = {(Number(w.perDiem) * totalDays).toLocaleString()} ETB
                 </p>
 
                 <Button

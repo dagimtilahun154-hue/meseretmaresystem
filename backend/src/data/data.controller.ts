@@ -8,22 +8,22 @@ export class DataController {
   constructor(private readonly data: DataService) {}
 
   @Get("products") products() { return this.data.products(); }
-  @Post("products") saveProduct(@Body() body: any) { return this.data.saveProduct(body); }
-  @Put("products/:id") updateProduct(@Param("id") id: string, @Body() body: any) { return this.data.updateProduct(id, body); }
-  @Delete("products/:id") deleteProduct(@Param("id") id: string) { return this.data.deleteProduct(id); }
+  @Post("products") @Roles('storekeeper') saveProduct(@Body() body: any) { return this.data.saveProduct(body); }
+  @Put("products/:id") @Roles('storekeeper') updateProduct(@Param("id") id: string, @Body() body: any) { return this.data.updateProduct(id, body); }
+  @Delete("products/:id") @Roles('storekeeper') deleteProduct(@Param("id") id: string) { return this.data.deleteProduct(id); }
 
   @Get("pumps") pumpProducts() { return this.data.pumpProducts(); }
   @Get("pump-categories") pumpCategories() { return this.data.pumpCategories(); }
-  @Post("pump-categories") savePumpCategory(@Body() body: any) { return this.data.savePumpCategory(body); }
-  @Put("pump-categories/:id") updatePumpCategory(@Param("id") id: string, @Body() body: any) { return this.data.updatePumpCategory(id, body); }
-  @Delete("pump-categories/:id") deletePumpCategory(@Param("id") id: string) { return this.data.deletePumpCategory(id); }
+  @Post("pump-categories") @Roles('storekeeper') savePumpCategory(@Body() body: any) { return this.data.savePumpCategory(body); }
+  @Put("pump-categories/:id") @Roles('storekeeper') updatePumpCategory(@Param("id") id: string, @Body() body: any) { return this.data.updatePumpCategory(id, body); }
+  @Delete("pump-categories/:id") @Roles('storekeeper') deletePumpCategory(@Param("id") id: string) { return this.data.deletePumpCategory(id); }
   @Get("pumps/:id") pumpProduct(@Param("id") id: string) { return this.data.pumpProduct(id); }
-  @Post("pumps") savePumpProduct(@Body() body: any) { return this.data.savePumpProduct(body); }
-  @Put("pumps/:id") updatePumpProduct(@Param("id") id: string, @Body() body: any) { return this.data.updatePumpProduct(id, body); }
-  @Delete("pumps/:id") deletePumpProduct(@Param("id") id: string) { return this.data.deletePumpProduct(id); }
+  @Post("pumps") @Roles('storekeeper') savePumpProduct(@Body() body: any) { return this.data.savePumpProduct(body); }
+  @Put("pumps/:id") @Roles('storekeeper') updatePumpProduct(@Param("id") id: string, @Body() body: any) { return this.data.updatePumpProduct(id, body); }
+  @Delete("pumps/:id") @Roles('storekeeper') deletePumpProduct(@Param("id") id: string) { return this.data.deletePumpProduct(id); }
 
   @Get("sales") sales() { return this.data.sales(); }
-  @Post("sales") saveSale(@Body() body: any) { return this.data.saveSale(body); }
+  @Post("sales") @Roles('sales', 'storekeeper', 'finance') saveSale(@Body() body: any) { return this.data.saveSale(body); }
 
   @Get("fieldwork") fieldwork() { return this.data.fieldwork(); }
   @Post("fieldwork") saveFieldwork(@Body() body: any) { return this.data.saveFieldwork(body); }
@@ -31,52 +31,54 @@ export class DataController {
   @Delete("fieldwork/:id") deleteFieldwork(@Param("id") id: string) { return this.data.deleteFieldwork(id); }
 
   @Get("customers") customers() { return this.data.customers(); }
+  @Get("customers/:id/360") getCustomer360(@Param("id") id: string) { return this.data.getCustomer360(id); }
+  @Post("customers/:id/notes") addCustomerNote(@Param("id") id: string, @Req() req: any, @Body() body: { note: string }) { return this.data.addCustomerNote(id, req.user.id, body.note); }
   @Post("customers") saveCustomer(@Body() body: any) { return this.data.saveCustomer(body); }
   @Delete("customers/:id") deleteCustomer(@Param("id") id: string) { return this.data.deleteCustomer(id); }
   @Get("vendors") vendors() { return this.data.vendors(); }
   @Post("vendors") saveVendor(@Body() body: any) { return this.data.saveVendor(body); }
   @Delete("vendors/:id") deleteVendor(@Param("id") id: string) { return this.data.deleteVendor(id); }
   @Get("accounts")
-  @Roles('manager', 'finance')
+  @Roles('finance')
   accounts() { return this.data.accounts(); }
   @Post("accounts")
-  @Roles('manager', 'finance')
+  @Roles('finance')
   saveAccount(@Body() body: any) { return this.data.saveAccount(body); }
   @Delete("accounts/:id")
-  @Roles('manager', 'finance')
+  @Roles('finance')
   deleteAccount(@Param("id") id: string) { return this.data.deleteAccount(id); }
   @Get("invoices")
-  @Roles('manager', 'finance')
+  @Roles('finance')
   invoices() { return this.data.invoices(); }
   @Post("invoices")
-  @Roles('manager', 'finance')
+  @Roles('finance')
   saveInvoice(@Body() body: any) { return this.data.saveInvoice(body); }
   @Get("bills")
-  @Roles('manager', 'finance')
+  @Roles('finance')
   bills() { return this.data.bills(); }
   @Post("bills")
-  @Roles('manager', 'finance')
+  @Roles('finance')
   saveBill(@Body() body: any) { return this.data.saveBill(body); }
   @Get("payments")
-  @Roles('manager', 'finance')
+  @Roles('finance')
   payments() { return this.data.payments(); }
   @Post("payments")
-  @Roles('manager', 'finance')
+  @Roles('finance')
   savePayment(@Body() body: any) { return this.data.savePayment(body); }
   @Get("expenses")
-  @Roles('manager', 'finance')
+  @Roles('finance')
   expenses() { return this.data.expenses(); }
   @Post("expenses")
-  @Roles('manager', 'finance')
+  @Roles('finance')
   saveExpense(@Body() body: any) { return this.data.saveExpense(body); }
   @Delete("expenses/:id")
-  @Roles('manager', 'finance')
+  @Roles('finance')
   deleteExpense(@Param("id") id: string) { return this.data.deleteExpense(id); }
   @Get("journal")
-  @Roles('manager', 'finance')
+  @Roles('finance')
   journal() { return this.data.journal(); }
   @Post("journal")
-  @Roles('manager', 'finance')
+  @Roles('finance')
   saveJournal(@Body() body: any) { return this.data.saveJournal(body); }
 
   @Get("hr/departments") departments() { return this.data.departments(); }
@@ -94,10 +96,10 @@ export class DataController {
   @Post("inventory-requests") saveInventoryRequest(@Body() body: any) { return this.data.saveInventoryRequest(body); }
 
   @Get("finance-center/:type")
-  @Roles('manager', 'finance')
+  @Roles('finance', 'manager')
   financeCenter(@Param("type") type: string) { return this.data.financeCenter(type); }
   @Post("finance-center/:type")
-  @Roles('manager', 'finance')
+  @Roles('finance', 'manager')
   saveFinanceCenter(@Param("type") type: string, @Body() body: any) { return this.data.saveFinanceCenter(type, body); }
 
   @Get("peachtree/imports") peachtreeImports(@Query() query: any) { return this.data.peachtreeImports(query); }
@@ -136,5 +138,15 @@ export class DataController {
   @Post("eod-reports")
   createEodReport(@Req() req: any, @Body() body: any) {
     return this.data.createEodReport(req.user.id, body);
+  }
+
+  @Post("eod-reports/:id/forward")
+  forwardEodReportToGm(@Param("id") id: string, @Req() req: any, @Body() body: { summaryNote: string }) {
+    return this.data.forwardEodReportToGm(id, req.user.id, body.summaryNote);
+  }
+
+  @Post("eod-reports/:id/comments")
+  addEodComment(@Param("id") id: string, @Req() req: any, @Body() body: { comment: string }) {
+    return this.data.addEodComment(id, req.user.id, body.comment);
   }
 }

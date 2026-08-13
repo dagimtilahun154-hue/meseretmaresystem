@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "status": "draft",
+  "items": [
+    {
+      "role": "manager",
+      "label": "General Manager",
+      "department": "GENERAL_MANAGEMENT",
+      "reporting_to": null,
+      "description": "Full root access to all system modules."
+    },
+    {
+      "role": "fieldwork",
+      "label": "Technical Manager",
+      "department": "TECHNICAL",
+      "reporting_to": "manager",
+      "description": "Manages field works, pump catalog, sizing proposals, and technical workflows."
+    },
+    {
+      "role": "finance",
+      "label": "Finance Admin",
+      "department": "FINANCE",
+      "reporting_to": "manager",
+      "description": "Directs account ledgers, banking, and payment reviews."
+    },
+    {
+      "role": "storekeeper",
+      "label": "Stock Manager",
+      "department": "INVENTORY",
+      "reporting_to": "manager",
+      "description": "Directs storage and inventory levels."
+    },
+    {
+      "role": "attendance",
+      "label": "Attendance Clerk",
+      "department": "HR",
+      "reporting_to": "manager",
+      "description": "Manages employee biometrics, check-ins, and attendance reporting."
+    }
+  ],
+  "updated_at": "2026-08-03T12:19:59.846213+00:00"
+}

@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "status": "draft",
+  "items": [
+    {
+      "id": "sizing_approval",
+      "name": "AI Sizing & Proposal Approval Workflow",
+      "description": "Steps to turn raw field inputs into an approved, paid job via FastAPI and Groq.",
+      "steps": [
+        "Operator submits coordinates + daily water needs",
+        "FastAPI queries NASA solar database & manufacturer curves",
+        "Llama 3 sizing recommendation generated as proposal draft (PENDING_TM)",
+        "Technical Manager reviews/verifies proposal (CHECKED)",
+        "General Manager approves feasibility (GM_APPROVED)",
+        "Finance verifies payment or credit limit (PAID)",
+        "PAID status automatically triggers a FieldWorkJob"
+      ]
+    },
+    {
+      "id": "field_work_lifecycle",
+      "name": "Field Work Planning & Implementation Lifecycle",
+      "description": "Lifecycle of fieldwork from paid assignment to deployment and reconciliation.",
+      "steps": [
+        "New job created from paid sizing proposal (Pending Assignment)",
+        "Technical Manager assigns Technical Team Leader (TTL)",
+        "TTL accepts job and drafts deployment plan (workers, tools, per-diem, fuel)",
+        "TTL submits plan to Technical Manager (SUBMITTED_TM)",
+        "TM reviews and forwards to GM (CHECKED_TM)",
+        "GM approves structural cost (APPROVED_GM)",
+        "Finance verifies payouts and marks deployment (DEPLOYED)",
+        "TTL submits completion report and reconciles tools (RETURNED/COMPLETED)"
+      ]
+    },
+    {
+      "id": "general_request_routing",
+      "name": "General Request Routing (HierarchyRequest)",
+      "description": "Approval flow for generic claims (travel per-diems, marketing advances, restock approvals).",
+      "steps": [
+        "User submits general request",
+        "Technical Manager approves request",
+        "General Manager approves request",
+        "If amount > 0, Finance Admin reviews and pays",
+        "General Manager sign-off after finance payment",
+        "Request status updated to APPROVED/PAID"
+      ]
+    }
+  ],
+  "updated_at": "2026-08-03T12:19:59.846213+00:00"
+}

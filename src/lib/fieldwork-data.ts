@@ -11,8 +11,8 @@ export interface FieldWorker {
   name: string;
   id: string;
   behaviorRating: 1 | 2 | 3 | 4 | 5;
-  perDiem: number;
-  payment: number;
+  perDiem: number | "";
+  payment: number | "";
 }
 
 export interface ReturnForm {
@@ -37,11 +37,14 @@ export interface DailyReport {
 
 export interface FieldWork {
   id: string;
+  title?: string;
   startDate: string;
   endDate: string;
   workers: FieldWorker[];
   pumpModel: string;
   location: string;
+  customerName?: string;
+  assignedTo?: string;
   status: "pending" | "planning" | "accepted" | "submitted_tm" | "checked_tm" | "approved_gm" | "Approved and ready to go" | "completed_ttl" | "completed" | "done" | string;
   equipment: FieldWorkEquipment[];
   notes: string;
@@ -51,6 +54,8 @@ export interface FieldWork {
   fuelPrice?: number;
   dailyReports?: DailyReport[];
   returnsApproved?: boolean;
+  completedDate?: string;
+  payload?: Record<string, any>;
 }
 
 export const BEHAVIOR_LABELS: Record<number, string> = {

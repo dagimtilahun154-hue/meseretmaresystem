@@ -127,7 +127,7 @@ export default function FinanceCenterPage() {
   const navigate = useNavigate();
   const activeSection = section && FINANCE_SECTIONS.has(section) ? section : "dashboard";
   const { hasAccess, currentUser } = useAuth();
-  const canApprove = hasAccess(["finance", "manager"]);
+  const canApprove = hasAccess(["finance"]);
   const { fieldWorks, sales, financePayments, financeEntity, refreshStoreData } = useStore() as any;
 
   const [bankReconciliations, setBankReconciliations] = useState<BankReconciliationRecord[]>([]);
@@ -306,7 +306,7 @@ export default function FinanceCenterPage() {
     }
 
     loadFinanceCenterData();
-    const timer = window.setInterval(loadFinanceCenterData, 15000);
+    const timer = window.setInterval(loadFinanceCenterData, 60000);
     const onFocus = () => loadFinanceCenterData();
     window.addEventListener("focus", onFocus);
 
@@ -355,7 +355,7 @@ export default function FinanceCenterPage() {
 
   const addRent = async () => {
     if (!rentForm.roomNo || !rentForm.rentPrice || !rentForm.amount) {
-      toast({ title: "Error", description: "Fill all required fields.", variant: "destructive" });
+      toast.error("Fill all required fields.");
       return;
     }
     const newRent: BuildingRentRecord = {
@@ -373,7 +373,7 @@ export default function FinanceCenterPage() {
     await financeCenterDB.add("building-rents", newRent);
     setBuildingRents(prev => [...prev, newRent]);
     setRentDialog(false);
-    toast({ title: "Success", description: "Rent record added." });
+    toast.success("Rent record added.");
     setRentForm({
       month: new Date().toLocaleString("default", { month: "long" }),
       floor: "Ground",
@@ -435,8 +435,9 @@ export default function FinanceCenterPage() {
       toast.error("Fill all fields");
       return;
     }
-    const record = {
+    const record: BudgetRecord = {
       id: crypto.randomUUID(),
+      entity: selectedEntity,
       type: budgetForm.type,
       amount: Number(budgetForm.amount),
       label: budgetForm.label,
@@ -627,7 +628,7 @@ export default function FinanceCenterPage() {
   const approveCashFlowEntry = async (id: string) => {
     const entry = cashFlow.find(c => c.id === id);
     if (!entry) return;
-    const updated = { ...entry, status: "approved" };
+    const updated: CashFlowEntry = { ...entry, status: "approved" };
     if (await financeCenterDB.save("cash-flow", updated)) {
       setCashFlow(prev => prev.map(c => c.id === id ? updated : c));
       toast.success("Cash flow entry approved!");
@@ -1651,7 +1652,7 @@ export default function FinanceCenterPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {(["daily", "monthly", "yearly"] as const).map((type) => {
-                const typeBudgets = budgets.filter((b) => b.type === type && b.entity === selectedEntity);
+                const typeBudgets = budgets.filter((b) => b.type === type && (!b.entity || b.entity === selectedEntity));
                 const total = typeBudgets.reduce((s, b) => s + toMoneyNumber(b.amount), 0);
                 
                 return (
@@ -1691,7 +1692,7 @@ export default function FinanceCenterPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {budgets.filter(b => b.entity === selectedEntity).map((b) => (
+                    {budgets.filter(b => !b.entity || b.entity === selectedEntity).map((b) => (
                       <TableRow key={b.id} className="hover:bg-muted/5">
                         <TableCell className="font-medium">{b.label}</TableCell>
                         <TableCell>
@@ -1703,7 +1704,7 @@ export default function FinanceCenterPage() {
                         <TableCell className="text-muted-foreground text-sm">{b.date}</TableCell>
                       </TableRow>
                     ))}
-                    {budgets.filter(b => b.entity === selectedEntity).length === 0 && (
+                    {budgets.filter(b => !b.entity || b.entity === selectedEntity).length === 0 && (
                       <TableRow>
                         <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
                           <BarChart3 className="h-8 w-8 mx-auto mb-3 opacity-20" />

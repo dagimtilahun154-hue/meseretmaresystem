@@ -16,11 +16,15 @@ import VATPage from "@/pages/VATPage";
 import PumpProductsPage from "@/pages/PumpProductsPage";
 import PumpDetailPage from "@/pages/PumpDetailPage";
 import FieldWorkPage from "@/pages/FieldWorkPage";
+import SiteAssessmentPage from "@/pages/SiteAssessmentPage";
 import FinanceCenterPage from "@/pages/FinanceCenterPage";
 import PeachtreePage from "@/pages/PeachtreePage";
 import UserAccountsPage from "@/pages/UserAccountsPage";
 import DedicatedInboxPage from "@/pages/DedicatedInboxPage";
 import TeamChatPage from "@/pages/TeamChatPage";
+import AlertsPage from "@/pages/AlertsPage";
+import CustomersPage from "@/pages/CustomersPage";
+import { CustomerDossierPage } from "@/pages/CustomerDossierPage";
 
 // HR Pages
 import HRDashboard from "@/components/hr/pages/Dashboard";
@@ -54,13 +58,15 @@ function ProtectedRoute({
 }
 
 function AuthenticatedApp() {
-  const { isAuthenticated, authReady } = useAuth();
+  const { isAuthenticated, authReady, currentUser } = useAuth();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      initFinanceStore();
+    if (isAuthenticated && currentUser) {
+      const userRoles = currentUser.roles || [currentUser.role];
+      const isFinanceOrAdmin = userRoles.includes("admin") || userRoles.includes("finance");
+      initFinanceStore(isFinanceOrAdmin);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, currentUser]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -85,7 +91,7 @@ function AuthenticatedApp() {
         <Route
           path="/"
           element={
-            <ProtectedRoute roles={["manager", "finance", "storekeeper", "fieldwork", "attendance"]}>
+            <ProtectedRoute roles={["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance", "hr"]}>
               <Dashboard />
             </ProtectedRoute>
           }
@@ -94,7 +100,7 @@ function AuthenticatedApp() {
         <Route
           path="/inbox"
           element={
-            <ProtectedRoute roles={["manager", "finance", "storekeeper", "fieldwork", "attendance"]}>
+            <ProtectedRoute roles={["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance", "hr"]}>
               <DedicatedInboxPage />
             </ProtectedRoute>
           }
@@ -103,8 +109,35 @@ function AuthenticatedApp() {
         <Route
           path="/chat"
           element={
-            <ProtectedRoute roles={["manager", "finance", "storekeeper", "fieldwork", "attendance"]}>
+            <ProtectedRoute roles={["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance", "hr"]}>
               <TeamChatPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/alerts"
+          element={
+            <ProtectedRoute roles={["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance", "hr"]}>
+              <AlertsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/customers"
+          element={
+            <ProtectedRoute roles={["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician"]}>
+              <CustomersPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/customers/:id"
+          element={
+            <ProtectedRoute roles={["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician"]}>
+              <CustomerDossierPage />
             </ProtectedRoute>
           }
         />
@@ -112,7 +145,7 @@ function AuthenticatedApp() {
         <Route
           path="/pos"
           element={
-            <ProtectedRoute roles={["manager", "storekeeper", "finance"]}>
+            <ProtectedRoute roles={["admin", "finance", "storekeeper", "sales"]}>
               <POSPage />
             </ProtectedRoute>
           }
@@ -121,7 +154,7 @@ function AuthenticatedApp() {
         <Route
           path="/inventory"
           element={
-            <ProtectedRoute roles={["manager", "storekeeper", "finance", "fieldwork"]}>
+            <ProtectedRoute roles={["admin", "storekeeper"]}>
               <InventoryPage />
             </ProtectedRoute>
           }
@@ -130,7 +163,7 @@ function AuthenticatedApp() {
         <Route
           path="/reports"
           element={
-            <ProtectedRoute roles={["manager", "finance"]}>
+            <ProtectedRoute roles={["admin", "manager", "finance"]}>
               <ReportsPage />
             </ProtectedRoute>
           }
@@ -139,7 +172,7 @@ function AuthenticatedApp() {
         <Route
           path="/vat"
           element={
-            <ProtectedRoute roles={["manager", "finance"]}>
+            <ProtectedRoute roles={["admin", "finance"]}>
               <VATPage />
             </ProtectedRoute>
           }
@@ -148,7 +181,7 @@ function AuthenticatedApp() {
         <Route
           path="/pumps"
           element={
-            <ProtectedRoute roles={["manager", "fieldwork", "ttl", "sales", "technician", "storekeeper", "finance"]}>
+            <ProtectedRoute roles={["admin", "manager", "fieldwork", "ttl", "sales", "technician", "storekeeper"]}>
               <PumpProductsPage />
             </ProtectedRoute>
           }
@@ -157,7 +190,7 @@ function AuthenticatedApp() {
         <Route
           path="/pumps/:id"
           element={
-            <ProtectedRoute roles={["manager", "fieldwork", "ttl", "sales", "technician", "storekeeper", "finance"]}>
+            <ProtectedRoute roles={["admin", "manager", "fieldwork", "ttl", "sales", "technician", "storekeeper"]}>
               <PumpDetailPage />
             </ProtectedRoute>
           }
@@ -166,7 +199,7 @@ function AuthenticatedApp() {
         <Route
           path="/fieldwork"
           element={
-            <ProtectedRoute roles={["manager", "fieldwork", "ttl", "sales", "technician", "finance"]}>
+            <ProtectedRoute roles={["admin", "manager", "fieldwork", "ttl", "sales", "finance"]}>
               <FieldWorkPage />
             </ProtectedRoute>
           }
@@ -174,8 +207,16 @@ function AuthenticatedApp() {
         <Route
           path="/fieldwork/:section"
           element={
-            <ProtectedRoute roles={["manager", "fieldwork", "ttl", "sales", "technician", "finance"]}>
+            <ProtectedRoute roles={["admin", "manager", "fieldwork", "ttl", "sales", "finance"]}>
               <FieldWorkPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/fieldwork/sizing/assessment/:proposalId"
+          element={
+            <ProtectedRoute roles={["admin", "manager", "fieldwork", "ttl", "sales", "finance"]}>
+              <SiteAssessmentPage />
             </ProtectedRoute>
           }
         />
@@ -183,7 +224,7 @@ function AuthenticatedApp() {
         <Route
           path="/finance"
           element={
-            <ProtectedRoute roles={["manager", "finance"]}>
+            <ProtectedRoute roles={["admin", "finance"]}>
               <FinanceCenterPage />
             </ProtectedRoute>
           }
@@ -191,7 +232,7 @@ function AuthenticatedApp() {
         <Route
           path="/finance/:section"
           element={
-            <ProtectedRoute roles={["manager", "finance"]}>
+            <ProtectedRoute roles={["admin", "finance"]}>
               <FinanceCenterPage />
             </ProtectedRoute>
           }
@@ -200,7 +241,7 @@ function AuthenticatedApp() {
         <Route
           path="/peachtree"
           element={
-            <ProtectedRoute roles={["manager", "finance"]}>
+            <ProtectedRoute roles={["admin", "finance"]}>
               <PeachtreePage />
             </ProtectedRoute>
           }
@@ -209,19 +250,19 @@ function AuthenticatedApp() {
         <Route
           path="/users"
           element={
-            <ProtectedRoute roles={["manager"]}>
+            <ProtectedRoute roles={["admin"]}>
               <UserAccountsPage />
             </ProtectedRoute>
           }
         />
 
         {/* HR & Attendance Routes */}
-        <Route path="/hr/dashboard" element={<ProtectedRoute roles={["manager"]}><HRDashboard /></ProtectedRoute>} />
-        <Route path="/hr/workers" element={<ProtectedRoute roles={["manager"]}><Workers /></ProtectedRoute>} />
-        <Route path="/hr/registration" element={<ProtectedRoute roles={["manager"]}><FingerprintRegistration /></ProtectedRoute>} />
-        <Route path="/hr/scan" element={<ProtectedRoute roles={["manager", "attendance"]}><AttendanceScan /></ProtectedRoute>} />
-        <Route path="/hr/reports" element={<ProtectedRoute roles={["manager"]}><HRReports /></ProtectedRoute>} />
-        <Route path="/hr/settings" element={<ProtectedRoute roles={["manager"]}><HRSettings /></ProtectedRoute>} />
+        <Route path="/hr/dashboard" element={<ProtectedRoute roles={["admin", "hr"]}><HRDashboard /></ProtectedRoute>} />
+        <Route path="/hr/workers" element={<ProtectedRoute roles={["admin", "hr"]}><Workers /></ProtectedRoute>} />
+        <Route path="/hr/registration" element={<ProtectedRoute roles={["admin", "hr"]}><FingerprintRegistration /></ProtectedRoute>} />
+        <Route path="/hr/scan" element={<ProtectedRoute roles={["admin", "attendance", "hr"]}><AttendanceScan /></ProtectedRoute>} />
+        <Route path="/hr/reports" element={<ProtectedRoute roles={["admin", "hr"]}><HRReports /></ProtectedRoute>} />
+        <Route path="/hr/settings" element={<ProtectedRoute roles={["admin", "hr"]}><HRSettings /></ProtectedRoute>} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>

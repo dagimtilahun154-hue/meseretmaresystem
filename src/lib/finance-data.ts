@@ -54,6 +54,7 @@ export interface BuildingRentRecord {
 
 export interface BudgetRecord {
   id: string;
+  entity?: "FZ" | "MM";
   type: "daily" | "monthly" | "yearly";
   amount: number;
   label: string;

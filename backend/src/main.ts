@@ -13,7 +13,7 @@ async function bootstrap() {
   const frontendOrigin = config.get<string>("FRONTEND_ORIGIN", "http://localhost:5173");
 
   // Serve static files from the uploads directory
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
   });
 

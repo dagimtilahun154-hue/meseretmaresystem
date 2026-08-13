@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "status": "draft",
+  "items": [
+    {
+      "key": "*:*",
+      "description": "Full root access (General Manager)"
+    },
+    {
+      "key": "fieldwork:read",
+      "description": "Read access to field work jobs and site records"
+    },
+    {
+      "key": "fieldwork:write",
+      "description": "Write access to create and assign field work jobs"
+    },
+    {
+      "key": "pumps:read",
+      "description": "Read pump catalog and curves"
+    },
+    {
+      "key": "finance:read",
+      "description": "Read access to ledgers, cash flow, and banking"
+    },
+    {
+      "key": "finance:write",
+      "description": "Write access to verify payments, approve expenses, and post journals"
+    },
+    {
+      "key": "reports:read",
+      "description": "Read EOD reports and key metrics"
+    },
+    {
+      "key": "inventory:read",
+      "description": "Read inventory levels and SKUs"
+    },
+    {
+      "key": "inventory:write",
+      "description": "Modify inventory counts, add items, and request restocks"
+    },
+    {
+      "key": "attendance:read",
+      "description": "Read biometric log records and attendance stats"
+    },
+    {
+      "key": "attendance:write",
+      "description": "Register fingerprints and adjust clock-in logs"
+    }
+  ],
+  "updated_at": "2026-08-03T12:19:59.846213+00:00"
+}

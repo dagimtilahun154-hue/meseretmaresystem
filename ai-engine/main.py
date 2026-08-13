@@ -26,8 +26,15 @@ app.add_middleware(
 
 # Initialize Groq client
 api_key = os.getenv("GROQ_API_KEY")
+client = None
 if not api_key or api_key == "your_groq_api_key_here":
     logging.warning("GROQ_API_KEY is missing or not configured in .env")
+else:
+    try:
+        client = Groq(api_key=api_key)
+        logging.info("Groq client initialized successfully")
+    except Exception as e:
+        logging.error(f"Failed to initialize Groq client: {e}")
 
 # Request Model
 class PumpSizingRequest(BaseModel):
@@ -37,6 +44,8 @@ class PumpSizingRequest(BaseModel):
     pipe_length_m: float
     pipe_diameter_inch: float
     daily_water_need_m3: Optional[float] = 20.0
+    custom_insolation: Optional[List[float]] = None
+    custom_temp: Optional[List[float]] = None
 
 class PumpResponse(BaseModel):
     exact_match: dict
@@ -125,16 +134,40 @@ def load_pump_catalog():
         logging.error(f"Failed to load pump catalog: {e}")
         return {"pumps": []}
 
+def parse_power(power_str: str) -> float:
+    if not power_str:
+        return 0.0
+    try:
+        power_str = str(power_str).lower().strip()
+        if 'kw' in power_str:
+            num = float(power_str.replace('kw', '').strip())
+            return num * 1000.0
+        if 'w' in power_str:
+            return float(power_str.replace('w', '').strip())
+        if 'hp' in power_str:
+            num = float(power_str.replace('hp', '').strip())
+            return num * 746.0
+        return float(power_str)
+    except Exception:
+        return 0.0
+
 @app.post("/api/recommend-pump")
 async def recommend_pump(req: PumpSizingRequest):
-    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-    
     # 1. Calculate TDH
     tdh = calculate_tdh(req.vertical_lift_m, req.pipe_length_m, req.pipe_diameter_inch)
     
     # 2. Fetch solar and temperature climatology from NASA
-    climate = fetch_nasa_climatology(req.latitude, req.longitude)
-    sol_insolation = climate["sol_insolation"]
+    if req.custom_insolation and len(req.custom_insolation) == 12:
+        sol_insolation = req.custom_insolation
+        custom_temp = req.custom_temp if (req.custom_temp and len(req.custom_temp) == 12) else [20.0, 21.0, 22.0, 22.0, 21.0, 20.0, 19.0, 19.0, 20.0, 21.0, 21.0, 20.0]
+        climate = {
+            "sol_insolation": sol_insolation,
+            "temperature": custom_temp
+        }
+    else:
+        climate = fetch_nasa_climatology(req.latitude, req.longitude)
+        sol_insolation = climate["sol_insolation"]
+    
     avg_insolation = sum(sol_insolation) / 12.0 if sol_insolation else 5.5
     
     # Required flow rate (m3/h) = daily water need (m3) / avg peak sun hours (h)
@@ -142,154 +175,170 @@ async def recommend_pump(req: PumpSizingRequest):
     
     # 3. Load Catalog
     catalog_data = load_pump_catalog()
+    pumps_list = catalog_data.get("pumps", [])
     
-    # 4. Construct the prompt for Groq
-    prompt = f"""
-    You are an expert engineering assistant for solar water pump sizing.
+    # 4. Evaluate candidates with scoring
+    candidates = []
+    for p in pumps_list:
+        perf = p.get("performanceData", [])
+        if not perf:
+            continue
+        max_head = max((pt.get("head", 0) for pt in perf), default=0)
+        flow_at_tdh = interpolate_flow_for_head(perf, tdh)
+        
+        # Suitability classification
+        if tdh > max_head:
+            suitability = "Exceeds Limit"
+        elif flow_at_tdh <= 0:
+            suitability = "Low Capacity"
+        elif flow_at_tdh >= req_flow_m3h * 1.5:
+            suitability = "Oversized"
+        elif flow_at_tdh >= req_flow_m3h * 0.8:
+            suitability = "Suitable"
+        else:
+            suitability = "Low Capacity"
+            
+        watts = parse_power(p.get("power", ""))
+        flow_ratio = flow_at_tdh / req_flow_m3h if req_flow_m3h > 0 else 0
+        
+        if suitability == "Suitable":
+            score = 100 - abs(1.0 - flow_ratio) * 40 - ((watts / 3000) * 10 if watts > 0 else 0)
+        elif suitability == "Oversized":
+            score = 70 - abs(1.5 - flow_ratio) * 20
+        elif suitability == "Low Capacity":
+            score = 40 * flow_ratio
+        else:
+            score = 0
+            
+        score = max(0, min(99, round(score)))
+        
+        candidates.append({
+            "pump": p,
+            "flow_at_tdh": flow_at_tdh,
+            "suitability": suitability,
+            "score": score,
+            "brand": p.get("brand", "UNKNOWN").upper()
+        })
+
+    # Group candidates by Brand
+    brand_pumps = {}
+    for c in candidates:
+        b = c["brand"]
+        if b not in brand_pumps:
+            brand_pumps[b] = []
+        brand_pumps[b].append(c)
+
+    # Find the best pump of each brand
+    best_by_brand = {}
+    order = {"Suitable": 0, "Oversized": 1, "Low Capacity": 2, "Exceeds Limit": 3}
+    for b, items in brand_pumps.items():
+        items.sort(key=lambda x: (order.get(x["suitability"], 4), -x["score"]))
+        if items:
+            best_by_brand[b] = items[0]
+
+    # Select best from each brand
+    best_redbud = best_by_brand.get("REDBUD", None)
+    best_difful = best_by_brand.get("DIFFUL", None)
+
+    # If no pumps matched at all, create dummy targets
+    if not best_redbud:
+        r_list = [p for p in pumps_list if p.get("brand", "").upper() == "REDBUD"]
+        best_redbud = {"pump": r_list[0] if r_list else {"model": "No Matching Redbud Pump Found", "brand": "REDBUD", "power": "N/A", "performanceData": []}, "flow_at_tdh": 0.0, "suitability": "Exceeds Limit", "score": 0}
     
-    USER REQUIREMENTS:
-    - Latitude: {req.latitude}
-    - Longitude: {req.longitude}
-    - Vertical Lift: {req.vertical_lift_m} m
-    - Pipe Length: {req.pipe_length_m} m
-    - Pipe Diameter: {req.pipe_diameter_inch} inches
-    - Calculated Total Dynamic Head (TDH): {tdh} m
-    - Daily Water Requirement: {req.daily_water_need_m3} m3/day
-    - Annual Average Solar Insolation (Peak Sun Hours): {avg_insolation:.2f} hours/day
-    - Target Design Flow Rate: {req_flow_m3h:.2f} m3/h
+    if not best_difful:
+        d_list = [p for p in pumps_list if p.get("brand", "").upper() == "DIFFUL"]
+        best_difful = {"pump": d_list[0] if d_list else {"model": "No Matching Difful Pump Found", "brand": "DIFFUL", "power": "N/A", "performanceData": []}, "flow_at_tdh": 0.0, "suitability": "Exceeds Limit", "score": 0}
+
+    # Hydrate Redbud match
+    redbud_match = json.loads(json.dumps(best_redbud["pump"]))
+    redbud_match["suitability"] = best_redbud["suitability"]
+    redbud_match["score"] = best_redbud["score"]
     
-    AVAILABLE PUMP CATALOG (JSON):
-    {json.dumps(catalog_data)[:4000]}... [TRUNCATED]
+    perf_data_r = redbud_match.get("performanceData", [])
+    flow_m3h_r = interpolate_flow_for_head(perf_data_r, tdh)
+    yield_m3_r = round(flow_m3h_r * avg_insolation * 0.9, 2)
+    monthly_yields_r = [round(flow_m3h_r * ins * 0.9, 2) for ins in sol_insolation]
     
-    Brief list of all models:
-    {[p.get('model') for p in catalog_data.get('pumps', [])]}
+    # Calculate daily profile for Redbud
+    peak_irr = min(1000.0, (avg_insolation * 1000.0) / 7.72) if avg_insolation > 0 else 0
+    daily_profile_r = []
+    for h in range(6, 19):
+        factor = math.sin(math.pi * (h - 6) / 12)
+        irr = round(peak_irr * factor, 1)
+        flow_val = round(flow_m3h_r * ((irr - 200) / (peak_irr - 200)), 3) if (irr >= 200 and peak_irr > 200) else 0.0
+        daily_profile_r.append({"time": f"{h:02d}:00", "irradiance": irr, "flow": flow_val})
+        
+    redbud_match["calculated_flow_m3h"] = flow_m3h_r
+    redbud_match["daily_water_yield_m3"] = yield_m3_r
+    redbud_match["monthly_yields"] = monthly_yields_r
+    redbud_match["daily_profile"] = daily_profile_r
+
+    # Hydrate Difful match
+    difful_match = json.loads(json.dumps(best_difful["pump"]))
+    difful_match["suitability"] = best_difful["suitability"]
+    difful_match["score"] = best_difful["score"]
     
-    Based on the TDH of {tdh}m and target flow rate of {req_flow_m3h:.2f} m3/h, select the absolute best matching pump model from the catalog that can handle this head and flow efficiently.
-    Also, select 2 alternative pump models that could work.
+    perf_data_d = difful_match.get("performanceData", [])
+    flow_m3h_d = interpolate_flow_for_head(perf_data_d, tdh)
+    yield_m3_d = round(flow_m3h_d * avg_insolation * 0.9, 2)
+    monthly_yields_d = [round(flow_m3h_d * ins * 0.9, 2) for ins in sol_insolation]
     
-    RESPOND STRICTLY WITH ONLY VALID JSON. NO MARKDOWN FORMATTING OR PROSE. 
-    
-    Schema:
-    {{
-      "exact_match": {{
-        "model": "PUMP_MODEL_NAME",
-        "reasoning": "Brief explanation why this fits perfectly."
-      }},
-      "alternatives": [
-        {{
-          "model": "ALT_MODEL_1",
-          "reasoning": "Why this might be an alternative."
-        }}
-      ]
-    }}
-    """
-    
-    try:
-        completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": "You are a specialized AI that returns ONLY valid JSON. Do not wrap in ```json markers."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.1,
+    # Calculate daily profile for Difful
+    daily_profile_d = []
+    for h in range(6, 19):
+        factor = math.sin(math.pi * (h - 6) / 12)
+        irr = round(peak_irr * factor, 1)
+        flow_val = round(flow_m3h_d * ((irr - 200) / (peak_irr - 200)), 3) if (irr >= 200 and peak_irr > 200) else 0.0
+        daily_profile_d.append({"time": f"{h:02d}:00", "irradiance": irr, "flow": flow_val})
+        
+    difful_match["calculated_flow_m3h"] = flow_m3h_d
+    difful_match["daily_water_yield_m3"] = yield_m3_d
+    difful_match["monthly_yields"] = monthly_yields_d
+    difful_match["daily_profile"] = daily_profile_d
+
+    ai_reasoning = ""
+    if client:
+        try:
+            prompt = (
+                f"You are the SolarFlow Sizing AI Specialist. Analyze the following site specification:\n"
+                f"- Location: Lat {req.latitude}, Lng {req.longitude}\n"
+                f"- Calculated Total Dynamic Head (TDH): {tdh} m\n"
+                f"- Daily Water Need: {req.daily_water_need_m3} m³\n"
+                f"- Calculated Required Flow Rate: {req_flow_m3h:.2f} m³/h\n"
+                f"- Average Solar Insolation: {avg_insolation:.2f} peak sun hours/day\n\n"
+                f"We evaluated our pump inventory catalog and identified two leading matches:\n"
+                f"1. REDBUD Match: Model {redbud_match.get('model')} with Suitability '{redbud_match.get('suitability')}' and Score {redbud_match.get('score')}/100. Expected flow at TDH: {flow_m3h_r:.2f} m³/h.\n"
+                f"2. DIFFUL Match: Model {difful_match.get('model')} with Suitability '{difful_match.get('suitability')}' and Score {difful_match.get('score')}/100. Expected flow at TDH: {flow_m3h_d:.2f} m³/h.\n\n"
+                f"Based on these results, write a concise professional summary (2-3 sentences max) explaining which pump is the best technical fit and why, addressing the flow yield compared to the daily water need and solar conditions."
+            )
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": "You are a professional hydraulic and solar engineering advisor. Be concise and precise."},
+                    {"role": "user", "content": prompt}
+                ],
+                model="llama-3.3-70b-versatile",
+                max_tokens=200,
+                temperature=0.3,
+            )
+            ai_reasoning = chat_completion.choices[0].message.content.strip()
+        except Exception as e:
+            logging.error(f"Groq API call failed: {e}")
+
+    if not ai_reasoning:
+        ai_reasoning = (
+            f"Selected best options for {tdh}m head and {req_flow_m3h:.2f} m³/h target. "
+            f"Redbud match: {redbud_match.get('model')} ({flow_m3h_r:.2f} m³/h). "
+            f"Difful match: {difful_match.get('model')} ({flow_m3h_d:.2f} m³/h)."
         )
-        
-        response_text = completion.choices[0].message.content.strip()
-        
-        # Clean up possible markdown tags if the model still includes them
-        if response_text.startswith("```json"):
-            response_text = response_text[7:]
-        if response_text.endswith("```"):
-            response_text = response_text[:-3]
-            
-        ai_result = json.loads(response_text)
-        
-        # Hydrate the results with full catalog data
-        exact_model_name = ai_result.get("exact_match", {}).get("model")
-        
-        # Find exact match and copy it so we don't modify the global loaded catalog
-        raw_exact = next((p for p in catalog_data.get("pumps", []) if p.get("model") == exact_model_name), None)
-        full_exact_match = json.loads(json.dumps(raw_exact)) if raw_exact else ai_result.get("exact_match")
-        
-        hydrated_alts = []
-        for alt in ai_result.get("alternatives", []):
-            alt_model = alt.get("model")
-            raw_alt = next((p for p in catalog_data.get("pumps", []) if p.get("model") == alt_model), None)
-            if raw_alt:
-                full_alt = json.loads(json.dumps(raw_alt))
-                hydrated_alts.append(full_alt)
-            else:
-                hydrated_alts.append(alt)
-        
-        # Calculate dynamic curves and profiles for exact match
-        if full_exact_match and isinstance(full_exact_match, dict):
-            perf_data = full_exact_match.get("performanceData", [])
-            flow_m3h = interpolate_flow_for_head(perf_data, tdh)
-            yield_m3 = round(flow_m3h * avg_insolation * 0.9, 2)
-            monthly_yields = [round(flow_m3h * ins * 0.9, 2) for ins in sol_insolation]
-            
-            # calculate typical daily profile
-            peak_irr = min(1000.0, (avg_insolation * 1000.0) / 7.72) if avg_insolation > 0 else 0
-            daily_profile = []
-            for h in range(6, 19):
-                factor = math.sin(math.pi * (h - 6) / 12)
-                irr = round(peak_irr * factor, 1)
-                if irr >= 200 and peak_irr > 200:
-                    flow_val = round(flow_m3h * ((irr - 200) / (peak_irr - 200)), 3)
-                else:
-                    flow_val = 0.0
-                daily_profile.append({
-                    "time": f"{h:02d}:00",
-                    "irradiance": irr,
-                    "flow": flow_val
-                })
-                
-            full_exact_match["calculated_flow_m3h"] = flow_m3h
-            full_exact_match["daily_water_yield_m3"] = yield_m3
-            full_exact_match["monthly_yields"] = monthly_yields
-            full_exact_match["daily_profile"] = daily_profile
-            
-        # Calculate dynamic curves and profiles for alternatives
-        for alt in hydrated_alts:
-            if isinstance(alt, dict):
-                perf_data = alt.get("performanceData", [])
-                flow_m3h = interpolate_flow_for_head(perf_data, tdh)
-                yield_m3 = round(flow_m3h * avg_insolation * 0.9, 2)
-                monthly_yields = [round(flow_m3h * ins * 0.9, 2) for ins in sol_insolation]
-                
-                # calculate typical daily profile
-                peak_irr = min(1000.0, (avg_insolation * 1000.0) / 7.72) if avg_insolation > 0 else 0
-                daily_profile = []
-                for h in range(6, 19):
-                    factor = math.sin(math.pi * (h - 6) / 12)
-                    irr = round(peak_irr * factor, 1)
-                    if irr >= 200 and peak_irr > 200:
-                        flow_val = round(flow_m3h * ((irr - 200) / (peak_irr - 200)), 3)
-                    else:
-                        flow_val = 0.0
-                    daily_profile.append({
-                        "time": f"{h:02d}:00",
-                        "irradiance": irr,
-                        "flow": flow_val
-                    })
-                    
-                alt["calculated_flow_m3h"] = flow_m3h
-                alt["daily_water_yield_m3"] = yield_m3
-                alt["monthly_yields"] = monthly_yields
-                alt["daily_profile"] = daily_profile
-                
-        return {
-            "exact_match": full_exact_match,
-            "alternatives": hydrated_alts,
-            "calculated_tdh": tdh,
-            "ai_reasoning": ai_result.get("exact_match", {}).get("reasoning", ""),
-            "climate_data": climate,
-            "target_flow_m3h": round(req_flow_m3h, 2)
-        }
-        
-    except Exception as e:
-        logging.error(f"Error during AI recommendation: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+
+    return {
+        "redbud_match": redbud_match,
+        "difful_match": difful_match,
+        "calculated_tdh": tdh,
+        "ai_reasoning": ai_reasoning,
+        "climate_data": climate,
+        "target_flow_m3h": round(req_flow_m3h, 2)
+    }
 
 if __name__ == "__main__":
     import uvicorn

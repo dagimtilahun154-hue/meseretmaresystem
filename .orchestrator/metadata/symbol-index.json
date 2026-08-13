@@ -1,0 +1,647 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-08-03T12:17:41.591471+00:00",
+  "generator": "software-orchestrator/index_repo.py",
+  "repository": {
+    "root_name": "solarflow-manager-main",
+    "commit": "3172699f740e3a6647f30125a67c178cd48ec644",
+    "branch": "main",
+    "fingerprint": "5bb962950fc43c4f5378b8ea75b47e01db0cc6baec454469c8c334bbf6a8b31d"
+  },
+  "symbols_by_file": {
+    "mysql_schema.sql": [
+      "VARCHAR"
+    ],
+    "ai-engine/extract_catalog.py": [
+      "add_inventory_products",
+      "add_prod_if_missing",
+      "clean_model_name",
+      "estimate_motor_prices",
+      "extract_text_from_pdf",
+      "generate_equipment",
+      "generate_next_pump_id",
+      "load_existing_catalog",
+      "main",
+      "parse_pumps_with_ai",
+      "save_catalog"
+    ],
+    "ai-engine/main.py": [
+      "PumpResponse",
+      "PumpSizingRequest",
+      "calculate_tdh",
+      "fetch_nasa_climatology",
+      "interpolate_flow_for_head",
+      "load_pump_catalog"
+    ],
+    "backend/prisma/check_pumps.js": [
+      "main"
+    ],
+    "backend/prisma/inspect_db.js": [
+      "main"
+    ],
+    "backend/prisma/seed-pumps.ts": [
+      "main"
+    ],
+    "backend/prisma/seed-supplemental.ts": [
+      "main"
+    ],
+    "backend/prisma/seed.ts": [
+      "main"
+    ],
+    "backend/prisma/seed_extracted_pumps.ts": [
+      "main"
+    ],
+    "backend/prisma/seed_pumps.js": [
+      "main"
+    ],
+    "backend/prisma/seed_pumps.ts": [
+      "main"
+    ],
+    "backend/src/app.module.ts": [
+      "AppModule"
+    ],
+    "backend/src/main.ts": [
+      "bootstrap"
+    ],
+    "backend/src/analytics/analytics.controller.ts": [
+      "AnalyticsController"
+    ],
+    "backend/src/analytics/analytics.module.ts": [
+      "AnalyticsModule"
+    ],
+    "backend/src/analytics/analytics.service.ts": [
+      "AnalyticsService",
+      "groupByDate",
+      "payloadNumber"
+    ],
+    "backend/src/assets/assets.controller.ts": [
+      "AssetsController"
+    ],
+    "backend/src/assets/assets.module.ts": [
+      "AssetsModule"
+    ],
+    "backend/src/assets/assets.service.ts": [
+      "AssetsService"
+    ],
+    "backend/src/auth/auth.controller.ts": [
+      "AuthController"
+    ],
+    "backend/src/auth/auth.module.ts": [
+      "AuthModule"
+    ],
+    "backend/src/auth/auth.service.ts": [
+      "AuthService"
+    ],
+    "backend/src/auth/jwt.strategy.ts": [
+      "JwtPayload",
+      "JwtStrategy"
+    ],
+    "backend/src/auth/dto/login.dto.ts": [
+      "LoginDto"
+    ],
+    "backend/src/auth/dto/refresh-token.dto.ts": [
+      "RefreshTokenDto"
+    ],
+    "backend/src/chat/chat.controller.ts": [
+      "ChatController"
+    ],
+    "backend/src/chat/chat.gateway.ts": [
+      "ChatGateway"
+    ],
+    "backend/src/chat/chat.module.ts": [
+      "ChatModule"
+    ],
+    "backend/src/chat/chat.service.ts": [
+      "ChatService"
+    ],
+    "backend/src/comments/comments.controller.ts": [
+      "CommentsController"
+    ],
+    "backend/src/comments/comments.module.ts": [
+      "CommentsModule"
+    ],
+    "backend/src/comments/comments.service.ts": [
+      "CommentsService"
+    ],
+    "backend/src/common/filters/http-exception.filter.ts": [
+      "HttpExceptionFilter"
+    ],
+    "backend/src/common/guards/api-key.guard.ts": [
+      "ApiKeyGuard"
+    ],
+    "backend/src/common/guards/company-access.guard.ts": [
+      "CompanyAccessGuard"
+    ],
+    "backend/src/common/guards/jwt-auth.guard.ts": [
+      "JwtAuthGuard"
+    ],
+    "backend/src/common/guards/roles.guard.ts": [
+      "RolesGuard"
+    ],
+    "backend/src/common/types/auth-user.ts": [
+      "AuthCompany",
+      "AuthUser"
+    ],
+    "backend/src/companies/companies.controller.ts": [
+      "CompaniesController"
+    ],
+    "backend/src/companies/companies.module.ts": [
+      "CompaniesModule"
+    ],
+    "backend/src/companies/companies.service.ts": [
+      "CompaniesService"
+    ],
+    "backend/src/data/data.controller.ts": [
+      "DataController"
+    ],
+    "backend/src/data/data.module.ts": [
+      "DataModule"
+    ],
+    "backend/src/data/data.service.ts": [
+      "DataService",
+      "detectDelimiter",
+      "parseDelimitedLine",
+      "parsePeachtreeBuffer",
+      "toPlain"
+    ],
+    "backend/src/health/health.controller.ts": [
+      "HealthController"
+    ],
+    "backend/src/health/health.module.ts": [
+      "HealthModule"
+    ],
+    "backend/src/notifications/notifications.controller.ts": [
+      "NotificationsController"
+    ],
+    "backend/src/notifications/notifications.module.ts": [
+      "NotificationsModule"
+    ],
+    "backend/src/notifications/notifications.service.ts": [
+      "NotificationsService"
+    ],
+    "backend/src/prisma/prisma.module.ts": [
+      "PrismaModule"
+    ],
+    "backend/src/prisma/prisma.service.ts": [
+      "PrismaService"
+    ],
+    "backend/src/sizing/sizing.controller.ts": [
+      "SizingController"
+    ],
+    "backend/src/sizing/sizing.module.ts": [
+      "SizingModule"
+    ],
+    "backend/src/sizing/sizing.service.ts": [
+      "SizingService"
+    ],
+    "backend/src/sync/sync.controller.ts": [
+      "SyncController"
+    ],
+    "backend/src/sync/sync.module.ts": [
+      "SyncModule"
+    ],
+    "backend/src/sync/sync.service.ts": [
+      "SyncService"
+    ],
+    "backend/src/tasks/tasks.controller.ts": [
+      "TasksController"
+    ],
+    "backend/src/tasks/tasks.module.ts": [
+      "TasksModule"
+    ],
+    "backend/src/tasks/tasks.service.ts": [
+      "TasksService"
+    ],
+    "backend/src/users/users.controller.ts": [
+      "UsersController"
+    ],
+    "backend/src/users/users.module.ts": [
+      "UsersModule"
+    ],
+    "backend/src/users/users.service.ts": [
+      "UsersService"
+    ],
+    "server/seed.js": [
+      "seed"
+    ],
+    "src/App.tsx": [
+      "AuthenticatedApp",
+      "ProtectedRoute"
+    ],
+    "src/components/AppSidebar.tsx": [
+      "AppSidebar",
+      "NavItem"
+    ],
+    "src/components/ApprovalsInbox.tsx": [
+      "ApprovalsInbox",
+      "HierarchyRequest",
+      "renderDetailedRequest"
+    ],
+    "src/components/ClientFileModal.tsx": [
+      "ClientFileModal",
+      "ClientFileModalProps"
+    ],
+    "src/components/CustomerDossierModal.tsx": [
+      "CustomerDossierModal",
+      "CustomerDossierModalProps"
+    ],
+    "src/components/NavLink.tsx": [
+      "NavLinkCompatProps"
+    ],
+    "src/components/NotificationsList.tsx": [
+      "NotificationsList"
+    ],
+    "src/components/PrintableInvoice.tsx": [
+      "PrintableInvoice",
+      "PrintableInvoiceProps"
+    ],
+    "src/components/SecurityCodeDialog.tsx": [
+      "SecurityCodeDialog",
+      "SecurityCodeDialogProps"
+    ],
+    "src/components/TaskBoard.tsx": [
+      "TaskBoard"
+    ],
+    "src/components/WorkflowStepper.tsx": [
+      "StepItem",
+      "WorkflowStepper",
+      "WorkflowStepperProps"
+    ],
+    "src/components/dashboards/AdminHubDashboard.tsx": [
+      "AdminHubDashboard"
+    ],
+    "src/components/dashboards/FinanceHubDashboard.tsx": [
+      "FinanceHubDashboard"
+    ],
+    "src/components/dashboards/GMHubDashboard.tsx": [
+      "GMHubDashboard",
+      "GMHubDashboardProps"
+    ],
+    "src/components/dashboards/SalesHubDashboard.tsx": [
+      "SalesHubDashboard"
+    ],
+    "src/components/dashboards/TTLHubDashboard.tsx": [
+      "TTLHubDashboard"
+    ],
+    "src/components/dashboards/TechHubDashboard.tsx": [
+      "TechHubDashboard"
+    ],
+    "src/components/dashboards/widgets/DashboardHeaderBanner.tsx": [
+      "DashboardHeaderBanner",
+      "DashboardHeaderBannerProps",
+      "HeaderActionButton"
+    ],
+    "src/components/dashboards/widgets/EodActivityWidget.tsx": [
+      "EodActivityWidget",
+      "EodActivityWidgetProps"
+    ],
+    "src/components/dashboards/widgets/RecentTransactionsWidget.tsx": [
+      "RecentTransactionsWidget",
+      "RecentTransactionsWidgetProps"
+    ],
+    "src/components/dashboards/widgets/SalesTrendChartWidget.tsx": [
+      "SalesTrendChartWidget",
+      "SalesTrendChartWidgetProps"
+    ],
+    "src/components/dashboards/widgets/StatCardGrid.tsx": [
+      "StatCardGrid",
+      "StatCardGridProps",
+      "StatCardItem"
+    ],
+    "src/components/hr/pages/FingerprintRegistration.tsx": [
+      "Step"
+    ],
+    "src/components/ui/badge.tsx": [
+      "Badge",
+      "BadgeProps"
+    ],
+    "src/components/ui/button.tsx": [
+      "ButtonProps"
+    ],
+    "src/components/ui/calendar.tsx": [
+      "Calendar",
+      "CalendarProps"
+    ],
+    "src/components/ui/carousel.tsx": [
+      "CarouselApi",
+      "CarouselContextProps",
+      "CarouselOptions",
+      "CarouselPlugin",
+      "CarouselProps",
+      "UseCarouselParameters",
+      "useCarousel"
+    ],
+    "src/components/ui/chart.tsx": [
+      "ChartConfig",
+      "ChartContextProps",
+      "getPayloadConfigFromPayload",
+      "useChart"
+    ],
+    "src/components/ui/command.tsx": [
+      "CommandDialogProps"
+    ],
+    "src/components/ui/form.tsx": [
+      "FormFieldContextValue",
+      "FormItemContextValue"
+    ],
+    "src/components/ui/pagination.tsx": [
+      "PaginationLinkProps"
+    ],
+    "src/components/ui/sheet.tsx": [
+      "SheetContentProps"
+    ],
+    "src/components/ui/sidebar.tsx": [
+      "SidebarContext",
+      "useSidebar"
+    ],
+    "src/components/ui/skeleton.tsx": [
+      "Skeleton"
+    ],
+    "src/components/ui/sonner.tsx": [
+      "ToasterProps"
+    ],
+    "src/components/ui/textarea.tsx": [
+      "TextareaProps"
+    ],
+    "src/components/ui/toast.tsx": [
+      "ToastActionElement",
+      "ToastProps"
+    ],
+    "src/components/ui/toaster.tsx": [
+      "Toaster"
+    ],
+    "src/context/AuthContext.tsx": [
+      "AppUser",
+      "AuthContextType",
+      "AuthProvider",
+      "UserRole",
+      "loadBackendUsers",
+      "normalizeApiUser",
+      "restoreSession",
+      "useAuth"
+    ],
+    "src/context/StoreContext.tsx": [
+      "FinanceEntity",
+      "ProductWithCode",
+      "SaleSaveResult",
+      "StoreContextType",
+      "StoreProvider",
+      "useStore"
+    ],
+    "src/context/WebSocketProvider.tsx": [
+      "WebSocketContextType",
+      "WebSocketProvider",
+      "useWebSocket"
+    ],
+    "src/hooks/use-mobile.tsx": [
+      "useIsMobile"
+    ],
+    "src/hooks/use-toast.ts": [
+      "Action",
+      "ActionType",
+      "State",
+      "Toast",
+      "ToasterToast",
+      "dispatch",
+      "genId",
+      "toast",
+      "useToast"
+    ],
+    "src/lib/accounting-system.ts": [
+      "Account",
+      "AccountCategory",
+      "JournalEntry",
+      "TransactionLine",
+      "calculateAccountBalance",
+      "generateBalanceSheet",
+      "generateIncomeStatement",
+      "getAccountById"
+    ],
+    "src/lib/data.ts": [
+      "Customer",
+      "Product",
+      "Sale",
+      "SaleItem"
+    ],
+    "src/lib/db-service.ts": [
+      "AppUser",
+      "DBFieldWork",
+      "DBProduct",
+      "DBSale",
+      "DBSaleItem",
+      "apiFetch"
+    ],
+    "src/lib/export-utils.ts": [
+      "downloadCSV",
+      "generateCashFlowExport",
+      "generatePayrollExport",
+      "generateVATExport"
+    ],
+    "src/lib/fieldwork-data.ts": [
+      "DailyReport",
+      "FieldWork",
+      "FieldWorkEquipment",
+      "FieldWorker",
+      "ReturnForm"
+    ],
+    "src/lib/finance-data.ts": [
+      "BankAccount",
+      "BankReconciliationRecord",
+      "BudgetRecord",
+      "BuildingRentRecord",
+      "CashFlowEntry",
+      "CostRequest",
+      "ExpenseRequest",
+      "LoanPayment",
+      "LoanRecord",
+      "PayrollEntry",
+      "PayrollWorker",
+      "PettyCashEntry",
+      "PettyCashRecord",
+      "RequestStatus",
+      "VATRecord",
+      "calculateIncomeTax",
+      "calculatePayroll"
+    ],
+    "src/lib/finance-hub-store.ts": [
+      "Account",
+      "Bill",
+      "Customer",
+      "Expense",
+      "Invoice",
+      "InvoiceItem",
+      "JournalEntry",
+      "Payment",
+      "Vendor",
+      "initFinanceStore"
+    ],
+    "src/lib/inventory-requests.ts": [
+      "InventoryRequest",
+      "ProductMaster"
+    ],
+    "src/lib/offline-queue.ts": [
+      "OfflineMutation",
+      "enqueueOfflineMutation",
+      "flushOfflineQueue",
+      "getDeviceKey",
+      "getOfflineMutations",
+      "getOfflineQueueStatus",
+      "installOfflineQueueAutoFlush",
+      "openDb",
+      "removeOfflineMutation",
+      "updateOfflineMutation",
+      "withStore"
+    ],
+    "src/lib/pump-data.ts": [
+      "EquipmentItem",
+      "PumpCategory",
+      "PumpModel",
+      "PumpSubCategory",
+      "TechnicalDataRow",
+      "getAllPumpModels",
+      "getEquipmentTotal",
+      "getPumpModel"
+    ],
+    "src/lib/pump-sizing.ts": [
+      "MatchResult",
+      "PerformancePoint",
+      "PumpProduct",
+      "SiteSurvey",
+      "SurveyStatus",
+      "WaterSource",
+      "calculateRequiredFlow",
+      "calculateTDH",
+      "findSuitablePumps",
+      "getFlowAtHead"
+    ],
+    "src/lib/utils.ts": [
+      "cn"
+    ],
+    "src/lib/api/auth.ts": [
+      "ApiCompany",
+      "ApiUser",
+      "createUserRequest",
+      "deleteUserRequest",
+      "loginRequest",
+      "logoutRequest",
+      "meRequest",
+      "myCompaniesRequest",
+      "updateUserRequest",
+      "usersRequest"
+    ],
+    "src/lib/api/client.ts": [
+      "clearAuthTokens",
+      "getAccessToken",
+      "getRefreshToken",
+      "setAuthTokens"
+    ],
+    "src/lib/api/communication.ts": [
+      "ChatChannel",
+      "ChatMessage",
+      "Comment",
+      "Notification",
+      "Task",
+      "addComment",
+      "createChannel",
+      "createTask",
+      "deleteNotification",
+      "deleteTask",
+      "getChannelMessages",
+      "getChannels",
+      "getComments",
+      "getNotifications",
+      "getOrCreateDM",
+      "getTasks",
+      "markAllNotificationsAsRead",
+      "markChannelAsRead",
+      "markNotificationAsRead",
+      "updateTask"
+    ],
+    "src/pages/Dashboard.tsx": [
+      "loadDashboardAnalytics",
+      "loadPresenceAndEod"
+    ],
+    "src/pages/FieldWorkPage.tsx": [
+      "CompletedSalePumpOption",
+      "FieldWorkForm",
+      "OverviewSection",
+      "PumpSizingSection",
+      "ResearchSection",
+      "ReturnFormComponent",
+      "SizingSuitability",
+      "WorkerWithPosition",
+      "sizingCalcFlow",
+      "sizingCalcTDH",
+      "sizingInterpolateFlow"
+    ],
+    "src/pages/FinanceCenterPage.tsx": [
+      "InventoryRequestWithPrice",
+      "loadFinanceCenterData",
+      "normalizeAccountingJournalEntry",
+      "normalizeCashFlowEntry",
+      "parseRecordPayload"
+    ],
+    "src/pages/InventoryPage.tsx": [
+      "InventoryRequestForm",
+      "InventoryRequestWithPrice",
+      "ProductForm",
+      "ProductWithCode",
+      "getNextProductCode"
+    ],
+    "src/pages/POSPage.tsx": [
+      "PumpSuitability",
+      "SizingMatch",
+      "calcRequiredFlowM3h",
+      "calcTDH",
+      "interpolateFlowAtHead",
+      "interpolateFlowSmart"
+    ],
+    "src/pages/PeachtreePage.tsx": [
+      "Customer",
+      "Invoice",
+      "JournalEntry",
+      "SyncedData",
+      "Vendor"
+    ],
+    "src/pages/PumpDetailPage.tsx": [
+      "FlowUnit",
+      "InfoTab",
+      "getCatalogInfo"
+    ],
+    "src/pages/PumpProductsPage.tsx": [
+      "CategoryForm",
+      "PumpCategoryRecord",
+      "PumpForm",
+      "iconFor",
+      "parseJsonField"
+    ],
+    "src/pages/PumpSizingPage.tsx": [
+      "ChangeView",
+      "LocationMarker"
+    ],
+    "tools/peachtree-sync-agent/sync_agent.py": [
+      "fetch_peachtree_data",
+      "get_last_sync",
+      "main",
+      "push_to_api",
+      "setup_local_db",
+      "update_last_sync"
+    ],
+    "tools/peachtree-uploader/peachtree_uploader.py": [
+      "connect_queue",
+      "drain_queue",
+      "iter_export_files",
+      "login",
+      "mark_failed",
+      "mark_uploaded",
+      "parse_args",
+      "pending_files",
+      "run",
+      "scan_folder",
+      "sha256_file",
+      "upload_file",
+      "upsert_detected_file",
+      "utc_now"
+    ]
+  }
+}

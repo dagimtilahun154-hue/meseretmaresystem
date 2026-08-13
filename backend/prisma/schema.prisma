@@ -77,12 +77,14 @@ model User {
   requestAuditLogs RequestAuditLog[]
   lastSeen         DateTime?
   eodReports       EodReport[]    @relation("EodSubmittedBy")
+  eodComments      EodComment[]
   tasksCreated        Task[]             @relation("CreatedTasks")
   tasksAssigned       Task[]             @relation("AssignedTasks")
   comments            Comment[]          @relation("AuthoredComments")
   channelMemberships  ChannelMember[]    @relation("UserChannels")
   chatMessages        ChatMessage[]      @relation("SentMessages")
   notifications       Notification[]     @relation("UserNotifications")
+  customerNotes       CustomerNote[]
 
   @@unique([organizationId, username])
   @@index([organizationId])
@@ -230,6 +232,7 @@ model FieldWorkJob {
   notes           String?  @db.Text
   payload         Json?
   dailyReports    Json?    // [{ id, date, content, submittedBy, forwardedToGm, forwardedAt }]
+  completionImages Json?   // [{ url, caption, type }] 4 finished site photos
   returnsApproved Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -253,7 +256,24 @@ model Customer {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  notes       CustomerNote[]
+
   @@map("customers")
+}
+
+model CustomerNote {
+  id          String   @id @default(cuid())
+  customerId  String
+  userId      String
+  userRole    String?
+  department  String?
+  note        String   @db.Text
+  createdAt   DateTime @default(now())
+
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("customer_notes")
 }
 
 model Vendor {
@@ -613,16 +633,36 @@ model RequestAuditLog {
 }
 
 model EodReport {
-  id            String   @id @default(cuid())
-  date          String   // e.g. "2026-07-08"
-  department    String
-  submittedById String
-  submittedBy   User     @relation("EodSubmittedBy", fields: [submittedById], references: [id], onDelete: Cascade)
-  content       String   @db.Text
-  metrics       Json?    // Optional EOD KPI counts
-  createdAt     DateTime @default(now())
+  id                  String       @id @default(cuid())
+  date                String       // e.g. "2026-07-08"
+  department          String
+  submittedById       String
+  submittedBy         User         @relation("EodSubmittedBy", fields: [submittedById], references: [id], onDelete: Cascade)
+  content             String       @db.Text
+  workAccomplished    String?      @db.Text
+  additionalComments  String?      @db.Text
+  targetRole          String?      @default("manager")
+  departmentSummary   String?      @db.Text
+  status              String       @default("SUBMITTED")
+  metrics             Json?        // Optional EOD KPI counts
+  createdAt           DateTime     @default(now())
+
+  comments            EodComment[]
 
   @@map("eod_reports")
+}
+
+model EodComment {
+  id          String    @id @default(cuid())
+  reportId    String
+  userId      String
+  comment     String    @db.Text
+  createdAt   DateTime  @default(now())
+
+  report      EodReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("eod_comments")
 }
 
 model Task {

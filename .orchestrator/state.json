@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "project_name": "solarflow-manager-main",
+  "mode": "RECOVER",
+  "baseline": {
+    "version": "draft",
+    "status": "draft",
+    "approved_at": null
+  },
+  "stage": "verification",
+  "active_task": null,
+  "blockers": [],
+  "latest_checkpoint": "0002",
+  "repository": {
+    "commit": "3172699f740e3a6647f30125a67c178cd48ec644",
+    "branch": "main",
+    "index_fingerprint": null,
+    "root_name": "solarflow-manager-main",
+    "fingerprint": "5bb962950fc43c4f5378b8ea75b47e01db0cc6baec454469c8c334bbf6a8b31d"
+  },
+  "metadata_status": "current",
+  "updated_at": "2026-08-03T12:17:41.591471+00:00"
+}

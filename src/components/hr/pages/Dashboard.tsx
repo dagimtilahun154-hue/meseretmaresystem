@@ -1,10 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, UserMinus, Clock, Activity } from "lucide-react";
+import { Users, UserCheck, UserMinus, Clock, Activity, DollarSign, Building } from "lucide-react";
 import { hrDB } from "@/lib/db-service";
 import { format, subDays, parseISO } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/data";
+import { apiClient } from "@/lib/api/client";
+import { toast } from "sonner";
 
 export default function HRDashboard() {
   const [stats, setStats] = useState({
@@ -16,6 +24,38 @@ export default function HRDashboard() {
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Payroll Request State
+  const [payrollOpen, setPayrollOpen] = useState(false);
+  const [payrollMonth, setPayrollMonth] = useState(format(new Date(), "MMMM yyyy"));
+  const [baseSalary, setBaseSalary] = useState(250000);
+  const [overtime, setOvertime] = useState(35000);
+  const [deductions, setDeductions] = useState(28000);
+
+  const handleSendPayrollRequest = async () => {
+    const netPayable = Math.max(0, baseSalary + overtime - deductions);
+    try {
+      await apiClient.post("/hierarchy/requests", {
+        title: `Monthly Payroll Disbursement Request (${payrollMonth}) - ${formatCurrency(netPayable)}`,
+        amount: Number(netPayable),
+        type: "PAYROLL_DISBURSEMENT",
+        payload: {
+          payrollMonth,
+          baseSalary,
+          overtime,
+          deductions,
+          netPayable,
+          employeeCount: stats.totalWorkers || 12,
+          submittedBy: "HR Officer",
+        }
+      });
+      toast.success("Payroll disbursement request submitted to Finance & GM!");
+      setPayrollOpen(false);
+    } catch (err: any) {
+      console.error("Failed to submit payroll request:", err);
+      toast.error(err.response?.data?.message || "Failed to submit payroll request");
+    }
+  };
 
   useEffect(() => {
     fetchDashboardData();
@@ -48,6 +88,19 @@ export default function HRDashboard() {
         absent: absent > 0 ? absent : 0
       });
 
+      // Auto-calculate overtime pay & late penalty deductions from month logs
+      let autoLateDeduction = 0;
+      let autoOvertimeBonus = 0;
+      if (monthLogs && Array.isArray(monthLogs)) {
+        monthLogs.forEach((log: any) => {
+          if (log.status === "Late") autoLateDeduction += 500; // 500 ETB penalty per late check-in
+          if (log.check_out_time && log.check_out_time.includes("T18:")) autoOvertimeBonus += 750; // Overtime after 18:00
+        });
+      }
+
+      if (autoLateDeduction > 0) setDeductions(autoLateDeduction);
+      if (autoOvertimeBonus > 0) setOvertime(autoOvertimeBonus);
+
       setRecentLogs(attendanceLogs.slice(0, 5));
 
       // Build chart data
@@ -78,9 +131,91 @@ export default function HRDashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">HR & Attendance Dashboard</h1>
-        <p className="text-muted-foreground">Overview of today's attendance metrics.</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">HR & Attendance Dashboard</h1>
+          <p className="text-muted-foreground">Overview of employee workforce & monthly payroll requests.</p>
+        </div>
+        
+        <Dialog open={payrollOpen} onOpenChange={setPayrollOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center gap-2">
+              <DollarSign className="h-4 w-4" /> Submit Monthly Payroll Request
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-[#0f172a] text-white border-white/10 sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-white flex items-center gap-2">
+                <Building className="h-5 w-5 text-emerald-400" />
+                Submit Payroll Disbursement Request to Finance
+              </DialogTitle>
+              <DialogDescription className="text-slate-400">
+                Formulate and forward monthly employee salary disbursement breakdown for General Manager & Finance sign-off.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-3">
+              <div>
+                <Label className="text-slate-300">Payroll Period / Month</Label>
+                <Input
+                  value={payrollMonth}
+                  onChange={(e) => setPayrollMonth(e.target.value)}
+                  className="bg-slate-900 border-white/10 text-white mt-1"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-slate-300">Base Salary Pool (ETB)</Label>
+                  <Input
+                    type="number"
+                    value={baseSalary}
+                    onChange={(e) => setBaseSalary(Number(e.target.value))}
+                    className="bg-slate-900 border-white/10 text-white mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-slate-300">Overtime & Per-Diems (ETB)</Label>
+                  <Input
+                    type="number"
+                    value={overtime}
+                    onChange={(e) => setOvertime(Number(e.target.value))}
+                    className="bg-slate-900 border-white/10 text-white mt-1"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-slate-300">Statutory Tax & Pension Deductions (ETB)</Label>
+                <Input
+                  type="number"
+                  value={deductions}
+                  onChange={(e) => setDeductions(Number(e.target.value))}
+                  className="bg-slate-900 border-white/10 text-white mt-1"
+                />
+              </div>
+
+              <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-emerald-400 uppercase font-mono tracking-wider">Net Payable Salary Pool</p>
+                  <p className="text-xl font-bold text-white mt-0.5">
+                    {formatCurrency(Math.max(0, baseSalary + overtime - deductions))}
+                  </p>
+                </div>
+                <Badge className="bg-emerald-500 text-white">Auto-Calculated</Badge>
+              </div>
+            </div>
+
+            <DialogFooter className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setPayrollOpen(false)} className="border-white/10 text-slate-300">
+                Cancel
+              </Button>
+              <Button onClick={handleSendPayrollRequest} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+                Forward to Finance
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

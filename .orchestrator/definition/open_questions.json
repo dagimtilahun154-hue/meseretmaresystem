@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "status": "draft",
+  "items": [
+    {
+      "question": "Are visual pump curves (head/flow charts) required for display in the frontend catalog, or is the TanStack Curve graph sufficient?",
+      "status": "in_discussion",
+      "impact": "Catalog rendering layout"
+    },
+    {
+      "question": "What is the exact sync conflict resolution policy for offline sales records updated simultaneously on the client and server?",
+      "status": "in_discussion",
+      "impact": "Offline sync sync_conflicts model mapping"
+    }
+  ],
+  "updated_at": "2026-08-03T12:19:59.846213+00:00"
+}

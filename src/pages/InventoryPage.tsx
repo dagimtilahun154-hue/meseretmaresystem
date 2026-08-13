@@ -10,7 +10,7 @@ import {
 } from "@/lib/data";
 import { InventoryRequest } from "@/lib/inventory-requests";
 import { inventoryRequestsDB, hierarchyRequestsDB } from "@/lib/db-service";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -50,8 +51,18 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  Warehouse,
+  Wrench,
+  RotateCcw,
+  Check,
+  QrCode,
+  Printer,
+  Truck,
 } from "lucide-react";
+import { AutoPurchaseOrderModal } from "@/components/inventory/AutoPurchaseOrderModal";
 import { toast } from "sonner";
+import { apiClient } from "@/lib/api/client";
+import { QRCodeModal } from "@/components/QRCodeModal";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-primary/10 text-primary border-primary/20",
@@ -513,7 +524,7 @@ function InventoryRequestForm({
 }
 
 export default function InventoryPage() {
-  const { products, addProduct, updateProduct, deleteProduct, refreshStoreData } = useStore();
+  const { products, addProduct, updateProduct, deleteProduct, fieldWorks, refreshStoreData } = useStore();
   const { currentUser, hasAccess } = useAuth();
 
   const [search, setSearch] = useState("");
@@ -521,11 +532,70 @@ export default function InventoryPage() {
   const [editProduct, setEditProduct] = useState<ProductWithCode | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
+  const [autoPoOpen, setAutoPoOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [inventoryRequests, setInventoryRequests] = useState<InventoryRequestWithPrice[]>([]);
+  const [allAssets, setAllAssets] = useState<any[]>([]);
+  const [qrItem, setQrItem] = useState<any | null>(null);
 
-  const canApprove = hasAccess(["finance", "manager"]);
+  // Warehouse Fast-Scan Kiosk states
+  const [kioskOpen, setKioskOpen] = useState(false);
+  const [kioskSearch, setKioskSearch] = useState("");
+  const [kioskNote, setKioskNote] = useState("");
+
+  useEffect(() => {
+    apiClient.get("/company-assets")
+      .then(res => setAllAssets(res.data))
+      .catch(err => console.error("Failed to load company assets:", err));
+  }, []);
+
+  const canApprove = hasAccess(["finance"]);
+  const canManageWarehouse = hasAccess(["storekeeper"]);
+
+  const handleReleaseTools = async (jobId: string, companyTools: string[]) => {
+    try {
+      await apiClient.post("/fieldwork-assets/checkout", {
+        fieldWorkJobId: jobId,
+        assetIds: companyTools
+      });
+      toast.success("Tools checked out and released successfully!");
+      const assetsRes = await apiClient.get("/company-assets");
+      setAllAssets(assetsRes.data);
+      await refreshStoreData();
+    } catch (err: any) {
+      console.error("Release failed:", err);
+      toast.error(err.response?.data?.message || "Failed to release tools");
+    }
+  };
+
+  const handleReturnTools = async (jobId: string) => {
+    try {
+      const res = await apiClient.get(`/fieldwork-assets/job/${jobId}`);
+      const checkouts = res.data;
+      const activeCheckouts = checkouts.filter((c: any) => c.status === "CHECKED_OUT");
+      if (activeCheckouts.length === 0) {
+        toast.error("No active checkouts found for this job.");
+        return;
+      }
+      const returns = activeCheckouts.map((c: any) => ({
+        companyAssetId: c.companyAssetId,
+        condition: "GOOD",
+        notes: "Returned to warehouse"
+      }));
+      await apiClient.post("/fieldwork-assets/return", {
+        fieldWorkJobId: jobId,
+        returns
+      });
+      toast.success("All tools returned and checked back into warehouse!");
+      const assetsRes = await apiClient.get("/company-assets");
+      setAllAssets(assetsRes.data);
+      await refreshStoreData();
+    } catch (err: any) {
+      console.error("Return failed:", err);
+      toast.error(err.response?.data?.message || "Failed to return tools");
+    }
+  };
 
   const requestSecurityCode = (action: () => void) => {
     setPendingAction(() => action);
@@ -553,7 +623,7 @@ export default function InventoryPage() {
     };
 
     loadRequests(true);
-    const timer = window.setInterval(() => loadRequests(false), 15000);
+    const timer = window.setInterval(() => loadRequests(false), 60000);
     const onFocus = () => loadRequests(false);
     window.addEventListener("focus", onFocus);
 
@@ -588,7 +658,7 @@ export default function InventoryPage() {
   const pendingCount = inventoryRequests.filter((r) => r.status === "pending").length;
 
   const myName = currentUser?.displayName || "Unknown";
-  const isManagement = hasAccess(["finance", "manager"]);
+  const isManagement = hasAccess(["finance"]);
   const requestsToShow = isManagement ? inventoryRequests : inventoryRequests.filter((r) => r.requestedBy === myName);
 
   const updateInventoryRequestStatus = async (id: string, status: "approved" | "rejected") => {
@@ -622,6 +692,8 @@ export default function InventoryPage() {
     }
   };
 
+  const lowStockItems = useMemo(() => products.filter((p) => p.quantity <= ((p as any).minStock || (p as any).min_stock || 5)), [products]);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <SecurityCodeDialog
@@ -648,7 +720,14 @@ export default function InventoryPage() {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            onClick={() => setAutoPoOpen(true)}
+            className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold gap-1.5 text-xs shadow-sm"
+          >
+            <Truck className="h-4 w-4" /> Auto-Generate Vendor PO ({lowStockItems.length})
+          </Button>
+
           <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
@@ -696,6 +775,12 @@ export default function InventoryPage() {
               />
             </DialogContent>
           </Dialog>
+
+          {canManageWarehouse && (
+            <Button variant="outline" onClick={() => setKioskOpen(true)} className="gap-1 border-blue-200 text-blue-600 hover:bg-blue-50">
+              <Warehouse className="h-4 w-4" /> Kiosk Scan Mode
+            </Button>
+          )}
 
           {canApprove && (
             <Dialog open={addOpen} onOpenChange={setAddOpen}>
@@ -750,6 +835,9 @@ export default function InventoryPage() {
           <TabsTrigger value="inventory">
             <Package className="h-3.5 w-3.5 mr-1" /> Stock
           </TabsTrigger>
+          <TabsTrigger value="releases">
+            <Warehouse className="h-3.5 w-3.5 mr-1" /> Releases & Returns
+          </TabsTrigger>
           <TabsTrigger value="requests" className="relative">
             <Clock className="h-3.5 w-3.5 mr-1" /> {isManagement ? "All Requests" : "My Requests"}
             {pendingCount > 0 && (
@@ -800,7 +888,7 @@ export default function InventoryPage() {
                       <th className="pb-2 font-medium text-center">Status</th>
                       <th className="pb-2 font-medium text-right">Cost</th>
                       <th className="pb-2 font-medium text-right">Price</th>
-                      {canApprove && <th className="pb-2 font-medium text-right">Actions</th>}
+                      <th className="pb-2 font-medium text-right">Actions</th>
                     </tr>
                   </thead>
 
@@ -849,62 +937,77 @@ export default function InventoryPage() {
                             {formatCurrency(p.sellPrice)}
                           </td>
 
-                          {canApprove && (
-                            <td className="py-3 text-right">
-                              <div className="flex gap-1 justify-end">
-                                <Dialog
-                                  open={editProduct?.id === p.id}
-                                  onOpenChange={(open) => !open && setEditProduct(null)}
-                                >
-                                  <DialogTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() =>
-                                        requestSecurityCode(() =>
-                                          setEditProduct(product)
-                                        )
-                                      }
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                  </DialogTrigger>
+                          <td className="py-3 text-right">
+                            <div className="flex gap-1 justify-end">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setQrItem({
+                                  id: p.id,
+                                  name: p.name,
+                                  code: product.code ?? p.id,
+                                  type: "PRODUCT"
+                                })}
+                              >
+                                <QrCode className="h-4 w-4 text-blue-600" />
+                              </Button>
 
-                                  <DialogContent>
-                                    <DialogHeader>
-                                      <DialogTitle>Edit Product</DialogTitle>
-                                    </DialogHeader>
+                              {canApprove && (
+                                <>
+                                  <Dialog
+                                    open={editProduct?.id === p.id}
+                                    onOpenChange={(open) => !open && setEditProduct(null)}
+                                  >
+                                    <DialogTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() =>
+                                          requestSecurityCode(() =>
+                                            setEditProduct(product)
+                                          )
+                                        }
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                    </DialogTrigger>
 
-                                    {editProduct && (
-                                      <ProductForm
-                                        product={editProduct}
-                                        products={products as ProductWithCode[]}
-                                        onSave={(updatedProduct) => {
-                                          updateProduct(updatedProduct);
-                                          setEditProduct(null);
-                                          toast.success("Updated");
-                                        }}
-                                        onCancel={() => setEditProduct(null)}
-                                      />
-                                    )}
-                                  </DialogContent>
-                                </Dialog>
+                                    <DialogContent>
+                                      <DialogHeader>
+                                        <DialogTitle>Edit Product</DialogTitle>
+                                      </DialogHeader>
 
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() =>
-                                    requestSecurityCode(() => {
-                                      deleteProduct(p.id);
-                                      toast.success("Deleted");
-                                    })
-                                  }
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </div>
-                            </td>
-                          )}
+                                      {editProduct && (
+                                        <ProductForm
+                                          product={editProduct}
+                                          products={products as ProductWithCode[]}
+                                          onSave={(updatedProduct) => {
+                                            updateProduct(updatedProduct);
+                                            setEditProduct(null);
+                                            toast.success("Updated");
+                                          }}
+                                          onCancel={() => setEditProduct(null)}
+                                        />
+                                      )}
+                                    </DialogContent>
+                                  </Dialog>
+
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() =>
+                                      requestSecurityCode(() => {
+                                        deleteProduct(p.id);
+                                        toast.success("Deleted");
+                                      })
+                                    }
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
@@ -1015,7 +1118,384 @@ export default function InventoryPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="releases">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <div>
+                <CardTitle className="text-lg">Warehouse Releases & Returns</CardTitle>
+                <CardDescription>
+                  Storekeeper dashboard to manage tool checkout releases and return check-ins.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Job/Client</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Assigned TTL</TableHead>
+                      <TableHead>Requested Tools</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fieldWorks
+                      .filter((fw: any) => 
+                        fw.status === "approved_gm" || 
+                        fw.status === "Approved and ready to go" || 
+                        fw.status === "completed_ttl" || 
+                        fw.status === "done"
+                      )
+                      .map((fw: any) => {
+                        const tools = Array.isArray(fw.payload?.companyTools) ? fw.payload.companyTools : [];
+                        
+                        // Map tool IDs to names
+                        const toolNames = tools.map((toolId: string) => {
+                          const matched = allAssets.find((a: any) => a.id === toolId);
+                          return matched ? `${matched.name} (${matched.serialNumber})` : `Asset ID: ${toolId}`;
+                        });
+
+                        // We check if this job has checked-out assets in field
+                        const hasActiveCheckout = allAssets.some((a: any) => 
+                          a.status === "IN_FIELD" && tools.includes(a.id)
+                        );
+
+                        const canReleaseJob = (fw.status === "approved_gm" || fw.status === "Approved and ready to go") && tools.length > 0 && !hasActiveCheckout;
+                        const canConfirmReturnJob = fw.status === "completed_ttl" && tools.length > 0;
+
+                        return (
+                          <TableRow key={fw.id}>
+                            <TableCell className="font-semibold">
+                              <div>
+                                <p className="text-sm font-bold">{fw.customerName || "No Client"}</p>
+                                <p className="text-xs text-muted-foreground font-mono">{fw.id} • {fw.pumpModel}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm font-medium">{fw.location}</TableCell>
+                            <TableCell className="text-sm">
+                              <Badge variant="secondary" className="font-semibold">@{fw.assignedTo || "Unassigned"}</Badge>
+                            </TableCell>
+                            <TableCell className="max-w-[240px]">
+                              {toolNames.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {toolNames.map((name: string, i: number) => (
+                                    <Badge key={i} variant="outline" className="text-[10px] py-0 bg-muted/30 flex items-center gap-1">
+                                      <Wrench className="h-2.5 w-2.5 text-muted-foreground" />
+                                      {name}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="italic text-xs text-muted-foreground">No tools requested</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={
+                                fw.status === "completed_ttl" 
+                                  ? "bg-amber-100 text-amber-800 border-amber-200" 
+                                  : fw.status === "done" 
+                                    ? "bg-green-100 text-green-800 border-green-200"
+                                    : "bg-blue-100 text-blue-800 border-blue-200"
+                              }>
+                                {fw.status === "completed_ttl" ? "Awaiting Return Conf." : fw.status === "done" ? "Returned & Done" : hasActiveCheckout ? "Released / In Field" : "Awaiting Release"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {canManageWarehouse && (
+                                <div className="flex justify-end gap-2">
+                                  {canReleaseJob && (
+                                    <Button 
+                                      size="sm" 
+                                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold gap-1 text-xs"
+                                      onClick={() => handleReleaseTools(fw.id, tools)}
+                                    >
+                                      <Warehouse className="h-3.5 w-3.5" /> Release Tools
+                                    </Button>
+                                  )}
+                                  {canConfirmReturnJob && (
+                                    <Button 
+                                      size="sm" 
+                                      className="bg-amber-600 hover:bg-amber-700 text-white font-bold gap-1 text-xs"
+                                      onClick={() => handleReturnTools(fw.id)}
+                                    >
+                                      <RotateCcw className="h-3.5 w-3.5" /> Confirm Returns
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                              {tools.length === 0 && (
+                                <span className="text-xs text-muted-foreground italic">No action needed</span>
+                              )}
+                              {fw.status === "done" && tools.length > 0 && (
+                                <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">
+                                  <Check className="h-3.5 w-3.5 mr-1" /> Audited
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    {fieldWorks.filter((fw: any) => 
+                      fw.status === "approved_gm" || 
+                      fw.status === "Approved and ready to go" || 
+                      fw.status === "completed_ttl" || 
+                      fw.status === "done"
+                    ).length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                          <Warehouse className="h-8 w-8 mx-auto mb-3 opacity-20" />
+                          <p>No active fieldwork releases or returns found.</p>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* KIOSK SCAN MODE DIALOG */}
+      <Dialog open={kioskOpen} onOpenChange={setKioskOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+              <Warehouse className="h-6 w-6 text-blue-600 animate-pulse" />
+              Warehouse Fast-Scan Kiosk
+            </DialogTitle>
+            <DialogDescription>
+              Scan or enter item code / serial number for quick check-out, restock, or barcode/QR print.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-9 font-mono text-lg tracking-wider"
+                  placeholder="Scan or enter code (e.g. SP-001, SA-002)..."
+                  value={kioskSearch}
+                  onChange={(e) => setKioskSearch(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <Button onClick={() => setKioskSearch("")} variant="ghost">Clear</Button>
+            </div>
+
+            {/* Display matched result */}
+            {(() => {
+              const query = kioskSearch.trim().toLowerCase();
+              if (!query) return <div className="text-center py-8 text-muted-foreground italic text-sm">Awaiting scan...</div>;
+
+              const matchedProd = products.find(
+                (p: any) =>
+                  String(p.code ?? "").toLowerCase() === query ||
+                  p.id.toLowerCase() === query ||
+                  p.name.toLowerCase().includes(query)
+              );
+
+              const matchedAsset = allAssets.find(
+                (a: any) =>
+                  String(a.serialNumber ?? "").toLowerCase() === query ||
+                  a.id.toLowerCase() === query ||
+                  a.name.toLowerCase().includes(query)
+              );
+
+              if (!matchedProd && !matchedAsset) {
+                return (
+                  <div className="bg-destructive/10 text-destructive text-sm p-4 rounded-md text-center font-medium">
+                    No matching product or asset found for "{kioskSearch}".
+                  </div>
+                );
+              }
+
+              if (matchedProd) {
+                return (
+                  <div className="border border-blue-100 rounded-lg p-5 bg-blue-50/30 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <Badge className="bg-blue-600 mb-1">Product Stock</Badge>
+                        <h3 className="text-lg font-bold">{matchedProd.name}</h3>
+                        <p className="text-sm font-mono text-muted-foreground">Code: {matchedProd.code} | ID: {matchedProd.id}</p>
+                        <p className="text-xs font-semibold text-muted-foreground mt-1">Category: {matchedProd.category}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs text-muted-foreground block">Current Qty</span>
+                        <span className="text-2xl font-black text-blue-700">{matchedProd.quantity}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        className="bg-red-600 hover:bg-red-700 font-bold gap-1"
+                        disabled={matchedProd.quantity <= 0}
+                        onClick={async () => {
+                          try {
+                            updateProduct({
+                              ...matchedProd,
+                              quantity: matchedProd.quantity - 1
+                            });
+                            toast.success(`Checked out 1 unit of ${matchedProd.name} (-1)`);
+                          } catch (err) {
+                            toast.error("Checkout failed");
+                          }
+                        }}
+                      >
+                        -1 Checkout
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 font-bold gap-1"
+                        onClick={async () => {
+                          try {
+                            updateProduct({
+                              ...matchedProd,
+                              quantity: matchedProd.quantity + 1
+                            });
+                            toast.success(`Restocked 1 unit of ${matchedProd.name} (+1)`);
+                          } catch (err) {
+                            toast.error("Restock failed");
+                          }
+                        }}
+                      >
+                        +1 Restock
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1"
+                        onClick={() => {
+                          setQrItem({
+                            id: matchedProd.id,
+                            name: matchedProd.name,
+                            code: matchedProd.code,
+                            type: "PRODUCT"
+                          });
+                        }}
+                      >
+                        <QrCode className="h-4 w-4" /> QR Code Tag
+                      </Button>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="border border-amber-100 rounded-lg p-5 bg-amber-50/30 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <Badge className="bg-amber-600 mb-1">Company Asset / Tool</Badge>
+                      <h3 className="text-lg font-bold">{matchedAsset.name}</h3>
+                      <p className="text-sm font-mono text-muted-foreground">Serial: {matchedAsset.serialNumber} | ID: {matchedAsset.id}</p>
+                      <p className="text-xs font-semibold text-muted-foreground mt-1">Status: <span className="underline font-bold">{matchedAsset.status}</span></p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs text-muted-foreground block">Condition</span>
+                      <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200 mt-1">
+                        {matchedAsset.condition || "GOOD"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      className="bg-blue-600 hover:bg-blue-700 font-bold gap-1"
+                      disabled={matchedAsset.status !== "WAREHOUSE"}
+                      onClick={async () => {
+                        try {
+                          await apiClient.post("/fieldwork-assets/checkout", {
+                            fieldWorkJobId: "KIOSK-QUICK-RELEASE",
+                            assetIds: [matchedAsset.id],
+                            notes: kioskNote || "Kiosk quick release"
+                          });
+                          toast.success("Asset checked out to field!");
+                          const assetsRes = await apiClient.get("/company-assets");
+                          setAllAssets(assetsRes.data);
+                        } catch (err: any) {
+                          toast.error(err.response?.data?.message || "Checkout failed");
+                        }
+                      }}
+                    >
+                      Release to Field
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-amber-600 hover:bg-amber-700 font-bold gap-1"
+                      disabled={matchedAsset.status !== "IN_FIELD"}
+                      onClick={async () => {
+                        try {
+                          await apiClient.post("/fieldwork-assets/return", {
+                            fieldWorkJobId: "KIOSK-QUICK-RETURN",
+                            returns: [{
+                              companyAssetId: matchedAsset.id,
+                              condition: "GOOD",
+                              notes: kioskNote || "Kiosk quick return"
+                            }]
+                          });
+                          toast.success("Asset returned to warehouse!");
+                          const assetsRes = await apiClient.get("/company-assets");
+                          setAllAssets(assetsRes.data);
+                        } catch (err: any) {
+                          toast.error(err.response?.data?.message || "Return failed");
+                        }
+                      }}
+                    >
+                      Return to Warehouse
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1"
+                      onClick={() => {
+                        setQrItem({
+                          id: matchedAsset.id,
+                          name: matchedAsset.name,
+                          code: matchedAsset.serialNumber,
+                          type: "ASSET"
+                        });
+                      }}
+                    >
+                      <QrCode className="h-4 w-4" /> QR Code Tag
+                    </Button>
+                  </div>
+
+                  <div className="space-y-1.5 pt-2">
+                    <Label className="text-xs">Quick Note (for release/returns)</Label>
+                    <Input
+                      size={1}
+                      className="h-8 text-xs"
+                      placeholder="Optional notes..."
+                      value={kioskNote}
+                      onChange={(e) => setKioskNote(e.target.value)}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <QRCodeModal
+        open={!!qrItem}
+        onOpenChange={(open) => !open && setQrItem(null)}
+        item={qrItem}
+      />
+
+      <AutoPurchaseOrderModal
+        open={autoPoOpen}
+        onOpenChange={setAutoPoOpen}
+        lowStockItems={lowStockItems}
+        onOrderCreated={refreshStoreData}
+      />
     </div>
   );
 }

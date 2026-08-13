@@ -4,11 +4,13 @@ import * as argon2 from "argon2";
 const prisma = new PrismaClient();
 
 const roleDefinitions = [
+  { name: "admin", label: "Administrator" },
   { name: "manager", label: "Manager" },
   { name: "finance", label: "Finance" },
   { name: "storekeeper", label: "Store Keeper" },
   { name: "fieldwork", label: "Field Work Controller" },
   { name: "attendance", label: "Attendance Officer" },
+  { name: "hr", label: "HR Manager" },
 ];
 
 const permissionKeys = [
@@ -125,18 +127,27 @@ async function main() {
   );
 
   // Retrieve Role mappings to use for other users
+  const adminRole = roles.find((r) => r.name === "admin")!;
   const financeRole = roles.find((r) => r.name === "finance")!;
   const storekeeperRole = roles.find((r) => r.name === "storekeeper")!;
   const fieldworkRole = roles.find((r) => r.name === "fieldwork")!;
+  const hrRole = roles.find((r) => r.name === "hr") || managerRole;
 
   const hierarchyUsers = [
-    // Level 2 Managers
+    // Level 2 Managers & System Roles
+    { username: "finance", displayName: "Finance Officer", roleName: "finance", roleId: financeRole.id, department: "FINANCE", reportsToId: managerUser.id },
+    { username: "store", displayName: "Store Keeper", roleName: "storekeeper", roleId: storekeeperRole.id, department: "INVENTORY", reportsToId: managerUser.id },
+    { username: "field", displayName: "Field Work Controller", roleName: "fieldwork", roleId: fieldworkRole.id, department: "TECHNICAL", reportsToId: managerUser.id },
+    { username: "ttl", displayName: "Technical Team Lead", roleName: "fieldwork", roleId: fieldworkRole.id, department: "TECHNICAL", reportsToId: managerUser.id },
+    { username: "hr", displayName: "HR Officer", roleName: "hr", roleId: hrRole.id, department: "HR", reportsToId: managerUser.id },
+    { username: "admin", displayName: "Administrator", roleName: "admin", roleId: adminRole.id, department: "ADMIN", reportsToId: managerUser.id },
     { username: "tech_manager", displayName: "Technical Manager", roleName: "fieldwork", roleId: fieldworkRole.id, department: "TECHNICAL", reportsToId: managerUser.id },
     { username: "marketing_manager", displayName: "Marketing & Grant Manager", roleName: "manager", roleId: managerRole.id, department: "MARKETING", reportsToId: managerUser.id },
     { username: "social_manager", displayName: "Social Media Manager", roleName: "manager", roleId: managerRole.id, department: "MARKETING", reportsToId: managerUser.id },
     { username: "stock_manager", displayName: "Stock Manager", roleName: "storekeeper", roleId: storekeeperRole.id, department: "INVENTORY", reportsToId: managerUser.id },
     { username: "finance_admin", displayName: "Finance Admin", roleName: "finance", roleId: financeRole.id, department: "FINANCE", reportsToId: managerUser.id },
   ];
+
 
   const seededLevel2Users: Record<string, string> = {};
 
@@ -219,6 +230,38 @@ async function main() {
         }),
       ),
     );
+  }
+
+  // Seed products for POS checkout / testing
+  const testProducts = [
+    { id: "PUMP-GONDAR-01", code: "PUMP-G01", name: "Solar Pump 5.5kW", category: "Pumps", quantity: 50, costPrice: 80000, sellPrice: 120000, unit: "pcs" },
+    { id: "PANEL-350W", code: "PANEL-350", name: "350W Solar Panels", category: "Panels", quantity: 100, costPrice: 4000, sellPrice: 6000, unit: "pcs" },
+    { id: "ACC-CABLE", code: "ACC-C01", name: "Mounting Structure & Cables", category: "Accessories", quantity: 50, costPrice: 20000, sellPrice: 29000, unit: "pcs" }
+  ];
+
+  for (const prod of testProducts) {
+    await prisma.product.upsert({
+      where: { id: prod.id },
+      update: {
+        code: prod.code,
+        name: prod.name,
+        category: prod.category,
+        quantity: prod.quantity,
+        costPrice: prod.costPrice,
+        sellPrice: prod.sellPrice,
+        unit: prod.unit,
+      },
+      create: {
+        id: prod.id,
+        code: prod.code,
+        name: prod.name,
+        category: prod.category,
+        quantity: prod.quantity,
+        costPrice: prod.costPrice,
+        sellPrice: prod.sellPrice,
+        unit: prod.unit,
+      }
+    });
   }
 
   console.log("Seed completed: organization, MM/FZ companies, roles, permissions, corporate hierarchy users.");

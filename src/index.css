@@ -136,3 +136,107 @@
   z-index: 10 !important;
 }
 
+/* Strict Executive Corporate PDF Print Stylesheet */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 10pt !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide Web Chrome & UI Navigation */
+  aside, nav, header, button, .print\:hidden, [role="tablist"], [data-radix-collection-item], button.close, [class*="DialogOverlay"], .leaflet-control-container, .no-print {
+    display: none !important;
+  }
+
+  /* When printable executive PDF is present, display it prominently */
+  .printable-executive-pdf {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    page-break-after: auto;
+  }
+
+  /* Expand Radix Dialog for Full Page Printing */
+  [role="dialog"], [data-state="open"] {
+    position: static !important;
+    transform: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+
+  /* Force display of all Tab panels sequentially in print */
+  [role="tabpanel"] {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    margin-bottom: 1.5rem !important;
+    page-break-inside: avoid;
+  }
+
+  /* Force clean white background and sharp black text */
+  .bg-card, .bg-muted, .bg-muted\/10, .bg-muted\/20, .bg-slate-900, .bg-slate-950, .bg-slate-50 {
+    background: transparent !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  .border, .border-b, .border-t {
+    border-color: #cbd5e1 !important;
+  }
+
+  /* Clean Professional Table Layout for Print */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 0.5rem !important;
+    margin-bottom: 1rem !important;
+    page-break-inside: avoid;
+  }
+
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 10px !important;
+    font-size: 9.5pt !important;
+    color: #0f172a !important;
+  }
+
+  th {
+    background-color: #f1f5f9 !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    font-size: 8.5pt !important;
+  }
+
+  /* Page Break Helpers */
+  .page-break {
+    page-break-before: always !important;
+  }
+
+  .no-break {
+    page-break-inside: avoid !important;
+  }
+}
+

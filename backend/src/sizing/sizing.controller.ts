@@ -63,7 +63,7 @@ export class SizingController {
   }
 
   @Patch(':id/tm-reject')
-  @Roles('manager', 'fieldwork')
+  @Roles('fieldwork')
   tmReject(
     @Param('id') id: string,
     @Req() request: { user: AuthUser },
@@ -73,7 +73,7 @@ export class SizingController {
   }
 
   @Patch(':id/check')
-  @Roles('manager', 'fieldwork')
+  @Roles('fieldwork')
   checkSizing(
     @Param('id') id: string,
     @Req() request: { user: AuthUser },
@@ -82,7 +82,7 @@ export class SizingController {
   }
 
   @Patch(':id/gm-approve')
-  @Roles('manager', 'fieldwork')
+  @Roles('manager')
   gmApprove(
     @Param('id') id: string,
     @Req() request: { user: AuthUser },
@@ -91,7 +91,7 @@ export class SizingController {
   }
 
   @Patch(':id/finance-pay')
-  @Roles('finance')
+  @Roles('finance', 'storekeeper', 'manager', 'sales')
   financePay(
     @Param('id') id: string,
     @Req() request: { user: AuthUser },
@@ -99,8 +99,17 @@ export class SizingController {
     return this.sizingService.financePay(id, request.user.id, request.user.displayName);
   }
 
+  @Patch(':id/mark-paid')
+  @Roles('finance', 'storekeeper', 'manager', 'sales')
+  markPaid(
+    @Param('id') id: string,
+    @Req() request: { user: AuthUser },
+  ) {
+    return this.sizingService.financePay(id, request.user.id, request.user.displayName);
+  }
+
   @Post(':id/create-fieldwork')
-  @Roles('manager', 'fieldwork')
+  @Roles('fieldwork')
   createFieldwork(
     @Param('id') id: string,
     @Req() request: { user: AuthUser },

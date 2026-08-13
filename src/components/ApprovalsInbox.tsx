@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { hierarchyRequestsDB } from "@/lib/db-service";
+import { hierarchyRequestsDB, usersDB } from "@/lib/db-service";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Check, X, Send, Inbox, FileText, ChevronRight, Share2, PlusCircle, Package, Wrench, UserCheck, ShoppingCart, Bell, ClipboardList } from "lucide-react";
+import { Check, X, Send, Inbox, FileText, ChevronRight, Share2, PlusCircle, Package, Wrench, UserCheck, ShoppingCart, Bell } from "lucide-react";
 import { toast } from "sonner";
-import { TaskBoard } from "./TaskBoard";
 import { NotificationsList } from "./NotificationsList";
 
 
@@ -40,10 +40,12 @@ interface HierarchyRequest {
 }
 
 const TYPE_LABELS: Record<string, string> = {
+  FINANCIAL_EXPENSE: "Financial Expense Write-off",
+  PETTY_CASH: "Petty Cash Claim",
+  STOCK_REORDER: "Stock / Tool Reorder",
   FIELD_TRIP: "Field Work Trip",
   MARKETING: "Marketing Budget",
-  STOCK_REORDER: "Stock Reorder",
-  GENERAL: "General Task",
+  GENERAL: "Custom Memo / Decision",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -279,7 +281,8 @@ function renderDetailedRequest(req: HierarchyRequest) {
   );
 }
 
-export default function ApprovalsInbox() {
+export function ApprovalsInbox() {
+  const navigate = useNavigate();
   const { currentUser, users, hasAccess } = useAuth();
   const [requests, setRequests] = useState<HierarchyRequest[]>([]);
   const [loading, setLoading] = useState(false);
@@ -292,13 +295,15 @@ export default function ApprovalsInbox() {
     title: "",
     description: "",
     amount: "",
-    type: "GENERAL",
+    type: "FINANCIAL_EXPENSE",
     comment: "",
+    assignedToId: "",
   });
 
   // Action state
   const [actionComment, setActionComment] = useState("");
   const [forwardUser, setForwardUser] = useState("");
+  const [systemUsers, setSystemUsers] = useState<any[]>([]);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -315,6 +320,7 @@ export default function ApprovalsInbox() {
   useEffect(() => {
     if (currentUser) {
       fetchRequests();
+      usersDB.getAll().then((data) => setSystemUsers(Array.isArray(data) ? data : [])).catch(() => undefined);
     }
   }, [currentUser]);
 
@@ -330,7 +336,7 @@ export default function ApprovalsInbox() {
       });
       toast.success("Request submitted successfully!");
       setCreateDialogOpen(false);
-      setForm({ title: "", description: "", amount: "", type: "GENERAL", comment: "" });
+      setForm({ title: "", description: "", amount: "", type: "FINANCIAL_EXPENSE", comment: "", assignedToId: "" });
       fetchRequests();
     } catch (e) {
       toast.error("Failed to submit request");
@@ -362,28 +368,11 @@ export default function ApprovalsInbox() {
   const historyRequests = requests.filter(r => (r.createdById === currentUser?.id || r.assignedToId === currentUser?.id) && TERMINAL_STATUSES.includes(r.status?.toUpperCase()));
 
   return (
-    <Tabs defaultValue="approvals" className="w-full space-y-4">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="approvals" className="flex items-center gap-2">
-          <Inbox className="h-4 w-4" />
-          Formal Approvals
-        </TabsTrigger>
-        <TabsTrigger value="tasks" className="flex items-center gap-2">
-          <ClipboardList className="h-4 w-4" />
-          Task Board
-        </TabsTrigger>
-        <TabsTrigger value="notifications" className="flex items-center gap-2">
-          <Bell className="h-4 w-4" />
-          Alerts & Activity
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="approvals" className="space-y-4">
-        <Card className="w-full">
+    <Card className="w-full">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
         <div>
           <CardTitle className="text-xl font-bold font-heading flex items-center gap-2">
-            <Inbox className="h-5 w-5 text-primary" /> Approvals & Tasks Hub
+            <Inbox className="h-5 w-5 text-primary" /> Requests & Approvals Hub
           </CardTitle>
           <CardDescription>Review and track requests flowing through reporting lines</CardDescription>
         </div>
@@ -580,19 +569,20 @@ export default function ApprovalsInbox() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="type">Type</Label>
+                <Label htmlFor="type">Request Category</Label>
                 <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
                   <SelectTrigger id="type"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="GENERAL">General Task</SelectItem>
+                    <SelectItem value="FINANCIAL_EXPENSE">Financial Expense Write-off</SelectItem>
+                    <SelectItem value="PETTY_CASH">Petty Cash Reimbursement</SelectItem>
+                    <SelectItem value="STOCK_REORDER">Stock / Tool Request</SelectItem>
                     <SelectItem value="FIELD_TRIP">Field Work Trip</SelectItem>
-                    <SelectItem value="MARKETING">Marketing Budget</SelectItem>
-                    <SelectItem value="STOCK_REORDER">Stock Reorder</SelectItem>
+                    <SelectItem value="GENERAL">Custom Memo / Decision</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="amount">Budget Amount ($)</Label>
+                <Label htmlFor="amount">Write-off / Amount ($)</Label>
                 <Input
                   id="amount"
                   type="number"
@@ -601,6 +591,19 @@ export default function ApprovalsInbox() {
                   onChange={e => setForm({ ...form, amount: e.target.value })}
                 />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="assignedTo">Send To Target Recipient</Label>
+              <Select value={form.assignedToId} onValueChange={v => setForm({ ...form, assignedToId: v })}>
+                <SelectTrigger id="assignedTo"><SelectValue placeholder="Select target recipient / manager" /></SelectTrigger>
+                <SelectContent>
+                  {systemUsers.map(u => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.displayName || u.username} ({u.role?.toUpperCase() || u.department || "User"})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="desc">Description</Label>
@@ -671,6 +674,22 @@ export default function ApprovalsInbox() {
 
                 {renderDetailedRequest(selectedRequest)}
 
+                {/* 360 Customer Dossier Link */}
+                <div className="flex justify-end pt-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const clientMatch = selectedRequest.title.replace("Sizing Payment Collection - ", "").trim();
+                      setDialogOpen(false);
+                      navigate(`/customers/${encodeURIComponent(clientMatch || selectedRequest.title)}`);
+                    }}
+                    className="gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+                  >
+                    <FileText className="h-4 w-4" /> Open Full 360 Customer Dossier
+                  </Button>
+                </div>
+
                 {/* Audit Logs / Activity History */}
                 <div className="space-y-1.5">
                   <span className="text-muted-foreground text-xs font-semibold block">Activity History</span>
@@ -702,31 +721,29 @@ export default function ApprovalsInbox() {
                       onChange={e => setActionComment(e.target.value)}
                     />
                     
-                    {/* Forward option specifically for General Manager */}
-                    {hasAccess(["manager"]) && (
-                      <div className="space-y-1.5">
-                        <Label htmlFor="forward-user" className="text-xs">Or Forward request to (Manager):</Label>
-                        <div className="flex gap-2">
-                          <Select value={forwardUser} onValueChange={setForwardUser}>
-                            <SelectTrigger id="forward-user" className="flex-1">
-                              <SelectValue placeholder="Select user to route to" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {users
-                                .filter(u => u.id !== currentUser.id && u.id !== selectedRequest.createdById)
-                                .map(u => (
-                                  <SelectItem key={u.id} value={u.username}>
-                                    {u.displayName} ({u.role})
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                          <Button size="sm" variant="secondary" onClick={() => handleAction("FORWARD")}>
-                            <Share2 className="h-4 w-4 mr-1" /> Forward
-                          </Button>
-                        </div>
+                    {/* Multi-tier Forwarding for any recipient */}
+                    <div className="space-y-1.5 border-t pt-3 border-border">
+                      <Label htmlFor="forward-user" className="text-xs font-semibold">Forward request to another person / role:</Label>
+                      <div className="flex gap-2">
+                        <Select value={forwardUser} onValueChange={setForwardUser}>
+                          <SelectTrigger id="forward-user" className="flex-1">
+                            <SelectValue placeholder="Select target user to forward to" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {systemUsers
+                              .filter(u => u.id !== currentUser.id && u.id !== selectedRequest.createdById)
+                              .map(u => (
+                                <SelectItem key={u.id} value={u.username || u.id}>
+                                  {u.displayName || u.username} ({u.role?.toUpperCase() || u.department || "User"})
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <Button size="sm" variant="secondary" onClick={() => handleAction("FORWARD")}>
+                          <Share2 className="h-4 w-4 mr-1" /> Forward
+                        </Button>
                       </div>
-                    )}
+                    </div>
 
                     <div className="flex justify-end gap-2 pt-2">
                       <Button
@@ -755,15 +772,7 @@ export default function ApprovalsInbox() {
         </DialogContent>
       </Dialog>
       </Card>
-      </TabsContent>
-
-      <TabsContent value="tasks" className="space-y-4 bg-card p-6 border rounded-xl shadow-sm">
-        <TaskBoard />
-      </TabsContent>
-
-      <TabsContent value="notifications" className="space-y-4 bg-card p-6 border rounded-xl shadow-sm">
-        <NotificationsList />
-      </TabsContent>
-    </Tabs>
   );
 }
+
+export default ApprovalsInbox;

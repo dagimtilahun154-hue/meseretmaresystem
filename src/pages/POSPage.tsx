@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { useSearchParams } from "react-router-dom";
-import { CalendarIcon, Plus, Trash2, Printer, ShoppingCart, Zap, MapPin, Wallet, Building, Smartphone, Users, Droplets, Search, Calculator, ChevronDown, ChevronUp, Sun, Package, TrendingUp } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, Printer, ShoppingCart, Zap, MapPin, Wallet, Building, Smartphone, Users, Droplets, Search, Calculator, ChevronDown, ChevronUp, Sun, Package, TrendingUp, Check, RefreshCw, Wrench } from "lucide-react";
 import { useStore } from "@/context/StoreContext";
 import { formatCurrency, VAT_RATE, Sale, SaleItem, Customer, POS_CATEGORY_GROUPS, ETHIOPIAN_REGIONS, ETHIOPIAN_BANKS } from "@/lib/data";
 import { PumpModel } from "@/lib/pump-data";
 import { pumpProductsDB, hierarchyRequestsDB } from "@/lib/db-service";
-
+import { apiClient } from "@/lib/api/client";
 const normalize = (value: unknown) => String(value ?? "").trim().toLowerCase();
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -108,35 +108,14 @@ export default function POSPage() {
   const [selectedProduct, setSelectedProduct] = useState("");
   const [qty, setQty] = useState<number | "">(1);
   const [saleDate, setSaleDate] = useState<Date>(new Date());
-  const [mode, setMode] = useState<"manual" | "model">("manual");
-  const [selectedModelId, setSelectedModelId] = useState("");
+  const [mode, setMode] = useState<"items" | "proposal">("items");
+  const [selectedProposalId, setSelectedProposalId] = useState("");
+  const [proposals, setProposals] = useState<any[]>([]);
+  const [loadingProposals, setLoadingProposals] = useState(false);
   const [lastSale, setLastSale] = useState<Sale | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Bank" | "Telebirr">("Cash");
   const [selectedBank, setSelectedBank] = useState<string>("");
-  const [isSizingModalOpen, setIsSizingModalOpen] = useState(false);
-  const [sizingData, setSizingData] = useState({
-    customerName: "",
-    phoneNumber: "",
-    location: "",
-    waterSource: "Borehole" as WaterSource,
-    purpose: "Irrigation",
-    dailyWaterNeed: 15000,
-    boreholeDepth: 60,
-    staticWaterLevel: 25,
-    tankHeight: 6,
-    pipeDistance: 50,
-    pipeSize: "1.5\"",
-    landSize: "",
-    sunHours: 5,
-    manualFriction: 0,
-    notes: ""
-  });
-  const [sizingResults, setSizingResults] = useState<SizingMatch[]>([]);
-  const [expandedPumpId, setExpandedPumpId] = useState<string | null>(null);
-  const [sizingSummary, setSizingSummary] = useState<{ tdh: number; reqFlowM3h: number; reqFlowLmin: number } | null>(null);
   const invoiceRef = useRef<HTMLDivElement>(null);
-
-  const [pumpModels, setPumpModels] = useState<any[]>([]);
 
   useEffect(() => {
     const loadPumps = async () => {
@@ -154,50 +133,65 @@ export default function POSPage() {
           setPumpModels([]);
         }
       } catch (error) {
-        console.error("Could not load pump products", error);
-        toast.error("Could not load pump products from backend");
-        setPumpModels([]);
+        console.error("Could not load products", error);
       }
     };
     loadPumps();
   }, []);
 
-  useEffect(() => {
-    const modelParam = searchParams.get("model");
-    if (modelParam && pumpModels.length > 0) {
-      setMode("model");
-      setSelectedModelId(modelParam);
-      loadModelEquipment(modelParam);
+  const fetchProposals = async () => {
+    setLoadingProposals(true);
+    try {
+      const res = await apiClient.get("/sizing-requests");
+      const filtered = res.data.filter((p: any) => p.status === "APPROVED_TM" || p.status === "PAID");
+      setProposals(filtered);
+    } catch (err) {
+      console.error("Failed to fetch sizing proposals in POS:", err);
+    } finally {
+      setLoadingProposals(false);
     }
-  }, [searchParams, pumpModels]);
+  };
 
-  const loadModelEquipment = (modelId: string) => {
-    const model = pumpModels.find((m) => m.id === modelId);
-    if (!model) return;
-    const missingItems: string[] = [];
-    const equipmentItems: SaleItem[] = model.equipment.map((e: any) => {
-      const matchedProd = products.find(p => p.id === e.productId || normalize(p.name) === normalize(e.name));
-      if (!matchedProd) {
-        missingItems.push(e.name || e.productId || "Unnamed equipment");
-      } else if (Number(matchedProd.quantity || 0) < Number(e.quantity || 0)) {
-        missingItems.push(`${matchedProd.name} (stock ${matchedProd.quantity}, needs ${e.quantity})`);
-      }
+  useEffect(() => {
+    fetchProposals();
+  }, []);
+
+  const handleImportProposal = (proposalId: string) => {
+    const proposal = proposals.find((p) => p.id === proposalId);
+    if (!proposal) return;
+
+    const dColl = proposal.dataCollection && typeof proposal.dataCollection === "object" ? proposal.dataCollection : {};
+    setCustomer({
+      id: proposal.id,
+      name: proposal.clientName,
+      phone: dColl.clientPhone || dColl.phone || dColl.phoneNumber || proposal.phoneNumber || "",
+      location: proposal.address || dColl.location || "",
+      region: dColl.region || proposal.region || "Oromia",
+      woreda: dColl.woreda || proposal.woreda || "",
+      gpsLat: proposal.latitude ? String(proposal.latitude) : (dColl.gpsLat ? String(dColl.gpsLat) : ""),
+      gpsLng: proposal.longitude ? String(proposal.longitude) : (dColl.gpsLng ? String(dColl.gpsLng) : ""),
+    });
+
+    let parsedEquip: any[] = [];
+    if (proposal.calculatedEquipment) {
+      parsedEquip = typeof proposal.calculatedEquipment === "string" 
+        ? JSON.parse(proposal.calculatedEquipment) 
+        : proposal.calculatedEquipment;
+    }
+
+    const invoiceItems: SaleItem[] = parsedEquip.map((item: any) => {
+      const matchedProd = products.find(p => p.id === item.id || normalize(p.name) === normalize(item.name));
       return {
         productId: matchedProd?.id || "",
-        productName: matchedProd?.name || e.name,
-        quantity: e.quantity,
-        price: matchedProd?.sellPrice || e.price || 0,
-        cost: matchedProd?.costPrice || e.cost || 0,
+        productName: item.name,
+        quantity: Number(item.qty || item.quantity || 1),
+        price: Number(item.price || matchedProd?.sellPrice || 0),
+        cost: Number(matchedProd?.costPrice || 0),
       };
     });
 
-    if (missingItems.length > 0) {
-      toast.error(`Pump kit is not ready for POS: ${missingItems.join(", ")}`);
-      return;
-    }
-
-    setItems(equipmentItems);
-    toast.success(`Loaded ${model.equipment.length} equipment items for ${model.model}`);
+    setItems(invoiceItems);
+    toast.success(`Successfully imported sizing proposal for ${proposal.clientName} with ${invoiceItems.length} items.`);
   };
 
   const categoryProducts = useMemo(() => {
@@ -249,10 +243,12 @@ export default function POSPage() {
     if (items.length === 0) { toast.error("Add at least one product"); return; }
     if (paymentMethod === "Bank" && !selectedBank) { toast.error("Please select a bank"); return; }
 
+    const isSizingImport = customer.id && !customer.id.startsWith("C");
+
     const sale: Sale = {
       id: `S${Date.now().toString().slice(-6)}`,
       date: format(saleDate, "yyyy-MM-dd"),
-      customer: { ...customer, id: `C${Date.now()}` },
+      customer: { ...customer, id: isSizingImport ? customer.id : `C${Date.now()}` },
       items,
       totalSell: totals.totalSell,
       totalCost: totals.totalCost,
@@ -263,23 +259,34 @@ export default function POSPage() {
       paymentMethod,
       bankName: paymentMethod === "Bank" ? selectedBank : paymentMethod === "Telebirr" ? "Telebirr" : undefined,
     };
+    
     const result = await addSale(sale);
     if (!result) return;
 
     setLastSale(sale);
     
-    // Auto-submit hierarchy request for field work installation to General Manager
-    try {
-      await hierarchyRequestsDB.create({
-        title: `Installation Approval: Sale ${sale.id}`,
-        description: `New pump sold to ${sale.customer.name}.\nLocation: ${sale.customer.location || "N/A"}\nItems: ${sale.items.map(i => `${i.productName} (x${i.quantity})`).join(", ")}\nTotal: ${formatCurrency(sale.totalSell)}`,
-        amount: sale.totalSell,
-        type: "FIELD_TRIP",
-        comment: `Sale completed. Requesting GM approval to assign Technical Manager for research/site survey.`
-      });
-      toast.success("Fieldwork installation request sent to GM");
-    } catch (e) {
-      console.error("Failed to trigger hierarchy workflow for sale:", e);
+    // Sizing Import Flow payment verification & automatic fieldwork logging
+    if (isSizingImport) {
+      try {
+        await apiClient.patch(`/sizing-requests/${customer.id}/finance-pay`);
+        toast.success("Linked sizing proposal registered as Paid in CRM database");
+      } catch (err) {
+        console.error("Failed to mark sizing request as paid on checkout:", err);
+      }
+    } else {
+      // Auto-submit hierarchy request for field work installation to General Manager for standard sales
+      try {
+        await hierarchyRequestsDB.create({
+          title: `Installation Approval: Sale ${sale.id}`,
+          description: `New equipment sold to ${sale.customer.name}.\nLocation: ${sale.customer.location || "N/A"}\nItems: ${sale.items.map(i => `${i.productName} (x${i.quantity})`).join(", ")}\nTotal: ${formatCurrency(sale.totalSell)}`,
+          amount: sale.totalSell,
+          type: "FIELD_TRIP",
+          comment: `Sale completed. Requesting GM approval to assign Technical Manager for research/site survey.`
+        });
+        toast.success("Fieldwork installation request sent to GM");
+      } catch (e) {
+        console.error("Failed to trigger hierarchy workflow for sale:", e);
+      }
     }
 
     toast.success(
@@ -293,117 +300,11 @@ export default function POSPage() {
     setSaleDate(new Date());
     setSelectedCategory("");
     setSelectedProduct("");
-    setSelectedModelId("");
-    setMode("manual");
+    setSelectedProposalId("");
+    setMode("items");
     setPaymentMethod("Cash");
     setSelectedBank("");
-  };
-
-  const runSizingMatch = () => {
-    const tdh = calcTDH(
-      sizingData.waterSource,
-      sizingData.staticWaterLevel,
-      sizingData.tankHeight,
-      sizingData.pipeDistance,
-      sizingData.pipeSize,
-      sizingData.manualFriction
-    );
-    const sunHours = sizingData.sunHours || PEAK_SUN_HOURS_DEFAULT;
-    const reqFlowM3h = calcRequiredFlowM3h(sizingData.dailyWaterNeed, sunHours);
-    const reqFlowLmin = Number((reqFlowM3h * 1000 / 60).toFixed(1));
-
-    setSizingSummary({ tdh, reqFlowM3h: Number(reqFlowM3h.toFixed(2)), reqFlowLmin });
-
-    if (pumpModels.length === 0) {
-      toast.error("No backend pump models are available for sizing");
-      return;
-    }
-
-    const allModels = pumpModels;
-
-    // Filter by pump type based on water source
-    const filteredModels = allModels.filter(m => {
-      const cat = (m.firstCategory || "").toLowerCase();
-      if (sizingData.waterSource === "Borehole") {
-        return cat.includes("submersible") || cat.includes("difful");
-      } else {
-        // River / Pond => surface pumps, but also allow difful series
-        return cat.includes("surface") || cat.includes("difful") || cat.includes("qb") || cat.includes("cpm") || cat.includes("jet");
-      }
-    });
-
-    const results: SizingMatch[] = filteredModels.map(pump => {
-      const maxHead = Math.max(...pump.performanceData.map(p => p.head));
-      const flowAtHeadM3h = interpolateFlowSmart(pump.performanceData, tdh);
-
-      let suitability: PumpSuitability = "Suitable";
-      if (tdh > maxHead) {
-        suitability = "Exceeds Limit";
-      } else if (flowAtHeadM3h < reqFlowM3h) {
-        suitability = "Low Capacity";
-      } else if (flowAtHeadM3h > reqFlowM3h * 2.5) {
-        suitability = "Oversized";
-      }
-
-      return { pump, flowAtHeadM3h, suitability, tdh, reqFlowM3h, maxHead };
-    }).sort((a, b) => {
-      const rank: Record<PumpSuitability, number> = { "Suitable": 0, "Oversized": 1, "Low Capacity": 2, "Exceeds Limit": 3 };
-      if (rank[a.suitability] !== rank[b.suitability]) return rank[a.suitability] - rank[b.suitability];
-      return Math.abs(a.flowAtHeadM3h - a.reqFlowM3h) - Math.abs(b.flowAtHeadM3h - b.reqFlowM3h);
-    });
-
-    setSizingResults(results);
-    setExpandedPumpId(null);
-    toast.success(`Found ${results.filter(r => r.suitability === "Suitable").length} suitable pump(s) out of ${results.length} models analyzed.`);
-  };
-
-  const addSystemToInvoice = (pump: PumpModel) => {
-    const missingItems: string[] = [];
-    const equipmentItems: SaleItem[] = pump.equipment.map((e: any) => {
-      const matchedProd = products.find(p => p.id === e.productId || normalize(p.name) === normalize(e.name));
-      if (!matchedProd) {
-        missingItems.push(e.name || e.productId || "Unnamed equipment");
-      } else if (Number(matchedProd.quantity || 0) < Number(e.quantity || 0)) {
-        missingItems.push(`${matchedProd.name} (stock ${matchedProd.quantity}, needs ${e.quantity})`);
-      }
-      return {
-        productId: matchedProd?.id || "",
-        productName: matchedProd?.name || e.name,
-        quantity: e.quantity,
-        price: matchedProd?.sellPrice || e.price || 0,
-        cost: matchedProd?.costPrice || e.cost || 0,
-      };
-    });
-
-    if (missingItems.length > 0) {
-      toast.error(`Pump system cannot be added: ${missingItems.join(", ")}`);
-      return;
-    }
-
-    setItems(prev => {
-      const pumpProductIds = new Set(equipmentItems.map((item) => item.productId));
-      const cleaned = prev.filter((item) => !pumpProductIds.has(item.productId));
-      return [...cleaned, ...equipmentItems];
-    });
-    toast.success(`Loaded ${pump.equipment.length} items for ${pump.model} into invoice`);
-  };
-
-  const suitabilityColor = (s: PumpSuitability) => {
-    switch (s) {
-      case "Suitable": return "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30";
-      case "Oversized": return "border-amber-500 bg-amber-50 dark:bg-amber-950/30";
-      case "Low Capacity": return "border-orange-500 bg-orange-50 dark:bg-orange-950/30";
-      case "Exceeds Limit": return "border-red-500 bg-red-50 dark:bg-red-950/30 opacity-60";
-    }
-  };
-
-  const suitabilityBadge = (s: PumpSuitability) => {
-    switch (s) {
-      case "Suitable": return "bg-emerald-100 text-emerald-800 border-emerald-300";
-      case "Oversized": return "bg-amber-100 text-amber-800 border-amber-300";
-      case "Low Capacity": return "bg-orange-100 text-orange-800 border-orange-300";
-      case "Exceeds Limit": return "bg-red-100 text-red-800 border-red-300";
-    }
+    fetchProposals();
   };
 
   const printInvoice = () => {
@@ -481,319 +382,130 @@ export default function POSPage() {
 
           {/* Mode Selector */}
           <Card>
-            <CardHeader><CardTitle className="text-base font-heading">Add Products</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Button variant={mode === "manual" ? "default" : "outline"} size="sm" onClick={() => setMode("manual")}>
-                  <Calculator className="h-4 w-4 mr-1" /> Pump Sizing (Survey)
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-heading">Add Items to Cart</CardTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">Sell individual items or import a sized pump system proposal.</p>
+              </div>
+              <div className="flex gap-1.5 bg-muted/60 p-1 rounded-lg">
+                <Button 
+                  type="button"
+                  variant={mode === "items" ? "secondary" : "ghost"} 
+                  size="sm" 
+                  className="h-7 text-xs font-bold" 
+                  onClick={() => setMode("items")}
+                >
+                  <ShoppingCart className="h-3.5 w-3.5 mr-1" /> Sell Items
                 </Button>
-                <Button variant={mode === "model" ? "default" : "outline"} size="sm" onClick={() => setMode("model")}>
-                  <Zap className="h-4 w-4 mr-1" /> By Pump Model
+                <Button 
+                  type="button"
+                  variant={mode === "proposal" ? "secondary" : "ghost"} 
+                  size="sm" 
+                  className="h-7 text-xs font-bold" 
+                  onClick={() => setMode("proposal")}
+                >
+                  <Zap className="h-3.5 w-3.5 mr-1" /> Import Sizing
                 </Button>
               </div>
-
-              {mode === "model" ? (
-                <div className="space-y-3">
-                  <Label>Select Pump Model</Label>
-                  <div className="flex gap-3 items-end">
-                    <div className="flex-1">
-                      <Select value={selectedModelId} onValueChange={setSelectedModelId}>
-                        <SelectTrigger><SelectValue placeholder="Choose a pump model..." /></SelectTrigger>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {mode === "proposal" ? (
+                <div className="space-y-4 pt-2">
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1 space-y-1.5">
+                      <Label className="text-xs font-semibold">Select Paid/Approved Sizing Proposal</Label>
+                      <Select value={selectedProposalId} onValueChange={setSelectedProposalId}>
+                        <SelectTrigger className="bg-background">
+                          <SelectValue placeholder={loadingProposals ? "Loading proposals..." : "Choose a client proposal..."} />
+                        </SelectTrigger>
                         <SelectContent>
-                          {pumpModels.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>{m.model} ({m.power})</SelectItem>
+                          {proposals.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.clientName} ({p.selectedPumpModel || "Custom"}) - {formatCurrency(Number(p.totalPrice || 0))}
+                            </SelectItem>
+                          ))}
+                          {proposals.length === 0 && (
+                            <SelectItem value="none" disabled>No proposals available</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button 
+                      onClick={() => handleImportProposal(selectedProposalId)} 
+                      disabled={!selectedProposalId || selectedProposalId === "none"}
+                      className="bg-primary hover:bg-primary/95 text-white font-bold"
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Import Proposal
+                    </Button>
+                  </div>
+                  {selectedProposalId && selectedProposalId !== "none" && (
+                    (() => {
+                      const selected = proposals.find(p => p.id === selectedProposalId);
+                      if (!selected) return null;
+                      return (
+                        <div className="p-3 bg-muted/40 rounded-xl border space-y-2 text-xs animate-in fade-in slide-in-from-top-1">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground font-medium">Water Demand:</span>
+                            <span className="font-semibold text-foreground">{Number(selected.dailyWaterNeed).toLocaleString()} L/day</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground font-medium">Source / Model:</span>
+                            <span className="font-semibold text-foreground">{selected.waterSource} • {selected.selectedPumpModel}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground font-medium">Proposal Status:</span>
+                            <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-800 border-emerald-300 font-bold uppercase tracking-wider h-4 py-0">
+                              {selected.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4 pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                    <div className="md:col-span-4 space-y-1.5">
+                      <Label className="text-xs font-semibold">Category</Label>
+                      <Select value={selectedCategory} onValueChange={(cat) => { setSelectedCategory(cat); setSelectedProduct(""); }}>
+                        <SelectTrigger className="bg-background"><SelectValue placeholder="All Categories" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all-categories">All Categories</SelectItem>
+                          {allCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="md:col-span-5 space-y-1.5">
+                      <Label className="text-xs font-semibold">Product Name</Label>
+                      <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                        <SelectTrigger className="bg-background"><SelectValue placeholder="Search item..." /></SelectTrigger>
+                        <SelectContent>
+                          {(selectedCategory === "all-categories" || !selectedCategory ? products.filter(p => p.quantity > 0) : categoryProducts).map(p => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name} (Stock: {p.quantity} {p.unit || "pcs"}) - {formatCurrency(p.sellPrice)}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button onClick={() => loadModelEquipment(selectedModelId)} disabled={!selectedModelId}>
-                      <Zap className="h-4 w-4 mr-1" /> Load Equipment
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Selecting a model automatically loads all required equipment. You can edit quantities below.</p>
-                </div>
-              ) : (
-                <div className="space-y-6 pt-2 animate-in fade-in slide-in-from-bottom-2">
-              <Card className="border-none shadow-none bg-transparent">
-                <CardContent className="p-0 space-y-6">
-                  {/* PUMP SIZING FORM EMBEDDED IN TAB */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div className="space-y-6 bg-muted/10 p-5 rounded-2xl border border-muted/50 max-h-[500px] overflow-y-auto custom-scrollbar">
-                        <div className="flex items-center justify-between mb-4 border-b pb-2">
-                           <h3 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                              <Zap className="h-4 w-4" /> 1. Technical Requirements
-                           </h3>
-                           <Badge variant="outline" className="text-[9px] bg-primary/10 text-primary border-primary/20">Employee Sizing Tool</Badge>
-                        </div>
-                        
-                        {/* Technical */}
-                        <div className="grid grid-cols-2 gap-3">
-                           <div className="space-y-1">
-                              <Label className="text-[10px] uppercase text-muted-foreground font-bold">Purpose</Label>
-                              <Select value={sizingData.purpose} onValueChange={(v) => setSizingData({...sizingData, purpose: v})}>
-                                 <SelectTrigger className="h-8 text-xs bg-white"><SelectValue /></SelectTrigger>
-                                 <SelectContent>
-                                    <SelectItem value="Irrigation">Irrigation</SelectItem>
-                                    <SelectItem value="Drinking">Drinking Water</SelectItem>
-                                    <SelectItem value="Livestock">Livestock</SelectItem>
-                                 </SelectContent>
-                              </Select>
-                           </div>
-                           <div className="space-y-1">
-                              <Label className="text-[10px] uppercase text-muted-foreground font-bold">Daily Need (L)</Label>
-                              <Input type="number" className="h-8 text-xs bg-white" placeholder="15000" value={sizingData.dailyWaterNeed} onChange={(e) => setSizingData({...sizingData, dailyWaterNeed: e.target.value === "" ? "" : Number(e.target.value)})} />
-                           </div>
-                           <div className="space-y-1">
-                              <Label className="text-[10px] uppercase text-muted-foreground font-bold">Water Source</Label>
-                              <Select value={sizingData.waterSource} onValueChange={(v: WaterSource) => setSizingData({...sizingData, waterSource: v})}>
-                                 <SelectTrigger className="h-8 text-xs bg-white"><SelectValue /></SelectTrigger>
-                                 <SelectContent>
-                                    <SelectItem value="Borehole">Borehole</SelectItem>
-                                    <SelectItem value="River">River</SelectItem>
-                                    <SelectItem value="Pond">Pond</SelectItem>
-                                 </SelectContent>
-                              </Select>
-                           </div>
-                        </div>
-
-                        {sizingData.waterSource === "Borehole" && (
-                           <div className="grid grid-cols-2 gap-3 p-3 bg-primary/5 rounded-xl border border-primary/10 animate-in fade-in slide-in-from-top-1">
-                              <div className="space-y-1">
-                                 <Label className="text-[10px] uppercase text-primary font-bold">Borehole Depth (m)</Label>
-                                 <Input type="number" className="h-8 text-xs bg-white" value={sizingData.boreholeDepth} onChange={(e) => setSizingData({...sizingData, boreholeDepth: e.target.value === "" ? "" : Number(e.target.value)})} />
-                              </div>
-                              <div className="space-y-1">
-                                 <Label className="text-[10px] uppercase text-primary font-bold">Static Level (m)</Label>
-                                 <Input type="number" className="h-8 text-xs bg-white" value={sizingData.staticWaterLevel} onChange={(e) => setSizingData({...sizingData, staticWaterLevel: e.target.value === "" ? "" : Number(e.target.value)})} />
-                              </div>
-                           </div>
-                        )}
-
-                        <div className="grid grid-cols-3 gap-3">
-                           <div className="space-y-1">
-                              <Label className="text-[10px] uppercase text-muted-foreground font-bold">Lift (m)</Label>
-                              <Input type="number" className="h-8 text-xs bg-white" value={sizingData.tankHeight} onChange={(e) => setSizingData({...sizingData, tankHeight: e.target.value === "" ? "" : Number(e.target.value)})} />
-                           </div>
-                           <div className="space-y-1">
-                              <Label className="text-[10px] uppercase text-muted-foreground font-bold">Distance (m)</Label>
-                              <Input type="number" className="h-8 text-xs bg-white" value={sizingData.pipeDistance} onChange={(e) => setSizingData({...sizingData, pipeDistance: e.target.value === "" ? "" : Number(e.target.value)})} />
-                           </div>
-                           <div className="space-y-1">
-                              <Label className="text-[10px] uppercase text-muted-foreground font-bold">Sun Hours</Label>
-                              <Input type="number" className="h-8 text-xs bg-white" value={sizingData.sunHours} onChange={(e) => setSizingData({...sizingData, sunHours: e.target.value === "" ? "" : Number(e.target.value)})} />
-                           </div>
-                        </div>
-
-                        <div className="pt-2 sticky bottom-0 bg-muted/10 pb-1">
-                           <Button className="w-full h-11 font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg" onClick={runSizingMatch}>
-                              <Zap className="h-4 w-4 mr-2" /> Match Suitable Pumps
-                           </Button>
-                        </div>
-                     </div>
-
-                     <div className="space-y-4">
-                        <div className="flex items-center justify-between mb-1">
-                           <h3 className="text-xs font-black uppercase tracking-widest text-primary">2. Recommendations</h3>
-                           {sizingResults.length > 0 && <span className="text-[9px] font-bold text-muted-foreground">FOUND {sizingResults.filter(r => r.suitability === "Suitable").length} SUITABLE / {sizingResults.length} TOTAL</span>}
-                        </div>
-
-                        {/* TDH & Flow Summary Banner */}
-                        {sizingSummary && (
-                          <div className="grid grid-cols-3 gap-2 p-3 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 animate-in fade-in slide-in-from-top-1">
-                            <div className="text-center">
-                              <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider">TDH</p>
-                              <p className="text-lg font-black text-primary">{sizingSummary.tdh}<span className="text-[10px] font-normal text-muted-foreground"> m</span></p>
-                            </div>
-                            <div className="text-center border-x border-primary/10">
-                              <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider">Need</p>
-                              <p className="text-lg font-black text-primary">{sizingSummary.reqFlowM3h}<span className="text-[10px] font-normal text-muted-foreground"> m³/h</span></p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider">Need</p>
-                              <p className="text-lg font-black text-primary">{sizingSummary.reqFlowLmin}<span className="text-[10px] font-normal text-muted-foreground"> L/min</span></p>
-                            </div>
-                          </div>
-                        )}
-                        
-                        <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                           {sizingResults.length > 0 ? (
-                              sizingResults.map((res) => {
-                                 const isExpanded = expandedPumpId === res.pump.id;
-                                 const curveData = [...res.pump.performanceData]
-                                   .sort((a, b) => a.flow - b.flow)
-                                   .map(p => ({ flow: Number(p.flow.toFixed(2)), head: Number(p.head.toFixed(1)) }));
-                                 const operatingFlow = res.flowAtHeadM3h;
-                                  const totalEquipCost = res.pump.equipment.reduce((sum: number, item: any) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
-                                 const panelItem = res.pump.equipment.find(e => e.name.toLowerCase().includes('panel') && !e.name.toLowerCase().includes('rod'));
-                                 const panelCount = panelItem?.quantity || 0;
-
-                                 return (
-                                   <div key={res.pump.id} className={cn("rounded-2xl border-2 transition-all overflow-hidden", suitabilityColor(res.suitability))}>
-                                     {/* Summary Row */}
-                                     <div
-                                       className="p-3 cursor-pointer flex justify-between items-center hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
-                                       onClick={() => setExpandedPumpId(isExpanded ? null : res.pump.id)}
-                                     >
-                                       <div className="flex-1 min-w-0">
-                                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                           <p className="font-bold text-sm leading-none truncate">{res.pump.model}</p>
-                                           <Badge className={cn("text-[8px] h-3.5 px-1.5 font-black border uppercase", suitabilityBadge(res.suitability))}>{res.suitability}</Badge>
-                                           <Badge variant="outline" className="text-[8px] h-3.5 px-1 font-medium">{res.pump.power}</Badge>
-                                         </div>
-                                         <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
-                                           <span>Flow @ {res.tdh}m: <b className="text-foreground">{operatingFlow.toFixed(2)} m³/h</b></span>
-                                           <span>Max Head: <b className="text-foreground">{res.maxHead}m</b></span>
-                                           <span>System: <b className="text-foreground">{formatCurrency(totalEquipCost)}</b></span>
-                                           {panelCount > 0 && <span className="flex items-center gap-0.5"><Sun className="h-3 w-3" /> <b className="text-foreground">{panelCount} panels</b></span>}
-                                         </div>
-                                       </div>
-                                       <div className="flex items-center gap-2 ml-2 shrink-0">
-                                         {res.suitability === "Suitable" && (
-                                           <Button size="sm" className="h-7 px-3 font-black text-[10px] uppercase tracking-tighter bg-emerald-600 hover:bg-emerald-700 text-white" onClick={(e) => { e.stopPropagation(); addSystemToInvoice(res.pump); }}>
-                                             <Package className="h-3 w-3 mr-1" /> Add System
-                                           </Button>
-                                         )}
-                                         {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                                       </div>
-                                     </div>
-
-                                     {/* Expanded Detail Panel */}
-                                     {isExpanded && (
-                                       <div className="border-t border-current/10 bg-white/60 dark:bg-black/20 p-4 space-y-4 animate-in fade-in slide-in-from-top-1">
-                                         {/* Hydraulic Curve Chart */}
-                                         <div>
-                                           <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Hydraulic Performance Curve</h4>
-                                           <div className="h-[220px] w-full bg-white dark:bg-zinc-900 rounded-xl border p-2">
-                                             <ResponsiveContainer width="100%" height="100%">
-                                               <LineChart data={curveData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
-                                                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                                                 <XAxis dataKey="flow" label={{ value: 'Flow (m³/h)', position: 'insideBottom', offset: -2, style: { fontSize: 10 } }} tick={{ fontSize: 9 }} />
-                                                 <YAxis label={{ value: 'Head (m)', angle: -90, position: 'insideLeft', style: { fontSize: 10 } }} tick={{ fontSize: 9 }} />
-                                                 <Tooltip contentStyle={{ fontSize: 11 }} formatter={(val: number, name: string) => [val, name === 'head' ? 'Head (m)' : name]} labelFormatter={(l) => `Flow: ${l} m³/h`} />
-                                                 <Line type="monotone" dataKey="head" stroke="#2563eb" strokeWidth={2} dot={{ r: 3, fill: '#2563eb' }} name="Pump Curve" />
-                                                 {res.suitability !== "Exceeds Limit" && operatingFlow > 0 && (
-                                                   <ReferenceDot x={Number(operatingFlow.toFixed(2))} y={res.tdh} r={7} fill="#ef4444" stroke="#fff" strokeWidth={2} label={{ value: 'OP', position: 'top', style: { fontSize: 9, fontWeight: 800, fill: '#ef4444' } }} />
-                                                 )}
-                                               </LineChart>
-                                             </ResponsiveContainer>
-                                           </div>
-                                         </div>
-
-                                         {/* Solar Array & Equipment */}
-                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                           {/* Solar Config */}
-                                           {panelCount > 0 && (
-                                             <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
-                                               <h4 className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400 mb-1 flex items-center gap-1"><Sun className="h-3 w-3" /> Solar Array</h4>
-                                               <p className="text-sm font-bold">{panelCount} × 330W Panels</p>
-                                               <p className="text-[10px] text-muted-foreground">
-                                                 {panelCount <= 4 ? `${panelCount} in series, 1 string` :
-                                                  panelCount <= 8 ? `${Math.ceil(panelCount / 2)} in series, 2 strings` :
-                                                  panelCount <= 12 ? `${Math.ceil(panelCount / 3)} in series, 3 strings` :
-                                                  `${Math.ceil(panelCount / 4)} in series, ${Math.min(4, Math.ceil(panelCount / Math.ceil(panelCount / 4)))} strings`}
-                                               </p>
-                                               <p className="text-[10px] text-muted-foreground mt-0.5">Total: {(panelCount * 330 / 1000).toFixed(1)} kW</p>
-                                             </div>
-                                           )}
-
-                                           {/* Equipment Summary */}
-                                           <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
-                                             <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-400 mb-1 flex items-center gap-1"><Package className="h-3 w-3" /> System Total</h4>
-                                             <p className="text-lg font-black text-blue-700 dark:text-blue-300">{formatCurrency(totalEquipCost)}</p>
-                                             <p className="text-[10px] text-muted-foreground">{res.pump.equipment.length} items in kit</p>
-                                           </div>
-                                         </div>
-
-                                         {/* Equipment Breakdown Table */}
-                                         <div>
-                                           <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Equipment Breakdown</h4>
-                                           <div className="border rounded-lg overflow-hidden">
-                                             <table className="w-full text-[11px]">
-                                               <thead>
-                                                 <tr className="bg-muted/40 text-muted-foreground">
-                                                   <th className="text-left py-1.5 px-2 font-bold">Item</th>
-                                                   <th className="text-center py-1.5 px-2 font-bold">Qty</th>
-                                                   <th className="text-right py-1.5 px-2 font-bold">Unit Price</th>
-                                                   <th className="text-right py-1.5 px-2 font-bold">Subtotal</th>
-                                                 </tr>
-                                               </thead>
-                                               <tbody>
-                                                 {res.pump.equipment.map((eq, idx) => (
-                                                   <tr key={idx} className="border-t border-muted/30">
-                                                     <td className="py-1.5 px-2 font-medium">{eq.name}</td>
-                                                     <td className="py-1.5 px-2 text-center">{eq.quantity} {eq.unit}</td>
-                                                     <td className="py-1.5 px-2 text-right">{formatCurrency(eq.price)}</td>
-                                                     <td className="py-1.5 px-2 text-right font-medium">{formatCurrency(eq.price * eq.quantity)}</td>
-                                                   </tr>
-                                                 ))}
-                                               </tbody>
-                                               <tfoot>
-                                                 <tr className="border-t-2 border-foreground/20 bg-muted/20">
-                                                   <td colSpan={3} className="py-1.5 px-2 font-black text-right">Total</td>
-                                                   <td className="py-1.5 px-2 text-right font-black">{formatCurrency(totalEquipCost)}</td>
-                                                 </tr>
-                                               </tfoot>
-                                             </table>
-                                           </div>
-                                         </div>
-
-                                         {/* Add to Invoice */}
-                                         <Button
-                                           className="w-full h-10 font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white"
-                                           onClick={() => addSystemToInvoice(res.pump)}
-                                         >
-                                           <ShoppingCart className="h-4 w-4 mr-2" /> Add Full System to Invoice — {formatCurrency(totalEquipCost)}
-                                         </Button>
-                                       </div>
-                                     )}
-                                   </div>
-                                 );
-                              })
-                           ) : (
-                              <div className="h-48 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center text-muted-foreground/30 text-center p-6 bg-muted/10">
-                                 <Search className="h-8 w-8 mb-2 opacity-20" />
-                                 <p className="text-[10px] font-bold uppercase tracking-widest">Enter specs and click "Match Suitable Pumps"</p>
-                                 <p className="text-[9px] mt-1 opacity-50">Results will show pump models ranked by suitability with hydraulic curves</p>
-                              </div>
-                           )}
-                        </div>
-                     </div>
-                  </div>
-
-                  {/* QUICK PRODUCT SELECTOR FOR NON-PUMP ITEMS */}
-                  <div className="pt-4 border-t border-muted/50">
-                    <div className="flex items-center gap-2 mb-3">
-                       <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Quick Add Other Materials</h3>
-                       <div className="h-[1px] flex-1 bg-muted/50"></div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                      <div className="md:col-span-4">
-                        <Select value={selectedCategory} onValueChange={(cat) => { setSelectedCategory(cat); setSelectedProduct(""); }}>
-                          <SelectTrigger className="h-9 bg-muted/30"><SelectValue placeholder="All Categories" /></SelectTrigger>
-                          <SelectContent>
-                            {allCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="md:col-span-5">
-                        <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                          <SelectTrigger className="h-9 bg-muted/30"><SelectValue placeholder="Search Item..." /></SelectTrigger>
-                          <SelectContent>
-                            {categoryProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.quantity})</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="md:col-span-3 flex gap-2">
-                        <Input type="number" value={qty} onChange={(e) => { const v = e.target.value; setQty(v === "" ? "" : Number(v)); }} className="h-9 w-16 bg-muted/30" />
-                        <Button className="h-9 flex-1 font-bold" onClick={addItem} disabled={!selectedProduct}>
-                           <Plus className="h-4 w-4 mr-1" /> Add
+                    <div className="md:col-span-3 space-y-1.5">
+                      <Label className="text-xs font-semibold">Quantity</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          type="number" 
+                          min={1} 
+                          value={qty} 
+                          onChange={(e) => { const v = e.target.value; setQty(v === "" ? "" : Number(v)); }} 
+                          className="w-16 bg-background" 
+                        />
+                        <Button className="flex-1 font-bold text-white bg-primary hover:bg-primary/95" onClick={addItem} disabled={!selectedProduct}>
+                          <Plus className="h-4 w-4 mr-1" /> Add
                         </Button>
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
               )}
             </CardContent>
           </Card>

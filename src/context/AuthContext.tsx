@@ -4,6 +4,7 @@ import { ApiCompany, ApiUser, loginRequest, logoutRequest, meRequest, usersReque
 import { toast } from "sonner";
 
 export type UserRole = 
+  | "admin"
   | "manager"
   | "fieldwork"
   | "ttl"
@@ -11,7 +12,8 @@ export type UserRole =
   | "storekeeper"
   | "sales"
   | "technician"
-  | "attendance";
+  | "attendance"
+  | "hr";
 
 export interface AppUser {
   id: string;
@@ -140,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userRoles = (currentUser.roles?.length ? currentUser.roles : [currentUser.role])
       .map((r: any) => (typeof r === "string" ? r : r?.name || r?.role?.name))
       .filter(Boolean);
-    if (userRoles.includes("manager") || currentUser.username === "manager") return true;
+    if (userRoles.includes("admin")) return true;
     return userRoles.some((role: any) => allowedRoles.includes(role));
   };
 
@@ -210,6 +212,7 @@ export function useAuth() {
 }
 
 export const ROLE_LABELS: Record<UserRole, string> = {
+  admin: "System Administrator",
   manager: "General Manager (GM)",
   fieldwork: "Technical Manager (TM)",
   ttl: "Technical Team Leader (TTL)",
@@ -217,5 +220,6 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   storekeeper: "Store Keeper / Inventory Manager",
   sales: "Sales Manager / Sales Engineer",
   technician: "Field Technician / Installer",
-  attendance: "HR & Attendance Officer",
+  attendance: "Attendance Officer",
+  hr: "HR Manager / HR Officer",
 };

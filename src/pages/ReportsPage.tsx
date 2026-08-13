@@ -1,21 +1,100 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useStore } from "@/context/StoreContext";
 import { formatCurrency } from "@/lib/data";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { Printer, Star } from "lucide-react";
-import { BEHAVIOR_LABELS } from "@/lib/fieldwork-data";
-import { differenceInDays, differenceInCalendarDays, parseISO } from "date-fns";
-
-const PIE_COLORS = ["hsl(28,85%,52%)", "hsl(210,80%,52%)", "hsl(142,60%,40%)", "hsl(270,60%,55%)", "hsl(38,92%,50%)", "hsl(0,72%,51%)", "hsl(180,60%,45%)"];
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Printer, Crown, ClipboardList, Send, MessageSquare, Share2, CheckCircle2, UserCheck, Calendar, Filter, Building, Sparkles, Truck, ExternalLink } from "lucide-react";
+import { parseISO, differenceInCalendarDays } from "date-fns";
+import { eodReportsDB } from "@/lib/db-service";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 export default function ReportsPage() {
   const { sales, products, fieldWorks } = useStore();
+  const { currentUser, hasAccess } = useAuth();
   const [period, setPeriod] = useState("all");
+  const [eodReports, setEodReports] = useState<any[]>([]);
+  const [loadingEod, setLoadingEod] = useState(false);
+  const [searchFilter, setSearchFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("ALL");
+
+  const fieldWorkDailyReportsList = useMemo(() => {
+    const list: any[] = [];
+    (fieldWorks || []).forEach((fw: any) => {
+      if (Array.isArray(fw.dailyReports)) {
+        fw.dailyReports.forEach((rep: any) => {
+          list.push({
+            ...rep,
+            fieldWorkId: fw.id,
+            fieldWorkTitle: fw.title,
+            customerName: fw.customerName,
+            location: fw.location,
+            status: fw.status,
+          });
+        });
+      }
+    });
+    return list.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+  }, [fieldWorks]);
+
+  // State for GM / Superior reply box
+  const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [forwardNote, setForwardNote] = useState<Record<string, string>>({});
+  const [submittingReply, setSubmittingReply] = useState<string | null>(null);
+
+  const fetchEod = async () => {
+    setLoadingEod(true);
+    try {
+      const data = await eodReportsDB.getAll();
+      setEodReports(Array.isArray(data) ? data : []);
+    } catch (e) {
+      toast.error("Failed to load EOD accomplishment reports");
+    } finally {
+      setLoadingEod(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEod();
+  }, []);
+
+  const handleSendReply = async (reportId: string) => {
+    const text = replyText[reportId];
+    if (!text || !text.trim()) {
+      toast.error("Please enter a reply message.");
+      return;
+    }
+    setSubmittingReply(reportId);
+    try {
+      await eodReportsDB.addComment(reportId, text);
+      toast.success("Reply sent! The author has been notified.");
+      setReplyText({ ...replyText, [reportId]: "" });
+      fetchEod();
+    } catch (e) {
+      toast.error("Failed to send reply.");
+    } finally {
+      setSubmittingReply(null);
+    }
+  };
+
+  const handleForwardToGm = async (reportId: string) => {
+    const note = forwardNote[reportId] || "Departmental summary review attached.";
+    try {
+      await eodReportsDB.forwardToGm(reportId, note);
+      toast.success("Report consolidated & escalated to General Manager!");
+      setForwardNote({ ...forwardNote, [reportId]: "" });
+      fetchEod();
+    } catch (e) {
+      toast.error("Failed to escalate report.");
+    }
+  };
 
   const filteredSales = useMemo(() => {
     if (period === "all") return sales;
@@ -32,7 +111,6 @@ export default function ReportsPage() {
   const totalSales = filteredSales.reduce((s, sale) => s + sale.totalSell, 0);
   const totalProfit = filteredSales.reduce((s, sale) => s + sale.profit, 0);
   const totalCost = filteredSales.reduce((s, sale) => s + sale.totalCost, 0);
-  const totalVat = filteredSales.reduce((s, sale) => s + sale.vatAmount, 0);
 
   const salesByDate = useMemo(() => {
     const map: Record<string, { sales: number; profit: number }> = {};
@@ -44,45 +122,40 @@ export default function ReportsPage() {
     return Object.entries(map).map(([date, v]) => ({ date: date.slice(5), ...v }));
   }, [filteredSales]);
 
-  const categoryData = useMemo(() => {
-    const map: Record<string, number> = {};
-    products.forEach((p) => { map[p.category] = (map[p.category] || 0) + p.quantity; });
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
-  }, [products]);
-
-  const totalPerDiem = fieldWorks.reduce((s, fw) => {
-    const days = Math.max(1, differenceInCalendarDays(parseISO(fw.endDate), parseISO(fw.startDate)) + 1);
-    return s + fw.workers.reduce((ws, w) => ws + w.perDiem * days, 0);
-  }, 0);
-  const totalPayment = fieldWorks.reduce((s, fw) => s + fw.workers.reduce((ws, w) => ws + w.payment, 0), 0);
-
-  const paymentStats = useMemo(() => {
-    const groups: Record<string, { count: number; total: number; banks: Record<string, number> }> = {
-      Cash: { count: 0, total: 0, banks: {} },
-      Bank: { count: 0, total: 0, banks: {} },
-      Telebirr: { count: 0, total: 0, banks: {} },
-    };
-    filteredSales.forEach(s => {
-      const m = s.paymentMethod;
-      groups[m].count++;
-      groups[m].total += s.totalSell;
-      if (s.bankName) {
-        groups[m].banks[s.bankName] = (groups[m].banks[s.bankName] || 0) + s.totalSell;
-      }
+  // EOD Filtering
+  const filteredEodReports = useMemo(() => {
+    return eodReports.filter((r) => {
+      const matchesDept = departmentFilter === "ALL" || r.department?.toUpperCase() === departmentFilter;
+      const q = searchFilter.toLowerCase();
+      const matchesSearch =
+        !searchFilter ||
+        r.submittedBy?.displayName?.toLowerCase().includes(q) ||
+        r.submittedBy?.username?.toLowerCase().includes(q) ||
+        (r.workAccomplished || r.content || "").toLowerCase().includes(q);
+      return matchesDept && matchesSearch;
     });
-    return groups;
-  }, [filteredSales]);
+  }, [eodReports, departmentFilter, searchFilter]);
+
+  const forwardedToGmReports = useMemo(() => {
+    return eodReports.filter((r) => r.status === "FORWARDED_TO_GM" || r.targetRole === "manager");
+  }, [eodReports]);
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* Header Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
         <div>
-          <h1 className="text-2xl font-bold font-heading">Reports</h1>
-          <p className="text-sm text-muted-foreground">Business performance analytics</p>
+          <h1 className="text-2xl font-bold font-heading flex items-center gap-2">
+            <Crown className="h-6 w-6 text-amber-500" />
+            Executive Reports & Daily Staff Accomplishments Hub
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Review user daily work logs, departmental escalations, GM feedback, and financial performance
+          </p>
         </div>
         <div className="flex gap-2">
           <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="month">This Month</SelectItem>
@@ -96,23 +169,371 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="sales">
-        <TabsList>
-          <TabsTrigger value="sales">Sales</TabsTrigger>
-          <TabsTrigger value="payment-methods">Payment Methods</TabsTrigger>
-          <TabsTrigger value="inventory">Inventory</TabsTrigger>
-          <TabsTrigger value="vat">VAT</TabsTrigger>
-          <TabsTrigger value="fieldwork">Field Work</TabsTrigger>
+      <Tabs defaultValue="eod-workspace" className="space-y-4">
+        <TabsList className="grid grid-cols-2 max-w-md">
+          <TabsTrigger value="eod-workspace" className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" />
+            Staff Accomplishments Logs
+          </TabsTrigger>
+          <TabsTrigger value="financial-analytics" className="flex items-center gap-2">
+            <BarChart className="h-4 w-4" />
+            Financial Analytics
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="sales" className="space-y-6 mt-4">
+        {/* TAB 1: EOD ACCOMPLISHMENTS WORKSPACE */}
+        <TabsContent value="eod-workspace" className="space-y-4">
+          <Tabs defaultValue={hasAccess(["manager"]) ? "consolidated" : "all-reports"} className="space-y-4">
+            <div className="flex items-center justify-between">
+              <TabsList className="bg-muted/60 p-1">
+                {hasAccess(["manager"]) && (
+                  <TabsTrigger value="consolidated" className="flex items-center gap-1.5 text-xs">
+                    <Crown className="h-3.5 w-3.5 text-amber-500" /> Departmental Escalations ({forwardedToGmReports.length})
+                  </TabsTrigger>
+                )}
+                <TabsTrigger value="all-reports" className="flex items-center gap-1.5 text-xs">
+                  <UserCheck className="h-3.5 w-3.5 text-indigo-500" /> Individual Staff Accomplishments ({filteredEodReports.length})
+                </TabsTrigger>
+                <TabsTrigger value="fieldwork-eod" className="flex items-center gap-1.5 text-xs">
+                  <Truck className="h-3.5 w-3.5 text-purple-500" /> Field Work EOD Reports ({fieldWorkDailyReportsList.length})
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Filters */}
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Search employee or task..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  className="w-48 h-8 text-xs bg-background"
+                />
+                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                  <SelectTrigger className="w-36 h-8 text-xs bg-background"><SelectValue placeholder="Department" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Departments</SelectItem>
+                    <SelectItem value="TECHNICAL">Technical & Field</SelectItem>
+                    <SelectItem value="FINANCE">Finance</SelectItem>
+                    <SelectItem value="STORE">Inventory & Store</SelectItem>
+                    <SelectItem value="SALES">Sales</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Sub-tab: GM Consolidated Department Reports */}
+            {hasAccess(["manager"]) && (
+              <TabsContent value="consolidated" className="space-y-4">
+                {forwardedToGmReports.length === 0 ? (
+                  <Card className="p-8 text-center text-muted-foreground text-sm border-dashed">
+                    No forwarded departmental summary reports at the moment.
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {forwardedToGmReports.map((rep) => (
+                      <Card key={rep.id} className="border-amber-500/40 bg-card shadow-sm hover:shadow-md transition-all">
+                        <CardHeader className="pb-3 border-b border-amber-500/20 bg-amber-500/5">
+                          <div className="flex items-center justify-between">
+                            <Badge className="bg-amber-500 text-slate-950 font-bold text-[10px]">
+                              FORWARDED TO GM
+                            </Badge>
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              <Calendar className="h-3 w-3" /> {rep.date}
+                            </span>
+                          </div>
+                          <CardTitle className="text-sm font-bold mt-1 flex items-center justify-between">
+                            <span>{rep.submittedBy?.displayName || rep.submittedBy?.username}</span>
+                            <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                              {rep.department}
+                            </Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-3 space-y-3">
+                          {rep.departmentSummary && (
+                            <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs">
+                              <span className="font-bold text-amber-800 dark:text-amber-300 block text-[10px] uppercase mb-0.5">
+                                Department Lead Note:
+                              </span>
+                              <p className="text-amber-900 dark:text-amber-200 italic">"{rep.departmentSummary}"</p>
+                            </div>
+                          )}
+
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold uppercase text-muted-foreground">Work Accomplished:</span>
+                            <p className="text-xs text-foreground bg-muted/30 p-2 rounded border whitespace-pre-wrap">
+                              {rep.workAccomplished || rep.content}
+                            </p>
+                          </div>
+
+                          {/* Reply Box for GM */}
+                          <div className="pt-2 border-t space-y-2">
+                            <Label className="text-[11px] font-semibold text-muted-foreground">
+                              General Manager Reply / Instructions:
+                            </Label>
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="Type GM instructions..."
+                                value={replyText[rep.id] || ""}
+                                onChange={(e) => setReplyText({ ...replyText, [rep.id]: e.target.value })}
+                                className="text-xs h-8 bg-background"
+                              />
+                              <Button
+                                size="sm"
+                                className="bg-amber-600 hover:bg-amber-700 text-slate-950 font-bold h-8 text-xs"
+                                onClick={() => handleSendReply(rep.id)}
+                                disabled={submittingReply === rep.id}
+                              >
+                                <Send className="h-3 w-3 mr-1" /> Reply
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            )}
+
+            {/* Sub-tab: All Individual Staff Accomplishments */}
+            <TabsContent value="all-reports" className="space-y-4">
+              {loadingEod ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">Loading accomplishment logs...</div>
+              ) : filteredEodReports.length === 0 ? (
+                <Card className="p-8 text-center text-muted-foreground text-sm border-dashed">
+                  No accomplishment logs found for the selected filter.
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {filteredEodReports.map((rep) => (
+                    <Card key={rep.id} className="border border-border/60 shadow-sm hover:border-primary/40 transition-all">
+                      <CardHeader className="pb-2 flex flex-row items-center justify-between border-b bg-muted/10">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                            {rep.submittedBy?.displayName?.slice(0, 2).toUpperCase() || "US"}
+                          </div>
+                          <div>
+                            <CardTitle className="text-sm font-bold">
+                              {rep.submittedBy?.displayName || rep.submittedBy?.username}
+                            </CardTitle>
+                            <CardDescription className="text-[11px]">
+                              {rep.department} · Submitted for {rep.date}
+                            </CardDescription>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                            Target: {rep.targetRole || "Manager"}
+                          </Badge>
+                          {rep.status === "FORWARDED_TO_GM" && (
+                            <Badge className="bg-amber-500 text-slate-950 text-[9px]">
+                              Forwarded to GM
+                            </Badge>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-3 space-y-3">
+                        <div className="space-y-1">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                            Accomplishments Today:
+                          </span>
+                          <p className="text-xs text-foreground bg-muted/20 p-3 rounded-lg border whitespace-pre-wrap leading-relaxed">
+                            {rep.workAccomplished || rep.content}
+                          </p>
+                        </div>
+
+                        {rep.additionalComments && (
+                          <div className="text-xs bg-indigo-50/40 dark:bg-indigo-950/20 p-2.5 rounded-lg border border-indigo-100 dark:border-indigo-900">
+                            <span className="font-bold text-indigo-700 dark:text-indigo-300 block text-[10px] uppercase">
+                              Additional Notes / Blockers:
+                            </span>
+                            <p className="text-muted-foreground italic">"{rep.additionalComments}"</p>
+                          </div>
+                        )}
+
+                        {/* Forward option for Department Leads */}
+                        {hasAccess(["ttl", "finance", "admin"]) && rep.status !== "FORWARDED_TO_GM" && (
+                          <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-2">
+                            <Label className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                              Department Lead Review (Attach summary & forward to GM):
+                            </Label>
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="Attach departmental summary note for General Manager..."
+                                value={forwardNote[rep.id] || ""}
+                                onChange={(e) => setForwardNote({ ...forwardNote, [rep.id]: e.target.value })}
+                                className="text-xs h-8 bg-background"
+                              />
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="h-8 text-xs font-bold shrink-0"
+                                onClick={() => handleForwardToGm(rep.id)}
+                              >
+                                <Share2 className="h-3 w-3 mr-1" /> Forward to GM
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Existing Replies Thread */}
+                        {rep.comments && rep.comments.length > 0 && (
+                          <div className="space-y-1.5 border-t pt-2">
+                            <span className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
+                              <MessageSquare className="h-3 w-3 text-primary" /> Manager / Superior Replies ({rep.comments.length})
+                            </span>
+                            <div className="space-y-1.5 pl-3 border-l-2 border-primary/30">
+                              {rep.comments.map((c: any) => (
+                                <div key={c.id} className="text-xs bg-muted/40 p-2 rounded">
+                                  <span className="font-bold text-primary mr-1 font-mono">{c.user?.displayName}:</span>
+                                  <span>{c.comment}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Reply Input Box */}
+                        <div className="pt-2 border-t flex gap-2">
+                          <Input
+                            placeholder="Write feedback / reply to report author..."
+                            value={replyText[rep.id] || ""}
+                            onChange={(e) => setReplyText({ ...replyText, [rep.id]: e.target.value })}
+                            className="text-xs h-8 bg-background"
+                          />
+                          <Button
+                            size="sm"
+                            className="bg-primary text-primary-foreground font-bold h-8 text-xs shrink-0"
+                            onClick={() => handleSendReply(rep.id)}
+                            disabled={submittingReply === rep.id}
+                          >
+                            <Send className="h-3 w-3 mr-1" /> Reply
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Sub-tab: Field Work On-Site EOD Reports */}
+            <TabsContent value="fieldwork-eod" className="space-y-5">
+              {fieldWorkDailyReportsList.length === 0 ? (
+                <Card className="p-10 text-center border-dashed">
+                  <Truck className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                  <p className="text-sm text-muted-foreground font-medium">No Field Work EOD daily progress reports submitted yet.</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Reports will appear here once field crews submit their end-of-day progress.</p>
+                </Card>
+              ) : (
+                <div className="space-y-5">
+                  {fieldWorkDailyReportsList.map((rep: any, repIdx: number) => (
+                    <Card key={rep.id} className="border-2 border-purple-500/20 bg-gradient-to-br from-slate-50 to-purple-50/20 dark:from-slate-900/60 dark:to-purple-950/15 shadow-md overflow-hidden">
+                      {/* Report Header */}
+                      <CardHeader className="pb-3 border-b border-purple-500/20 bg-purple-600/8 dark:bg-purple-900/25">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Badge className="bg-purple-600 text-white font-bold text-[10px] px-2.5 py-1">
+                              FIELD WORK EOD
+                            </Badge>
+                            <div>
+                              <CardTitle className="text-sm font-bold">{rep.customerName || rep.fieldWorkTitle}</CardTitle>
+                              <p className="text-[11px] text-muted-foreground font-mono flex items-center gap-1.5 mt-0.5">
+                                <Calendar className="h-3 w-3" />
+                                {rep.date ? new Date(rep.date).toLocaleString() : 'Recent'}
+                                <span className="text-muted-foreground">•</span>
+                                TTL: <strong>{rep.submittedBy}</strong>
+                                <span className="text-muted-foreground">•</span>
+                                Location: <strong>{rep.location}</strong>
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[11px] text-purple-700 dark:text-purple-400 font-bold border-purple-500/30 hover:bg-purple-500/10 flex items-center gap-1"
+                            onClick={() => window.location.hash = "#/fieldwork"}
+                          >
+                            <ExternalLink className="h-3 w-3" /> View in Field Work
+                          </Button>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="pt-5 space-y-4">
+                        {/* Achievements */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            <span className="font-bold text-sm text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">Today's Work & Achievements</span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-800/50 rounded-xl border border-emerald-500/20 p-4 text-sm text-foreground whitespace-pre-wrap leading-relaxed shadow-sm">
+                            {rep.achievements || rep.content}
+                          </div>
+                        </div>
+
+                        {/* Challenges */}
+                        {rep.challenges && (
+                          <div className="space-y-1.5">
+                            <span className="font-bold text-xs text-amber-700 dark:text-amber-400 uppercase tracking-wide">Site Challenges:</span>
+                            <div className="bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-500/25 p-3 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
+                              {rep.challenges}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Tomorrow's Plan */}
+                        {rep.nextDayPlan && (
+                          <div className="space-y-1.5">
+                            <span className="font-bold text-xs text-sky-700 dark:text-sky-400 uppercase tracking-wide">Tomorrow's Plan:</span>
+                            <div className="bg-sky-50 dark:bg-sky-950/20 rounded-xl border border-sky-500/25 p-3 text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
+                              {rep.nextDayPlan}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Photos */}
+                        {((Array.isArray(rep.photos) && rep.photos.length > 0) || rep.imageUrl) && (
+                          <div className="space-y-1.5">
+                            <span className="font-bold text-xs text-indigo-700 dark:text-indigo-400 uppercase tracking-wide">
+                              Daily Site Photos ({(rep.photos && rep.photos.length > 0 ? rep.photos : [rep.imageUrl]).length})
+                            </span>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              {(rep.photos && rep.photos.length > 0 ? rep.photos : [rep.imageUrl]).map((imgUrl: string, idx: number) => (
+                                <div key={idx} className="bg-white dark:bg-slate-800/50 rounded-xl border-2 border-indigo-500/15 overflow-hidden shadow-sm">
+                                  <div className="h-24 bg-muted overflow-hidden flex items-center justify-center">
+                                    {imgUrl.startsWith("http") || imgUrl.startsWith("/") ? (
+                                      <img src={imgUrl} alt={`Progress ${idx + 1}`} className="w-full h-full object-cover" onError={(e) => {
+                                        (e.target as HTMLElement).style.display = 'none';
+                                      }} />
+                                    ) : null}
+                                  </div>
+                                  <div className="p-1.5 text-center">
+                                    <span className="text-[10px] font-bold text-muted-foreground">Photo #{idx + 1}</span>
+                                    <p className="text-[9px] text-muted-foreground truncate font-mono">{imgUrl}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+
+        {/* TAB 2: FINANCIAL & BUSINESS ANALYTICS */}
+        <TabsContent value="financial-analytics" className="space-y-6 mt-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total Sales</p><p className="text-xl font-bold font-heading mt-1">{formatCurrency(totalSales)}</p></CardContent></Card>
             <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total Cost</p><p className="text-xl font-bold font-heading mt-1">{formatCurrency(totalCost)}</p></CardContent></Card>
-            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total Profit</p><p className="text-xl font-bold font-heading mt-1 text-success">{formatCurrency(totalProfit)}</p></CardContent></Card>
+            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total Profit</p><p className="text-xl font-bold font-heading mt-1 text-emerald-600 dark:text-emerald-400">{formatCurrency(totalProfit)}</p></CardContent></Card>
           </div>
           <Card>
-            <CardHeader><CardTitle className="text-base font-heading">Sales & Profit</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base font-heading">Sales & Profit Trend</CardTitle></CardHeader>
             <CardContent>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -122,329 +543,9 @@ export default function ReportsPage() {
                     <YAxis fontSize={12} stroke="hsl(var(--muted-foreground))" />
                     <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "var(--radius)" }} />
                     <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="profit" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="profit" fill="hsl(142, 60%, 40%)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base font-heading">Sales Details</CardTitle></CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 font-medium">ID</th>
-                      <th className="pb-2 font-medium">Date</th>
-                      <th className="pb-2 font-medium">Customer</th>
-                      <th className="pb-2 font-medium">Phone</th>
-                      <th className="pb-2 font-medium">Location</th>
-                      <th className="pb-2 font-medium">Method</th>
-                      <th className="pb-2 font-medium text-right">Amount</th>
-                      <th className="pb-2 font-medium text-right">Profit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredSales.map((s) => (
-                      <tr key={s.id} className="border-b last:border-0 hover:bg-muted/10 transition-colors">
-                        <td className="py-3 font-medium text-xs font-mono">{s.id}</td>
-                        <td className="py-3 text-xs">{s.date}</td>
-                        <td className="py-3 font-medium">{s.customer.name}</td>
-                        <td className="py-3 text-xs text-muted-foreground">{s.customer.phone || "—"}</td>
-                        <td className="py-3 text-xs text-muted-foreground max-w-[150px] truncate">{s.customer.location || "—"}</td>
-                        <td className="py-3">
-                          <Badge variant="outline" className="text-[10px] font-normal">
-                            {s.paymentMethod}{s.bankName ? ` (${s.bankName})` : ""}
-                          </Badge>
-                        </td>
-                        <td className="py-3 text-right font-medium">{formatCurrency(s.totalSell)}</td>
-                        <td className="py-3 text-right text-success font-medium">{formatCurrency(s.profit)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="payment-methods" className="space-y-6 mt-4">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {(["Cash", "Bank", "Telebirr"] as const).map((method) => (
-              <Card key={method} className={`border-l-4 ${
-                method === "Cash" ? "border-l-green-500" :
-                method === "Bank" ? "border-l-blue-500" : "border-l-purple-500"
-              }`}>
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground uppercase font-bold tracking-wide">{method}</p>
-                  <p className="text-xl font-bold font-heading mt-1">{formatCurrency(paymentStats[method].total)}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">{paymentStats[method].count} transaction{paymentStats[method].count !== 1 ? "s" : ""}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Bank breakdown */}
-          {Object.keys(paymentStats["Bank"].banks).length > 0 && (
-            <Card>
-              <CardHeader><CardTitle className="text-base font-heading">Bank Breakdown</CardTitle></CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-muted-foreground">
-                        <th className="pb-2 font-medium">Bank Name</th>
-                        <th className="pb-2 font-medium text-right">Total Received</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(paymentStats["Bank"].banks).sort((a,b) => b[1]-a[1]).map(([bank, amount]) => (
-                        <tr key={bank} className="border-b last:border-0">
-                          <td className="py-2 font-medium">{bank}</td>
-                          <td className="py-2 text-right text-primary font-bold">{formatCurrency(amount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Full transaction list by payment */}
-          <Card>
-            <CardHeader><CardTitle className="text-base font-heading">All Transactions by Method</CardTitle></CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 font-medium">ID</th>
-                      <th className="pb-2 font-medium">Date</th>
-                      <th className="pb-2 font-medium">Customer</th>
-                      <th className="pb-2 font-medium text-center">Method</th>
-                      <th className="pb-2 font-medium">Bank</th>
-                      <th className="pb-2 font-medium text-right">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredSales.map((s) => (
-                      <tr key={s.id} className="border-b last:border-0 hover:bg-muted/10">
-                        <td className="py-2 font-mono text-xs">{s.id}</td>
-                        <td className="py-2 text-xs">{s.date}</td>
-                        <td className="py-2 font-medium">{s.customer.name}</td>
-                        <td className="py-2 text-center">
-                          <Badge variant="outline" className={`text-[10px] ${
-                            s.paymentMethod === "Cash" ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400" :
-                            s.paymentMethod === "Bank" ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400" :
-                            "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400"
-                          }`}>{s.paymentMethod}</Badge>
-                        </td>
-                        <td className="py-2 text-xs text-muted-foreground">{s.bankName || "—"}</td>
-                        <td className="py-2 text-right font-medium">{formatCurrency(s.totalSell)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="inventory" className="space-y-6 mt-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base font-heading">Inventory by Category</CardTitle></CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={categoryData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="value" label={({ name, value }) => `${name}: ${value}`} fontSize={10}>
-                      {categoryData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base font-heading">Full Inventory</CardTitle></CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 font-medium">Product</th>
-                      <th className="pb-2 font-medium">Category</th>
-                      <th className="pb-2 font-medium text-center">Qty</th>
-                      <th className="pb-2 font-medium text-right">Cost</th>
-                      <th className="pb-2 font-medium text-right">Price</th>
-                      <th className="pb-2 font-medium text-right">Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {products.map((p) => (
-                      <tr key={p.id} className="border-b last:border-0">
-                        <td className="py-2 font-medium">{p.name}</td>
-                        <td className="py-2 text-muted-foreground">{p.category}</td>
-                        <td className={`py-2 text-center ${p.quantity === 0 ? "text-destructive" : p.quantity < 5 ? "text-warning" : ""}`}>{p.quantity}</td>
-                        <td className="py-2 text-right">{formatCurrency(p.costPrice)}</td>
-                        <td className="py-2 text-right">{formatCurrency(p.sellPrice)}</td>
-                        <td className="py-2 text-right font-medium">{formatCurrency(p.sellPrice * p.quantity)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t-2">
-                      <td colSpan={5} className="py-2 font-bold text-right">Total Inventory Value</td>
-                      <td className="py-2 text-right font-bold text-primary">{formatCurrency(products.reduce((s, p) => s + p.sellPrice * p.quantity, 0))}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="vat" className="space-y-6 mt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total VAT Collected</p><p className="text-xl font-bold font-heading mt-1">{formatCurrency(totalVat)}</p></CardContent></Card>
-            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">VAT Payable to Government</p><p className="text-xl font-bold font-heading mt-1 text-destructive">{formatCurrency(totalVat)}</p></CardContent></Card>
-          </div>
-          <Card>
-            <CardHeader><CardTitle className="text-base font-heading">VAT Transactions</CardTitle></CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 font-medium">ID</th>
-                      <th className="pb-2 font-medium">Date</th>
-                      <th className="pb-2 font-medium">Customer</th>
-                      <th className="pb-2 font-medium text-right">Sale</th>
-                      <th className="pb-2 font-medium text-right">VAT</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredSales.filter((s) => s.vatIncluded).map((s) => (
-                      <tr key={s.id} className="border-b last:border-0">
-                        <td className="py-2 font-medium">{s.id}</td>
-                        <td className="py-2">{s.date}</td>
-                        <td className="py-2">{s.customer.name}</td>
-                        <td className="py-2 text-right">{formatCurrency(s.totalSell)}</td>
-                        <td className="py-2 text-right text-destructive">{formatCurrency(s.vatAmount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="fieldwork" className="space-y-6 mt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total Field Works</p><p className="text-xl font-bold font-heading mt-1">{fieldWorks.length}</p></CardContent></Card>
-            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Completed</p><p className="text-xl font-bold font-heading mt-1 text-success">{fieldWorks.filter((fw) => fw.status === "completed").length}</p></CardContent></Card>
-            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total Per Diem</p><p className="text-xl font-bold font-heading mt-1">{totalPerDiem.toLocaleString()} ETB</p></CardContent></Card>
-            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total Payments</p><p className="text-xl font-bold font-heading mt-1">{totalPayment.toLocaleString()} ETB</p></CardContent></Card>
-          </div>
-          <Card>
-            <CardHeader><CardTitle className="text-base font-heading">Field Work Activity Report</CardTitle></CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 font-medium">ID</th>
-                      <th className="pb-2 font-medium">Workers</th>
-                      <th className="pb-2 font-medium">Model</th>
-                      <th className="pb-2 font-medium">Location</th>
-                      <th className="pb-2 font-medium">Duration</th>
-                      <th className="pb-2 font-medium text-center">Status</th>
-                      <th className="pb-2 font-medium text-center">Returns</th>
-                      <th className="pb-2 font-medium text-right">Per Diem</th>
-                      <th className="pb-2 font-medium text-right">Payment</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fieldWorks.map((fw) => {
-                      const duration = differenceInDays(parseISO(fw.endDate), parseISO(fw.startDate));
-                      const fwPerDiem = fw.workers.reduce((s, w) => s + w.perDiem, 0);
-                      const fwPayment = fw.workers.reduce((s, w) => s + w.payment, 0);
-                      const returnCount = fw.returnForms?.length || 0;
-                      return (
-                        <tr key={fw.id} className="border-b last:border-0">
-                          <td className="py-2 font-medium">{fw.id}</td>
-                          <td className="py-2">
-                            {fw.workers.map((w, i) => (
-                              <div key={i} className="flex items-center gap-1">
-                                <span>{w.name}</span>
-                                <span className="text-xs text-muted-foreground">({w.id})</span>
-                                <div className="flex ml-1">
-                                  {Array.from({ length: 5 }, (_, si) => (
-                                    <Star key={si} className={`h-2.5 w-2.5 ${si < w.behaviorRating ? "fill-warning text-warning" : "text-muted-foreground/30"}`} />
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </td>
-                          <td className="py-2 text-xs">{fw.pumpModel}</td>
-                          <td className="py-2">{fw.location}</td>
-                          <td className="py-2">{duration} days<br /><span className="text-xs text-muted-foreground">{fw.startDate} → {fw.endDate}</span></td>
-                          <td className="py-2 text-center">
-                            <Badge className={fw.status === "completed" ? "bg-success/15 text-success border-success/20" : "bg-warning/15 text-warning border-warning/20"}>
-                              {fw.status === "completed" ? "Done" : "Active"}
-                            </Badge>
-                          </td>
-                          <td className="py-2 text-center">
-                            {returnCount > 0 ? (
-                              <Badge variant="outline">{returnCount} form(s)</Badge>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </td>
-                          <td className="py-2 text-right">{fwPerDiem.toLocaleString()} ETB</td>
-                          <td className="py-2 text-right">{fwPayment.toLocaleString()} ETB</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-          {/* Equipment Summary */}
-          <Card>
-            <CardHeader><CardTitle className="text-base font-heading">Equipment Usage Summary</CardTitle></CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 font-medium">Field Work</th>
-                      <th className="pb-2 font-medium">Equipment</th>
-                      <th className="pb-2 font-medium text-center">Taken</th>
-                      <th className="pb-2 font-medium text-center">Returned</th>
-                      <th className="pb-2 font-medium text-center">Used</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fieldWorks.flatMap((fw) =>
-                      fw.equipment.map((eq, i) => (
-                        <tr key={`${fw.id}-${i}`} className="border-b last:border-0">
-                          {i === 0 && <td className="py-2 font-medium" rowSpan={fw.equipment.length}>{fw.id} — {fw.location}</td>}
-                          <td className="py-2">{eq.name}</td>
-                          <td className="py-2 text-center">{eq.quantityTaken}</td>
-                          <td className="py-2 text-center text-primary">{eq.quantityReturned}</td>
-                          <td className="py-2 text-center text-success">{eq.quantityUsed}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
               </div>
             </CardContent>
           </Card>
