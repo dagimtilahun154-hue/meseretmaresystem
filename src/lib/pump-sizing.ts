@@ -115,23 +115,30 @@ export function calculateRequiredFlow(dailyNeedM3: number, peakSunHours: number 
 
 /**
  * Dynamic Solar PV Array Sizing (Engineered standard: 1.25x - 1.35x pump power)
+ * Intelligently suggests optimal module wattage (550W / 650W) based on pump motor size.
  */
 export function calculateSolarArrayRequirements(
   pumpPowerWatt: number,
-  panelUnitWatt: number = 550,
+  panelUnitWatt?: number,
   deratingFactor: number = 1.30
 ): {
   totalArrayWatt: number;
   panelCount: number;
+  moduleWattage: number;
   stringConfig: string;
   estimatedVoc: number;
   estimatedVmp: number;
   isVoltageSafe: boolean;
 } {
+  const effectivePanelWatt = panelUnitWatt && panelUnitWatt > 0 
+    ? panelUnitWatt 
+    : (pumpPowerWatt >= 3500 ? 650 : 550);
+
   if (pumpPowerWatt <= 0) {
     return {
       totalArrayWatt: 0,
       panelCount: 0,
+      moduleWattage: effectivePanelWatt,
       stringConfig: "None",
       estimatedVoc: 0,
       estimatedVmp: 0,
@@ -140,12 +147,12 @@ export function calculateSolarArrayRequirements(
   }
 
   const rawArrayWatt = pumpPowerWatt * deratingFactor;
-  const panelCount = Math.max(2, Math.ceil(rawArrayWatt / panelUnitWatt));
-  const totalArrayWatt = panelCount * panelUnitWatt;
+  const panelCount = Math.max(2, Math.ceil(rawArrayWatt / effectivePanelWatt));
+  const totalArrayWatt = panelCount * effectivePanelWatt;
 
-  // Typical Tier-1 550W Module: Voc ~ 49.8V, Vmp ~ 41.5V
-  const moduleVoc = 49.8;
-  const moduleVmp = 41.5;
+  // Typical Tier-1 550W/650W Module: Voc ~ 49.8V/55.2V, Vmp ~ 41.5V/46.0V
+  const moduleVoc = effectivePanelWatt >= 600 ? 55.2 : 49.8;
+  const moduleVmp = effectivePanelWatt >= 600 ? 46.0 : 41.5;
 
   let stringConfig = `${panelCount} in series (1S × ${panelCount}P)`;
   let estimatedVoc = panelCount * moduleVoc;
@@ -164,12 +171,14 @@ export function calculateSolarArrayRequirements(
   return {
     totalArrayWatt,
     panelCount,
+    moduleWattage: effectivePanelWatt,
     stringConfig,
     estimatedVoc: Number(estimatedVoc.toFixed(1)),
     estimatedVmp: Number(estimatedVmp.toFixed(1)),
     isVoltageSafe
   };
 }
+
 
 /**
  * Submersible Cable Sizer to keep voltage drop under 3%

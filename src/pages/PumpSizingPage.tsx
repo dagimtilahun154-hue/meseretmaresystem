@@ -595,7 +595,8 @@ export default function PumpSizingPage() {
   // Helper to build 4-group categorized Bill of Materials
   const buildCategorizedBOM = (pump: any, selectedPowerMode: "FULL_SOLAR" | "PUMP_ONLY", selectedPanelWatt: number, depthMeters: number, mainlineLen: number, pDiameter: string) => {
     const pumpWatts = parsePowerWatts(pump?.power);
-    const pvInfo = calculateSolarArrayRequirements(pumpWatts, selectedPanelWatt, 1.30);
+    const effectivePanelWatt = selectedPanelWatt && selectedPanelWatt > 0 ? selectedPanelWatt : (pumpWatts >= 3500 ? 650 : 550);
+    const pvInfo = calculateSolarArrayRequirements(pumpWatts, effectivePanelWatt, 1.30);
     const cableInfo = sizeSubmersibleCable(pumpWatts, 220, depthMeters + 20);
 
     const pumpPrice = pump?.sellPrice || (pumpWatts >= 2200 ? 38000 : pumpWatts >= 1500 ? 28000 : 19000);
@@ -628,12 +629,12 @@ export default function PumpSizingPage() {
     // Group 3: Solar PV Generator & Racking (Only included when powerMode === "FULL_SOLAR")
     const pvItems = selectedPowerMode === "FULL_SOLAR" ? [
       { 
-        name: `Tier-1 Mono PERC Solar PV Modules (${selectedPanelWatt}W High Efficiency)`, 
+        name: `Tier-1 Mono PERC Solar PV Modules (${pvInfo.moduleWattage}W High Efficiency)`, 
         category: "Solar PV Generator", 
-        productId: `PV-${selectedPanelWatt}W`, 
+        productId: `PV-${pvInfo.moduleWattage}W`, 
         quantity: pvInfo.panelCount, 
         unit: "Piece", 
-        price: selectedPanelWatt >= 600 ? 7600 : selectedPanelWatt >= 550 ? 6800 : 5400 
+        price: pvInfo.moduleWattage >= 600 ? 7600 : pvInfo.moduleWattage >= 550 ? 6800 : 5400 
       },
       { 
         name: `Ground/Roof Heavy-Duty Anodized Aluminum PV Mounting Structure (${pvInfo.panelCount} Modules Array)`, 
@@ -660,6 +661,7 @@ export default function PumpSizingPage() {
         price: 55 
       }
     ] : [];
+
 
     // Group 4: Piping & Wellhead Accessories
     const accessoryItems = [
@@ -851,7 +853,7 @@ export default function PumpSizingPage() {
         friction_loss: frictionLoss,
         power_mode: powerMode,
         target_flow_m3h: reqFlowM3h,
-        ai_reasoning: `Sized for ${calculatedTdh}m TDH (Static: ${staticLift}m + Friction: ${frictionLoss}m) at ${reqFlowM3h} m³/h. Selected ${winner.brand} ${winner.model} (${winner.power}) with ${winner.score}/100 match score.${powerMode === 'FULL_SOLAR' ? ` Recommended PV Array: ${winner.pvInfo?.totalArrayWatt}W (${winner.pvInfo?.panelCount} × ${panelUnitWatt}W modules in ${winner.pvInfo?.stringConfig}).` : ' Operating in Pump/Controller only mode.'}`,
+        ai_reasoning: `Sized for ${calculatedTdh}m TDH (Static: ${staticLift}m + Friction: ${frictionLoss}m) at ${reqFlowM3h} m³/h. Selected ${winner.brand} ${winner.model} (${winner.power}) with ${winner.score}/100 match score.${powerMode === 'FULL_SOLAR' ? ` Recommended PV Array: ${winner.pvInfo?.totalArrayWatt}W (${winner.pvInfo?.panelCount} × ${winner.pvInfo?.moduleWattage || 550}W modules in ${winner.pvInfo?.stringConfig}).` : ' Operating in Pump/Controller only mode.'}`,
         climate_data: {
           sol_insolation: insolationList,
           temperature: [20, 21, 22, 22, 21, 20, 19, 19, 20, 21, 21, 20]
@@ -1108,25 +1110,19 @@ export default function PumpSizingPage() {
                 </div>
 
                 {powerMode === "FULL_SOLAR" && (
-                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60 space-y-1.5">
-                    <div className="flex justify-between items-center text-xs">
-                      <Label className="text-xs font-medium text-foreground">Module Wattage Rating</Label>
-                      <span className="font-mono text-xs text-primary font-bold">{panelUnitWatt}W Mono PERC</span>
+                  <div className="bg-primary/5 p-3 rounded-lg border border-primary/20 flex items-center justify-between text-xs">
+                    <div className="space-y-0.5">
+                      <span className="font-semibold text-foreground flex items-center gap-1.5">
+                        <AnimatedZapIcon className="h-3.5 w-3.5 text-primary" />
+                        Auto-Engineered Solar PV Array
+                      </span>
+                      <span className="text-[11px] text-muted-foreground block">
+                        Tier-1 Module Wattage (550W/650W), panel count, and string wiring will be automatically calculated for the matched pump.
+                      </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[450, 550, 650].map((w) => (
-                        <Button
-                          key={w}
-                          type="button"
-                          size="sm"
-                          variant={panelUnitWatt === w ? "default" : "outline"}
-                          className="h-7 text-xs font-mono"
-                          onClick={() => setPanelUnitWatt(w)}
-                        >
-                          {w}W
-                        </Button>
-                      ))}
-                    </div>
+                    <Badge variant="outline" className="bg-background text-primary border-primary/30 text-[10px] font-mono shrink-0 ml-2">
+                      Auto-Sized
+                    </Badge>
                   </div>
                 )}
               </CardContent>
@@ -1438,7 +1434,7 @@ export default function PumpSizingPage() {
                       )}
                     </div>
                     <span className="text-[9px] text-emerald-700 dark:text-emerald-400 mt-1">
-                      {result.power_mode === "FULL_SOLAR" ? `${result.exact_match?.pvInfo?.panelCount} × ${panelUnitWatt}W (${result.exact_match?.pvInfo?.stringConfig})` : "Using Existing PV/Grid"}
+                      {result.power_mode === "FULL_SOLAR" ? `${result.exact_match?.pvInfo?.panelCount} × ${result.exact_match?.pvInfo?.moduleWattage || 550}W (${result.exact_match?.pvInfo?.stringConfig})` : "Using Existing PV/Grid"}
                     </span>
                   </div>
                 </div>
