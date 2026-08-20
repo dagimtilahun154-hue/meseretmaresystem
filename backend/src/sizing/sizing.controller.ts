@@ -63,7 +63,7 @@ export class SizingController {
   }
 
   @Patch(':id/tm-reject')
-  @Roles('fieldwork')
+  @Roles('fieldwork', 'ttl')
   tmReject(
     @Param('id') id: string,
     @Req() request: { user: AuthUser },
@@ -73,7 +73,7 @@ export class SizingController {
   }
 
   @Patch(':id/check')
-  @Roles('fieldwork')
+  @Roles('fieldwork', 'ttl')
   checkSizing(
     @Param('id') id: string,
     @Req() request: { user: AuthUser },
@@ -109,7 +109,7 @@ export class SizingController {
   }
 
   @Post(':id/create-fieldwork')
-  @Roles('fieldwork')
+  @Roles('fieldwork', 'ttl', 'manager')
   createFieldwork(
     @Param('id') id: string,
     @Req() request: { user: AuthUser },

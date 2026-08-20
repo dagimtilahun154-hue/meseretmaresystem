@@ -77,10 +77,10 @@ const navItems: NavItem[] = [
   { title: "Pump Sizing", url: "/fieldwork/sizing", icon: Droplets, roles: ["admin", "manager", "fieldwork", "ttl", "sales"] },
   { title: "Research", url: "/fieldwork/research", icon: FlaskConical, roles: ["admin", "fieldwork"] },
 
-  { title: "Customer Files", url: "/customers", icon: Users, roles: ["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician"] },
+  { title: "Customer Files", url: "/customers", icon: Users, roles: ["admin", "manager", "finance", "fieldwork", "ttl", "sales", "technician"] },
 
   // Phase 3: Sales Checkout & Inventory Management
-  { title: "Point of Sale", url: "/pos", icon: ShoppingCart, roles: ["admin", "finance", "storekeeper", "sales"] },
+  { title: "Point of Sale", url: "/pos", icon: ShoppingCart, roles: ["admin", "finance", "sales"] },
   { title: "Inventory", url: "/inventory", icon: Package, roles: ["admin", "storekeeper"] },
 
   // Phase 4: Field Operations & Installation

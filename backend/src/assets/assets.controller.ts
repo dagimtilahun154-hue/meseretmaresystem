@@ -157,9 +157,14 @@ export class AssetsController {
   @Roles('storekeeper')
   storekeeperVerify(
     @Param('id') id: string,
+    @Body() payload: {
+      verifiedMaterials?: { productId?: string; name: string; quantity: number; unit?: string }[];
+      verifiedTools?: { companyAssetId: string; name: string; condition: string; notes?: string }[];
+      notes?: string;
+    },
     @Req() request: { user: AuthUser },
   ) {
-    return this.assetsService.storekeeperVerifyReturns(id, request.user.id, request.user.displayName);
+    return this.assetsService.storekeeperVerifyReturns(id, payload, request.user.id, request.user.displayName);
   }
 
   @Patch('fieldwork/:id/approve-returns')

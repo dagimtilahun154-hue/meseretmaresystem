@@ -58,7 +58,7 @@ export function AdminHubDashboard() {
         roleBadge="System Administrator Desk"
         title="Admin Control Center"
         description="System Configuration, Role Access Controls (RBAC), User Account Auditing & Environment Diagnostics."
-        gradientClass="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950"
+        gradientClass="bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-900"
         actions={[
           {
             label: "User Accounts",

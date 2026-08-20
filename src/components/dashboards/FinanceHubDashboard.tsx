@@ -118,7 +118,7 @@ export function FinanceHubDashboard() {
         roleBadge="Finance & Peachtree Accounting"
         title="Finance Manager Workspace"
         description="Reverse Peachtree Payment Verification, Vault Archive, & Per-Diem Budget Release Center."
-        gradientClass="bg-gradient-to-r from-teal-700 via-emerald-700 to-indigo-800"
+        gradientClass="bg-gradient-to-r from-[#2cb563] via-[#047857] to-[#064e3b]"
         actions={[
           {
             label: "Finance Center",

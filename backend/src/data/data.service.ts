@@ -123,6 +123,57 @@ function parsePeachtreeBuffer(buffer: Buffer, originalName: string) {
 export class DataService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async products() {
+    const prods = await this.prisma.product.findMany({ orderBy: { name: "asc" } });
+    return prods.map((p) => toPlain(p));
+  }
+
+  async saveProduct(body: any) {
+    const id = body.id || `PRD-${Date.now()}`;
+    const product = await this.prisma.product.upsert({
+      where: { id },
+      update: {
+        code: body.code == null ? null : String(body.code),
+        name: body.name,
+        category: body.category || body.productCategory || "General",
+        productCategory: body.productCategory || "WORK_TOOL",
+        quantity: asNumber(body.quantity),
+        minStockLevel: asNumber(body.minStockLevel || body.min_stock_level || 5),
+        costPrice: asNumber(body.costPrice ?? body.cost_price),
+        sellPrice: asNumber(body.sellPrice ?? body.sell_price),
+        unit: body.unit || body.measurementUnit || "Piece",
+        measurementUnit: body.measurementUnit || body.unit || "Piece",
+        shelfLocation: body.shelfLocation || body.shelf_location || "",
+        metadata: body,
+      },
+      create: {
+        id,
+        code: body.code == null ? null : String(body.code),
+        name: body.name,
+        category: body.category || body.productCategory || "General",
+        productCategory: body.productCategory || "WORK_TOOL",
+        quantity: asNumber(body.quantity),
+        minStockLevel: asNumber(body.minStockLevel || body.min_stock_level || 5),
+        costPrice: asNumber(body.costPrice ?? body.cost_price),
+        sellPrice: asNumber(body.sellPrice ?? body.sell_price),
+        unit: body.unit || body.measurementUnit || "Piece",
+        measurementUnit: body.measurementUnit || body.unit || "Piece",
+        shelfLocation: body.shelfLocation || body.shelf_location || "",
+        metadata: body,
+      },
+    });
+    return toPlain(product);
+  }
+
+  async updateProduct(id: string, body: any) {
+    return this.saveProduct({ ...body, id });
+  }
+
+  async deleteProduct(id: string) {
+    await this.prisma.product.delete({ where: { id } });
+    return { success: true };
+  }
+
   private fieldWorkPayload(job: any) {
     return job?.payload && typeof job.payload === "object" ? job.payload : job;
   }
@@ -205,48 +256,7 @@ export class DataService {
     }
   }
 
-  async products() {
-    const rows = await this.prisma.product.findMany({ orderBy: { name: "asc" } });
-    return rows.map(toPlain);
-  }
 
-  async saveProduct(product: any) {
-    return this.prisma.product.upsert({
-      where: { id: product.id },
-      update: {
-        code: product.code == null ? null : String(product.code),
-        name: product.name,
-        category: product.category,
-        quantity: asNumber(product.quantity),
-        costPrice: asNumber(product.costPrice ?? product.cost_price),
-        sellPrice: asNumber(product.sellPrice ?? product.sell_price),
-        unit: product.unit,
-        measurementUnit: product.measurementUnit ?? product.measurement_unit,
-        metadata: product,
-      },
-      create: {
-        id: product.id,
-        code: product.code == null ? null : String(product.code),
-        name: product.name,
-        category: product.category,
-        quantity: asNumber(product.quantity),
-        costPrice: asNumber(product.costPrice ?? product.cost_price),
-        sellPrice: asNumber(product.sellPrice ?? product.sell_price),
-        unit: product.unit,
-        measurementUnit: product.measurementUnit ?? product.measurement_unit,
-        metadata: product,
-      },
-    });
-  }
-
-  async updateProduct(id: string, product: any) {
-    return this.saveProduct({ ...product, id });
-  }
-
-  async deleteProduct(id: string) {
-    await this.prisma.product.delete({ where: { id } });
-    return { success: true };
-  }
 
   async sales() {
     const sales = await this.prisma.posSale.findMany({ orderBy: { date: "desc" } });
@@ -371,13 +381,40 @@ export class DataService {
 
   async fieldwork() {
     const jobs = await this.prisma.fieldWorkJob.findMany({ orderBy: { createdAt: "desc" } });
-    return jobs.map((job) => ({
-      ...toPlain(job),
-      customer_name: job.customerName,
-      assigned_to: job.assignedTo,
-      scheduled_date: dateOnly(job.scheduledDate),
-      completed_date: dateOnly(job.completedDate),
-    }));
+    const results = [];
+    for (const job of jobs) {
+      const dbMaterials = await this.prisma.fieldJobMaterial.findMany({
+        where: { fieldWorkJobId: job.id }
+      });
+      const materials = dbMaterials.map(m => ({
+        id: m.id,
+        productId: m.productId,
+        productCode: m.productCode,
+        category: m.category,
+        name: m.name,
+        serialNumber: m.serialNumber,
+        quantity: Number(m.quantity),
+        unit: m.unit,
+        unitPrice: Number(m.unitPrice),
+        source: m.source,
+        status: m.status,
+        quantityReturned: Number(m.quantityReturned),
+        returnCondition: m.returnCondition,
+        returnNotes: m.returnNotes,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+      }));
+
+      results.push({
+        ...toPlain(job),
+        customer_name: job.customerName,
+        assigned_to: job.assignedTo,
+        scheduled_date: dateOnly(job.scheduledDate),
+        completed_date: dateOnly(job.completedDate),
+        materials,
+      });
+    }
+    return results;
   }
 
   async saveFieldwork(job: any) {
@@ -452,7 +489,9 @@ export class DataService {
       });
 
       await this.upsertFieldWorkPayment(tx, id, payload, cost);
-      await this.addReturnedMaterialsToStock(tx, newReturnForms);
+      if (job.status !== 'completed_ttl') {
+        await this.addReturnedMaterialsToStock(tx, newReturnForms);
+      }
     });
     return { success: true };
   }

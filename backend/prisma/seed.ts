@@ -11,6 +11,7 @@ const roleDefinitions = [
   { name: "fieldwork", label: "Field Work Controller" },
   { name: "attendance", label: "Attendance Officer" },
   { name: "hr", label: "HR Manager" },
+  { name: "ttl", label: "Technical Team Leader" },
 ];
 
 const permissionKeys = [
@@ -132,13 +133,14 @@ async function main() {
   const storekeeperRole = roles.find((r) => r.name === "storekeeper")!;
   const fieldworkRole = roles.find((r) => r.name === "fieldwork")!;
   const hrRole = roles.find((r) => r.name === "hr") || managerRole;
+  const ttlRole = roles.find((r) => r.name === "ttl")!;
 
   const hierarchyUsers = [
     // Level 2 Managers & System Roles
     { username: "finance", displayName: "Finance Officer", roleName: "finance", roleId: financeRole.id, department: "FINANCE", reportsToId: managerUser.id },
     { username: "store", displayName: "Store Keeper", roleName: "storekeeper", roleId: storekeeperRole.id, department: "INVENTORY", reportsToId: managerUser.id },
     { username: "field", displayName: "Field Work Controller", roleName: "fieldwork", roleId: fieldworkRole.id, department: "TECHNICAL", reportsToId: managerUser.id },
-    { username: "ttl", displayName: "Technical Team Lead", roleName: "fieldwork", roleId: fieldworkRole.id, department: "TECHNICAL", reportsToId: managerUser.id },
+    { username: "ttl", displayName: "Technical Team Lead", roleName: "ttl", roleId: ttlRole.id, department: "TECHNICAL", reportsToId: managerUser.id },
     { username: "hr", displayName: "HR Officer", roleName: "hr", roleId: hrRole.id, department: "HR", reportsToId: managerUser.id },
     { username: "admin", displayName: "Administrator", roleName: "admin", roleId: adminRole.id, department: "ADMIN", reportsToId: managerUser.id },
     { username: "tech_manager", displayName: "Technical Manager", roleName: "fieldwork", roleId: fieldworkRole.id, department: "TECHNICAL", reportsToId: managerUser.id },
@@ -191,7 +193,7 @@ async function main() {
 
   // Level 3 Staff
   const level3Users = [
-    { username: "tech_leader", displayName: "Technical Team Leader", roleId: fieldworkRole.id, department: "TECHNICAL", reportsToId: seededLevel2Users["tech_manager"] },
+    { username: "tech_leader", displayName: "Technical Team Leader", roleId: ttlRole.id, department: "TECHNICAL", reportsToId: seededLevel2Users["tech_manager"] },
     { username: "accountant", displayName: "Accountant", roleId: financeRole.id, department: "FINANCE", reportsToId: seededLevel2Users["finance_admin"] },
     { username: "cashier", displayName: "Cashier", roleId: financeRole.id, department: "FINANCE", reportsToId: seededLevel2Users["finance_admin"] },
   ];

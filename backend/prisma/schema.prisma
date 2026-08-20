@@ -181,21 +181,135 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+enum ProductCategory {
+  PUMP
+  PUMP_EQUIPMENT
+  SOLAR_PANEL
+  COMPANY_TOOL
+  WORK_TOOL
+}
+
+enum TransactionType {
+  RECEIVE
+  ISSUE
+  RETURN
+  ADJUSTMENT
+  BOUGHT
+  WRITE_OFF
+}
+
+enum StockCountStatus {
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+}
+
+enum MaterialSource {
+  FROM_STOCK
+  BOUGHT
+}
+
 model Product {
-  id              String   @id
+  id              String          @id
   code            String?
   name            String
   category        String?
-  quantity        Decimal  @default(0) @db.Decimal(15, 2)
-  costPrice       Decimal  @default(0) @db.Decimal(15, 2)
-  sellPrice       Decimal  @default(0) @db.Decimal(15, 2)
+  productCategory ProductCategory @default(WORK_TOOL)
+  quantity        Decimal         @default(0) @db.Decimal(15, 2)
+  minStockLevel   Decimal         @default(0) @db.Decimal(15, 2)
+  costPrice       Decimal         @default(0) @db.Decimal(15, 2)
+  sellPrice       Decimal         @default(0) @db.Decimal(15, 2)
   unit            String?
   measurementUnit String?
+  shelfLocation   String?
   metadata        Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  transactions    InventoryTransaction[]
 
   @@map("products")
+}
+
+model InventoryTransaction {
+  id              String          @id @default(cuid())
+  productId       String?
+  productCode     String?
+  productName     String
+  category        ProductCategory @default(WORK_TOOL)
+  transactionType TransactionType
+  quantity        Decimal         @db.Decimal(15, 2)
+  unit            String?
+  unitPrice       Decimal         @default(0) @db.Decimal(15, 2)
+  serialNumber    String?
+  fieldWorkJobId  String?
+  reference       String?
+  performedBy     String?
+  notes           String?         @db.Text
+  createdAt       DateTime        @default(now())
+
+  product         Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([productId, createdAt])
+  @@index([fieldWorkJobId])
+  @@index([transactionType, createdAt])
+  @@map("inventory_transactions")
+}
+
+model StockCount {
+  id         String            @id @default(cuid())
+  category   ProductCategory?
+  status     StockCountStatus  @default(IN_PROGRESS)
+  countedBy  String
+  approvedBy String?
+  notes      String?           @db.Text
+  items      StockCountItem[]
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@map("stock_counts")
+}
+
+model StockCountItem {
+  id           String          @id @default(cuid())
+  stockCountId String
+  productId    String
+  productName  String
+  category     ProductCategory @default(WORK_TOOL)
+  systemQty    Decimal         @db.Decimal(15, 2)
+  countedQty   Decimal         @db.Decimal(15, 2)
+  variance     Decimal         @db.Decimal(15, 2)
+  unit         String?
+  notes        String?         @db.Text
+
+  stockCount   StockCount      @relation(fields: [stockCountId], references: [id], onDelete: Cascade)
+
+  @@index([stockCountId])
+  @@map("stock_count_items")
+}
+
+model FieldJobMaterial {
+  id               String          @id @default(cuid())
+  fieldWorkJobId   String
+  productId        String?
+  productCode      String?
+  category         ProductCategory @default(WORK_TOOL)
+  name             String
+  serialNumber     String?
+  quantity         Decimal         @default(1) @db.Decimal(15, 2)
+  unit             String          @default("Piece")
+  unitPrice        Decimal         @default(0) @db.Decimal(15, 2)
+  source           MaterialSource  @default(FROM_STOCK)
+  status           String          @default("PLANNED") // PLANNED, RELEASED, IN_FIELD, INSTALLED, RETURNED, CONSUMED
+  quantityReturned Decimal         @default(0) @db.Decimal(15, 2)
+  returnCondition  String?
+  returnNotes      String?         @db.Text
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([fieldWorkJobId])
+  @@index([category])
+  @@map("field_job_materials")
 }
 
 model PosSale {

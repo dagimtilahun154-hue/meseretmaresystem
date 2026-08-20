@@ -10,13 +10,33 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, MapPin, Droplets, Zap, CheckCircle2, Sun, Calendar, Info, ShieldCheck, ShoppingCart, Search, UserCheck, Users, CreditCard, ClipboardCheck, Clock, Sparkles, FileText, Activity } from "lucide-react";
+import { 
+  Loader2, MapPin, Droplets, Zap, CheckCircle2, Sun, Calendar, Info, 
+  ShieldCheck, ShoppingCart, Search, UserCheck, Users, CreditCard, 
+  ClipboardCheck, Clock, Sparkles, FileText, Activity, Layers, 
+  Sliders, ChevronDown, Check, ArrowRight, Cable, AlertTriangle, Cpu, Wrench, Shield, CheckCircle
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import { apiClient } from "@/lib/api/client";
 import { ClientFileModal } from "@/components/ClientFileModal";
 import { SizingProposalPdfModal } from "@/components/sizing/SizingProposalPdfModal";
+import {
+  calculateSolarArrayRequirements,
+  sizeSubmersibleCable,
+  getFrictionLossPer100m,
+  calculateTDH as libCalculateTDH,
+  calculateRequiredFlow as libCalculateRequiredFlow
+} from "@/lib/pump-sizing";
+import {
+  AnimatedSunIcon,
+  AnimatedWaterIcon,
+  AnimatedPinIcon,
+  AnimatedZapIcon,
+  AnimatedPumpIcon,
+  AnimatedGaugeIcon
+} from "@/components/ui/animated-icons";
 import {
   ResponsiveContainer,
   ScatterChart,
@@ -68,12 +88,10 @@ function LocationMarker({ position, setPosition, setMapCenter, setClientAddress 
         .then(res => res.json())
         .then(data => {
           if (data && data.display_name) {
-            const parts = data.display_name.split(',');
-            const shortAddress = parts.slice(0, 3).join(',').trim();
-            setClientAddress(shortAddress);
+            setClientAddress(data.display_name);
           }
         })
-        .catch(err => console.error("Reverse geocoding error:", err));
+        .catch(() => {});
     },
   });
 
@@ -92,11 +110,26 @@ export default function PumpSizingPage() {
   const [nasaInsolation, setNasaInsolation] = useState<number[] | null>(null);
   const [fetchingNasa, setFetchingNasa] = useState<boolean>(false);
 
-  const [verticalLift, setVerticalLift] = useState<string>("45");
+  // Engineered Power Mode ("FULL_SOLAR" includes panels & mounting; "PUMP_ONLY" for existing solar / AC grid)
+  const [powerMode, setPowerMode] = useState<"FULL_SOLAR" | "PUMP_ONLY">("FULL_SOLAR");
+  const [panelUnitWatt, setPanelUnitWatt] = useState<number>(550);
+
+  // Detailed Hydraulic & Borehole Parameters
+  const [waterSourceType, setWaterSourceType] = useState<string>("Borehole");
+  const [staticWaterLevel, setStaticWaterLevel] = useState<string>("35");
+  const [dynamicDrawdown, setDynamicDrawdown] = useState<string>("10");
+  const [tankElevation, setTankElevation] = useState<string>("5");
   const [pipeLength, setPipeLength] = useState<string>("60");
   const [pipeDiameter, setPipeDiameter] = useState<string>("1.25");
-  const [dailyWaterNeed, setDailyWaterNeed] = useState<string>("20");
   
+  // Water Requirement & Quick Demand Helpers
+  const [dailyWaterNeed, setDailyWaterNeed] = useState<string>("20");
+  const [demandHelperType, setDemandHelperType] = useState<"DIRECT" | "IRRIGATION" | "LIVESTOCK" | "DOMESTIC">("DIRECT");
+  const [farmHectares, setFarmHectares] = useState<string>("1");
+  const [cropTypeRate, setCropTypeRate] = useState<number>(35); // m3/ha/day
+  const [cattleCount, setCattleCount] = useState<string>("50");
+  const [peopleCount, setPeopleCount] = useState<string>("100");
+
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("curves");
@@ -297,6 +330,7 @@ export default function PumpSizingPage() {
 
   // Helper to auto-populate assessment questionnaire from current sizing inputs & calculation results
   const syncSizingToAssessment = () => {
+    const totalLiftM = (parseFloat(staticWaterLevel) || 0) + (parseFloat(dynamicDrawdown) || 0) + (parseFloat(tankElevation) || 0);
     setDataCollection((prev: any) => ({
       ...prev,
       generalSite: {
@@ -307,27 +341,27 @@ export default function PumpSizingPage() {
       waterSource: {
         ...prev.waterSource,
         sourceType: waterSource || prev.waterSource.sourceType,
-        wellDepth: verticalLift || prev.waterSource.wellDepth,
-        staticWaterLevel: verticalLift || prev.waterSource.staticWaterLevel,
+        wellDepth: String((parseFloat(staticWaterLevel) || 30) + 20),
+        staticWaterLevel: staticWaterLevel || prev.waterSource.staticWaterLevel,
+        dynamicWaterLevel: String((parseFloat(staticWaterLevel) || 30) + (parseFloat(dynamicDrawdown) || 10)),
       },
       irrigationLayout: {
         ...prev.irrigationLayout,
         mainlineLength: pipeLength || prev.irrigationLayout.mainlineLength,
-        elevationDifference: verticalLift || prev.irrigationLayout.elevationDifference,
+        elevationDifference: String(totalLiftM),
         distanceSourceToField: pipeLength || prev.irrigationLayout.distanceSourceToField,
       },
       solarRequirement: {
         ...prev.solarRequirement,
         dailyWaterDemand: dailyWaterNeed || prev.solarRequirement.dailyWaterDemand,
-        totalPumpingHead: result?.calculated_tdh ? String(result.calculated_tdh) : (verticalLift || prev.solarRequirement.totalPumpingHead),
+        totalPumpingHead: result?.calculated_tdh ? String(result.calculated_tdh) : String(totalLiftM),
         proposedPumpCapacity: result?.exact_match?.model || prev.solarRequirement.proposedPumpCapacity,
-        proposedPvCapacity: result?.exact_match?.pv_capacity_kw 
-          ? `${result.exact_match.pv_capacity_kw} kW` 
+        proposedPvCapacity: result?.exact_match?.pvInfo?.totalArrayWatt 
+          ? `${(result.exact_match.pvInfo.totalArrayWatt / 1000).toFixed(2)} kWp` 
           : prev.solarRequirement.proposedPvCapacity,
       }
     }));
   };
-
 
   const handleOpenDataSheet = () => {
     syncSizingToAssessment();
@@ -345,6 +379,8 @@ export default function PumpSizingPage() {
       return;
     }
 
+    const totalLiftM = (parseFloat(staticWaterLevel) || 0) + (parseFloat(dynamicDrawdown) || 0) + (parseFloat(tankElevation) || 0);
+
     setSavingProposal(true);
     try {
       await apiClient.post("/sizing-requests", {
@@ -355,14 +391,20 @@ export default function PumpSizingPage() {
         waterSource,
         dailyWaterNeed: parseFloat(dailyWaterNeed),
         pipeLength: parseFloat(pipeLength),
-        verticalLift: parseFloat(verticalLift),
+        verticalLift: totalLiftM,
         selectedPumpModel: result.exact_match.model,
+        powerMode,
         dataCollection: {
           generalSite: {
             contactPerson: dataCollection.generalSite.contactPerson,
             phone: dataCollection.generalSite.phone,
           },
-          waterSource: { sourceType: waterSource },
+          waterSource: { 
+            sourceType: waterSource,
+            staticWaterLevel: parseFloat(staticWaterLevel) || 0,
+            drawdown: parseFloat(dynamicDrawdown) || 0,
+            tankElevation: parseFloat(tankElevation) || 0
+          },
         },
       });
       toast.success("Lead saved successfully! Go to Proposals & Logs to promote when customer agrees.");
@@ -539,6 +581,152 @@ export default function PumpSizingPage() {
     }
   };
 
+  // Helper to parse power strings
+  const parsePowerWatts = (pStr: string): number => {
+    if (!pStr) return 1500;
+    const s = String(pStr).toLowerCase();
+    if (s.includes("kw")) return parseFloat(s.replace("kw", "").trim()) * 1000;
+    if (s.includes("hp")) return parseFloat(s.replace("hp", "").trim()) * 746;
+    if (s.includes("w")) return parseFloat(s.replace("w", "").trim());
+    const val = parseFloat(s);
+    return isNaN(val) ? 1500 : val;
+  };
+
+  // Helper to build 4-group categorized Bill of Materials
+  const buildCategorizedBOM = (pump: any, selectedPowerMode: "FULL_SOLAR" | "PUMP_ONLY", selectedPanelWatt: number, depthMeters: number, mainlineLen: number, pDiameter: string) => {
+    const pumpWatts = parsePowerWatts(pump?.power);
+    const pvInfo = calculateSolarArrayRequirements(pumpWatts, selectedPanelWatt, 1.30);
+    const cableInfo = sizeSubmersibleCable(pumpWatts, 220, depthMeters + 20);
+
+    const pumpPrice = pump?.sellPrice || (pumpWatts >= 2200 ? 38000 : pumpWatts >= 1500 ? 28000 : 19000);
+    const controllerPrice = Math.round(pumpPrice * 0.30);
+
+    // Group 1: Submersible Pump & Motor Unit
+    const pumpItems = [
+      { 
+        name: `${pump?.brand || 'Solar'} High-Efficiency Submersible Pump & Brushless DC/AC Motor (${pump?.power || '1500W'}, Outlet: ${pump?.outletSize || pDiameter + '"'})`, 
+        category: "Pump & Motor Unit", 
+        productId: pump?.id || "PUMP-CORE", 
+        quantity: 1, 
+        unit: "Set", 
+        price: pumpPrice 
+      }
+    ];
+
+    // Group 2: Intelligent MPPT Inverter & Controller
+    const controllerItems = [
+      { 
+        name: `Intelligent MPPT Solar Pump Inverter/Controller with Dry-Run & Full Water Detection (Voc < 430V, ${pump?.power || '1500W'})`, 
+        category: "MPPT Controller", 
+        productId: "CTRL-MPPT", 
+        quantity: 1, 
+        unit: "Unit", 
+        price: controllerPrice 
+      }
+    ];
+
+    // Group 3: Solar PV Generator & Racking (Only included when powerMode === "FULL_SOLAR")
+    const pvItems = selectedPowerMode === "FULL_SOLAR" ? [
+      { 
+        name: `Tier-1 Mono PERC Solar PV Modules (${selectedPanelWatt}W High Efficiency)`, 
+        category: "Solar PV Generator", 
+        productId: `PV-${selectedPanelWatt}W`, 
+        quantity: pvInfo.panelCount, 
+        unit: "Piece", 
+        price: selectedPanelWatt >= 600 ? 7600 : selectedPanelWatt >= 550 ? 6800 : 5400 
+      },
+      { 
+        name: `Ground/Roof Heavy-Duty Anodized Aluminum PV Mounting Structure (${pvInfo.panelCount} Modules Array)`, 
+        category: "Solar PV Generator", 
+        productId: "PV-RACK-SET", 
+        quantity: 1, 
+        unit: "Set", 
+        price: Math.max(3500, pvInfo.panelCount * 900) 
+      },
+      { 
+        name: `1000V DC Photovoltaic Combiner Box with DC Isolator & Type II Lightning Surge Protector`, 
+        category: "Solar PV Generator", 
+        productId: "DC-COMBINER", 
+        quantity: 1, 
+        unit: "Set", 
+        price: 3200 
+      },
+      { 
+        name: `Solar PV DC Twin-Core Cable 4mm² UV Resistant (Red/Black)`, 
+        category: "Solar PV Generator", 
+        productId: "CAB-DC-4MM", 
+        quantity: 30, 
+        unit: "Meters", 
+        price: 55 
+      }
+    ] : [];
+
+    // Group 4: Piping & Wellhead Accessories
+    const accessoryItems = [
+      { 
+        name: `Submersible Drop Cable ${cableInfo.recommendedSizeMm2} (Flat 3-Core Waterproof Copper)`, 
+        category: "Well & Piping Accessories", 
+        productId: "CAB-SUB-DROP", 
+        quantity: Math.max(30, Math.ceil(depthMeters + 15)), 
+        unit: "Meters", 
+        price: 90 
+      },
+      { 
+        name: `HDPE PN16 Delivery Pipe – ${pDiameter}" High Pressure Continuous Coil`, 
+        category: "Well & Piping Accessories", 
+        productId: `HDPE-PIPE-${pDiameter}`, 
+        quantity: Math.max(50, Math.ceil(mainlineLen)), 
+        unit: "Meters", 
+        price: pDiameter === '2' ? 160 : pDiameter === '1.5' ? 130 : 95 
+      },
+      { 
+        name: `Borehole Sanitary Wellhead Top Flange with Suspension Bracket`, 
+        category: "Well & Piping Accessories", 
+        productId: "WELLHEAD-FLANGE", 
+        quantity: 1, 
+        unit: "Set", 
+        price: 2200 
+      },
+      { 
+        name: `Stainless Steel 304 Safety Pump Suspension Wire Rope with Clamps`, 
+        category: "Well & Piping Accessories", 
+        productId: "SS-WIRE-ROPE", 
+        quantity: Math.max(30, Math.ceil(depthMeters + 15)), 
+        unit: "Meters", 
+        price: 40 
+      },
+      { 
+        name: `Dual Water Level Sensors (Borehole Dry-Run & Storage Tank Overflow Probes)`, 
+        category: "Well & Piping Accessories", 
+        productId: "PROBE-LEVEL-SET", 
+        quantity: 1, 
+        unit: "Set", 
+        price: 1400 
+      },
+      { 
+        name: `Heavy Brass Non-Return Check Valve & HDPE Compression Couplers Kit`, 
+        category: "Well & Piping Accessories", 
+        productId: "VALVE-FITTINGS-KIT", 
+        quantity: 1, 
+        unit: "Kit", 
+        price: 2600 
+      }
+    ];
+
+    const allItems = [...pumpItems, ...controllerItems, ...pvItems, ...accessoryItems];
+    return {
+      items: allItems,
+      pvInfo,
+      cableInfo,
+      categories: {
+        pump: pumpItems,
+        controller: controllerItems,
+        pv: pvItems,
+        accessories: accessoryItems
+      }
+    };
+  };
+
   const handleCalculate = async () => {
     if (!position) {
       toast.error("Please select a location on the map.");
@@ -548,77 +736,52 @@ export default function PumpSizingPage() {
       toast.error("Coordinates must be inside Ethiopia.");
       return;
     }
-    if (!verticalLift || !pipeLength || !pipeDiameter || !dailyWaterNeed) {
-      toast.error("Please fill in all constraints.");
-      return;
-    }
+
+    const staticLevel = parseFloat(staticWaterLevel) || 0;
+    const drawdown = parseFloat(dynamicDrawdown) || 0;
+    const tankHeight = parseFloat(tankElevation) || 0;
+    const length = parseFloat(pipeLength) || 0;
+    const diameter = parseFloat(pipeDiameter) || 1.25;
+    const need = parseFloat(dailyWaterNeed) || 20;
+
+    const staticLift = staticLevel + drawdown + tankHeight;
+    const frictionPer100m = getFrictionLossPer100m(diameter);
+    const frictionLoss = Number(((length / 100) * frictionPer100m).toFixed(2));
+    const calculatedTdh = Number((staticLift + frictionLoss).toFixed(2));
+
+    const insolationList = (nasaInsolation && nasaInsolation.length === 12)
+      ? nasaInsolation
+      : [5.5, 5.7, 6.0, 5.8, 5.5, 5.0, 4.5, 4.8, 5.2, 5.5, 5.4, 5.3];
+
+    const avgIns = Number((insolationList.reduce((a, b) => a + b, 0) / 12).toFixed(2));
+    const reqFlowM3h = Number((need / avgIns).toFixed(2));
 
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/api/recommend-pump", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          latitude: position.lat,
-          longitude: position.lng,
-          vertical_lift_m: parseFloat(verticalLift),
-          pipe_length_m: parseFloat(pipeLength),
-          pipe_diameter_inch: parseFloat(pipeDiameter),
-          daily_water_need_m3: parseFloat(dailyWaterNeed),
-          custom_insolation: nasaInsolation || undefined,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("AI Engine returned error " + response.status);
-      }
-
-      const data = await response.json();
-      const winner = (data.redbud_match?.score || 0) >= (data.difful_match?.score || 0)
-        ? data.redbud_match
-        : data.difful_match;
-      setResult({
-        ...data,
-        exact_match: winner
-      });
-      toast.success("Pump sizing calculations completed via AI Engine!");
-    } catch (error: any) {
-      console.warn("AI Engine endpoint unreachable, using client-side sizing fallback:", error);
-      
-      const lift = parseFloat(verticalLift) || 0;
-      const length = parseFloat(pipeLength) || 0;
-      const diameter = parseFloat(pipeDiameter) || 1.25;
-      const need = parseFloat(dailyWaterNeed) || 20;
-
-      const frictionPer100m = diameter <= 1.0 ? 5.0 : diameter <= 1.5 ? 2.5 : 1.0;
-      const tdh = Number((lift + (length / 100) * frictionPer100m).toFixed(2));
-      const avgIns = nasaInsolation && nasaInsolation.length > 0
-        ? (nasaInsolation.reduce((a, b) => a + b, 0) / nasaInsolation.length)
-        : 5.5;
-      const reqFlowM3h = Number((need / avgIns).toFixed(2));
-
-      // Filter Redbud and Difful candidate pumps
+      // Filter Redbud and Difful candidate pumps from database
       const redbudPumps = (allPumps || []).filter((p: any) => (p.brand || "").toUpperCase() === "REDBUD");
       const diffulPumps = (allPumps || []).filter((p: any) => (p.brand || "").toUpperCase() === "DIFFUL");
 
-      const findBest = (pList: any[]) => {
+      const findBestPump = (pList: any[]) => {
         const matched = pList
           .map((pump: any) => {
             const perf = typeof pump.performanceData === "string" ? JSON.parse(pump.performanceData) : pump.performanceData;
             if (!perf || perf.length === 0) return { pump, flowAtHead: 0, diff: 999, score: 0 };
             const maxHead = Math.max(...perf.map((d: any) => d.head));
             let flowAtHead = 0;
-            if (tdh <= maxHead) {
+            if (calculatedTdh <= maxHead) {
               const sortedPts = [...perf].sort((a: any, b: any) => a.head - b.head);
               for (let i = 0; i < sortedPts.length - 1; i++) {
-                if (sortedPts[i].head <= tdh && tdh <= sortedPts[i + 1].head) {
-                  const ratio = (tdh - sortedPts[i].head) / (sortedPts[i + 1].head - sortedPts[i].head || 1);
+                if (sortedPts[i].head <= calculatedTdh && calculatedTdh <= sortedPts[i + 1].head) {
+                  const ratio = (calculatedTdh - sortedPts[i].head) / (sortedPts[i + 1].head - sortedPts[i].head || 1);
                   flowAtHead = sortedPts[i].flow + ratio * (sortedPts[i + 1].flow - sortedPts[i].flow);
                   break;
                 }
               }
             }
-            return { pump, flowAtHead, maxHead, diff: Math.abs(flowAtHead - reqFlowM3h), score: flowAtHead > 0 ? 90 - Math.abs(flowAtHead - reqFlowM3h) * 10 : 0 };
+            const diff = Math.abs(flowAtHead - reqFlowM3h);
+            const score = flowAtHead > 0 ? Math.max(10, Math.min(99, Math.round(95 - diff * 12))) : 0;
+            return { pump, flowAtHead, maxHead, diff, score };
           })
           .filter((item: any) => item.flowAtHead > 0)
           .sort((a: any, b: any) => b.score - a.score);
@@ -626,58 +789,80 @@ export default function PumpSizingPage() {
         return matched[0] || null;
       };
 
-      const bestRedbudItem = findBest(redbudPumps);
-      const bestDiffulItem = findBest(diffulPumps);
+      const bestRedbudItem = findBestPump(redbudPumps);
+      const bestDiffulItem = findBestPump(diffulPumps);
 
-      const rMatch = bestRedbudItem ? {
-        ...bestRedbudItem.pump,
-        score: Math.round(bestRedbudItem.score),
-        suitability: "Suitable",
-        calculated_flow_m3h: Number(bestRedbudItem.flowAtHead.toFixed(2)),
-        daily_water_yield_m3: Number((bestRedbudItem.flowAtHead * 5.5 * 0.9).toFixed(2)),
-        monthly_yields: Array(12).fill(Number((bestRedbudItem.flowAtHead * 5.5 * 0.9).toFixed(2))),
-        daily_profile: Array.from({ length: 13 }, (_, idx) => {
+      const buildMatchPayload = (bestItem: any, brandName: string) => {
+        if (!bestItem) {
+          return { 
+            model: `No Matching ${brandName} Model Found`, 
+            brand: brandName, 
+            power: "N/A", 
+            performanceData: [], 
+            score: 0, 
+            suitability: "Exceeds Limit",
+            equipment: [],
+            bomCategories: { pump: [], controller: [], pv: [], accessories: [] }
+          };
+        }
+
+        const bom = buildCategorizedBOM(bestItem.pump, powerMode, panelUnitWatt, staticLevel, length, pipeDiameter);
+        const flowAtHead = Number(bestItem.flowAtHead.toFixed(2));
+        const dailyYield = Number((flowAtHead * avgIns * 0.9).toFixed(2));
+        
+        // 100% Dynamic 12-Month Yields using actual NASA satellite data
+        const monthlyYields = insolationList.map(ins => Number((flowAtHead * ins * 0.9).toFixed(2)));
+
+        // 12-Hour Diurnal Profile with 200 W/m2 MPPT cutoff
+        const dailyProfile = Array.from({ length: 13 }, (_, idx) => {
           const h = idx + 6;
           const factor = Math.sin(Math.PI * (h - 6) / 12);
           const irr = Math.round(1000 * factor);
-          const flow = irr >= 200 ? Number((bestRedbudItem.flowAtHead * ((irr - 200) / 800)).toFixed(3)) : 0;
+          const flow = irr >= 200 ? Number((flowAtHead * ((irr - 200) / 800)).toFixed(3)) : 0;
           return { time: `${h.toString().padStart(2, '0')}:00`, irradiance: irr, flow };
-        })
-      } : { model: "No Matching Redbud Pump Found", brand: "REDBUD", power: "N/A", performanceData: [], score: 0, suitability: "Exceeds Limit" };
+        });
 
-      const dMatch = bestDiffulItem ? {
-        ...bestDiffulItem.pump,
-        score: Math.round(bestDiffulItem.score),
-        suitability: "Suitable",
-        calculated_flow_m3h: Number(bestDiffulItem.flowAtHead.toFixed(2)),
-        daily_water_yield_m3: Number((bestDiffulItem.flowAtHead * 5.5 * 0.9).toFixed(2)),
-        monthly_yields: Array(12).fill(Number((bestDiffulItem.flowAtHead * 5.5 * 0.9).toFixed(2))),
-        daily_profile: Array.from({ length: 13 }, (_, idx) => {
-          const h = idx + 6;
-          const factor = Math.sin(Math.PI * (h - 6) / 12);
-          const irr = Math.round(1000 * factor);
-          const flow = irr >= 200 ? Number((bestDiffulItem.flowAtHead * ((irr - 200) / 800)).toFixed(3)) : 0;
-          return { time: `${h.toString().padStart(2, '0')}:00`, irradiance: irr, flow };
-        })
-      } : { model: "No Matching Difful Pump Found", brand: "DIFFUL", power: "N/A", performanceData: [], score: 0, suitability: "Exceeds Limit" };
+        return {
+          ...bestItem.pump,
+          score: bestItem.score,
+          suitability: "Suitable",
+          calculated_flow_m3h: flowAtHead,
+          daily_water_yield_m3: dailyYield,
+          monthly_yields: monthlyYields,
+          daily_profile: dailyProfile,
+          equipment: bom.items,
+          bomCategories: bom.categories,
+          pvInfo: bom.pvInfo,
+          cableInfo: bom.cableInfo
+        };
+      };
+
+      const rMatch = buildMatchPayload(bestRedbudItem, "REDBUD");
+      const dMatch = buildMatchPayload(bestDiffulItem, "DIFFUL");
 
       const winner = (rMatch.score || 0) >= (dMatch.score || 0) ? rMatch : dMatch;
 
-      const fallbackResult = {
+      const sizingResult = {
         redbud_match: rMatch,
         difful_match: dMatch,
         exact_match: winner,
-        calculated_tdh: tdh,
-        ai_reasoning: `Selected Redbud: ${rMatch.model} and Difful: ${dMatch.model} for TDH=${tdh}m.`,
+        calculated_tdh: calculatedTdh,
+        static_lift: staticLift,
+        friction_loss: frictionLoss,
+        power_mode: powerMode,
+        target_flow_m3h: reqFlowM3h,
+        ai_reasoning: `Sized for ${calculatedTdh}m TDH (Static: ${staticLift}m + Friction: ${frictionLoss}m) at ${reqFlowM3h} m³/h. Selected ${winner.brand} ${winner.model} (${winner.power}) with ${winner.score}/100 match score.${powerMode === 'FULL_SOLAR' ? ` Recommended PV Array: ${winner.pvInfo?.totalArrayWatt}W (${winner.pvInfo?.panelCount} × ${panelUnitWatt}W modules in ${winner.pvInfo?.stringConfig}).` : ' Operating in Pump/Controller only mode.'}`,
         climate_data: {
-          sol_insolation: [5.5, 5.7, 6.0, 5.8, 5.5, 5.0, 4.5, 4.8, 5.2, 5.5, 5.4, 5.3],
+          sol_insolation: insolationList,
           temperature: [20, 21, 22, 22, 21, 20, 19, 19, 20, 21, 21, 20]
-        },
-        target_flow_m3h: reqFlowM3h
+        }
       };
 
-      setResult(fallbackResult);
-      toast.success("Pump sizing calculations completed (Local Engine)!");
+      setResult(sizingResult);
+      toast.success(`Pump Sizing calculated: ${winner.brand} ${winner.model} (${winner.score}% Match)`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Error calculating pump sizing: " + e.message);
     } finally {
       setLoading(false);
     }
@@ -788,7 +973,7 @@ export default function PumpSizingPage() {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary text-xs px-3 py-1 flex items-center gap-1.5 rounded-full mr-2 hidden sm:flex">
-            <ShieldCheck className="h-3.5 w-3.5" /> Lorentz Compass Clone v1.2
+            <ShieldCheck className="h-3.5 w-3.5" /> Meseret Mare Sizing Engine v2.0
           </Badge>
           <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-[300px]">
             <TabsList className="grid grid-cols-2 w-full border">
@@ -806,40 +991,49 @@ export default function PumpSizingPage() {
           {/* LEFT COLUMN: Inputs & Map */}
           <div className="lg:col-span-5 space-y-6">
             
-            <Card className="border border-border/80 shadow-md">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg font-heading">
-                  <MapPin className="h-5 w-5 text-primary" />
-                  Sizing Location Context
-                </CardTitle>
-                <CardDescription>Search or select a location to fetch NASA solar irradiation parameters.</CardDescription>
+            {/* STEP 1: Location & Satellite Solar Resource */}
+            <Card className="border border-border/80 shadow-sm bg-card">
+              <CardHeader className="pb-3 border-b border-border/40">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">01</span>
+                    <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                      <AnimatedPinIcon className="h-4 w-4 text-primary" />
+                      Site & Solar Resource
+                    </CardTitle>
+                  </div>
+                  {nasaInsolation && (
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                      <AnimatedSunIcon className="h-3.5 w-3.5 text-amber-500" /> NASA Irradiance Active
+                    </span>
+                  )}
+                </div>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 pt-3">
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
-                      placeholder="Search city, town, or paste 'lat, lng'..."
+                      placeholder="Search location or coordinates..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleSearchLocation();
                       }}
-                      className="pl-8 bg-background border-border"
+                      className="pl-8 bg-background border-border text-xs h-8"
                     />
                   </div>
-                  <Button onClick={handleSearchLocation} disabled={searching} variant="secondary" className="border">
-                    {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Find"}
+                  <Button onClick={handleSearchLocation} disabled={searching} variant="outline" size="sm" className="text-xs h-8">
+                    {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Locate"}
                   </Button>
                 </div>
 
-                <div className="h-[420px] w-full rounded-md overflow-hidden border border-border shadow-inner relative z-0">
+                <div className="h-[220px] w-full rounded-lg overflow-hidden border border-border relative z-0">
                   <MapContainer
                     center={mapCenter}
                     zoom={6}
                     scrollWheelZoom={true}
                     style={{ height: "100%", width: "100%" }}
-                    maxBounds={[[3.0, 33.0], [15.0, 48.0]]}
                   >
                     <TileLayer
                       url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
@@ -849,94 +1043,408 @@ export default function PumpSizingPage() {
                     <ChangeView center={mapCenter} />
                   </MapContainer>
                 </div>
+                
                 {position ? (
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground bg-muted/40 p-2 rounded border border-border/50">
-                    <span className="font-mono">Lat: {position.lat.toFixed(5)}</span>
-                    <span className="font-mono">Lng: {position.lng.toFixed(5)}</span>
+                  <div className="flex items-center justify-between text-xs bg-muted/40 px-3 py-2 rounded-lg border border-border/50 font-mono">
+                    <span className="text-foreground font-medium">{position.lat.toFixed(4)}°N, {position.lng.toFixed(4)}°E</span>
+                    <span className="text-primary font-bold">
+                      {nasaInsolation ? `${(nasaInsolation.reduce((a, b) => a + b, 0) / 12).toFixed(2)} PSH/day` : "Fetching NASA..."}
+                    </span>
                   </div>
                 ) : (
-                  <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 p-2 rounded text-center">
-                    ⚠️ Click the map or search to drop a coordinates marker.
+                  <p className="text-xs text-muted-foreground bg-muted/30 border border-border/60 p-2 rounded text-center">
+                    Select a coordinate point on the map to query NASA solar data.
                   </p>
                 )}
               </CardContent>
             </Card>
 
-            <Card className="border border-border/80 shadow-md">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg font-heading">
-                  <Droplets className="h-5 w-5 text-primary" />
-                  Hydraulic & Demand Inputs
-                </CardTitle>
+            {/* STEP 2: Power System Configuration (Full Solar vs Pump Only) */}
+            <Card className="border border-border/80 shadow-sm bg-card">
+              <CardHeader className="pb-3 border-b border-border/40">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">02</span>
+                  <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                    <AnimatedZapIcon className="h-4 w-4 text-amber-500" />
+                    Power System Scope
+                  </CardTitle>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="lift">Vertical Lift (meters)</Label>
-                  <Input id="lift" type="number" placeholder="e.g. 45" value={verticalLift} onChange={(e) => setVerticalLift(e.target.value)} />
-                  <p className="text-[10px] text-muted-foreground">Elevation difference from water source level to discharge level.</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="length">Pipe Length (m)</Label>
-                    <Input id="length" type="number" placeholder="e.g. 60" value={pipeLength} onChange={(e) => setPipeLength(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="diameter">Diameter (inches)</Label>
-                    <Input id="diameter" type="number" placeholder="e.g. 1.25" value={pipeDiameter} onChange={(e) => setPipeDiameter(e.target.value)} />
-                  </div>
-                </div>
-                <div className="space-y-2 border-t pt-3 border-border/50">
-                  <Label htmlFor="demand" className="text-primary font-semibold">Daily Water Requirement (m³/day)</Label>
-                  <Input id="demand" type="number" placeholder="e.g. 20" value={dailyWaterNeed} onChange={(e) => setDailyWaterNeed(e.target.value)} className="border-primary/30 focus-visible:ring-primary" />
-                  <p className="text-[10px] text-muted-foreground">Volume of water required daily at point of use.</p>
+              <CardContent className="space-y-3 pt-3">
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setPowerMode("FULL_SOLAR")}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      powerMode === "FULL_SOLAR"
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                        : "border-border bg-card hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <AnimatedSunIcon className={`h-4 w-4 ${powerMode === "FULL_SOLAR" ? "text-primary" : "text-muted-foreground"}`} />
+                      {powerMode === "FULL_SOLAR" && <Check className="h-3.5 w-3.5 text-primary" />}
+                    </div>
+                    <p className="text-xs font-semibold text-foreground">Complete Solar PV System</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Includes PV modules, racking & DC protection</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPowerMode("PUMP_ONLY")}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      powerMode === "PUMP_ONLY"
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                        : "border-border bg-card hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <AnimatedPumpIcon className={`h-4 w-4 ${powerMode === "PUMP_ONLY" ? "text-primary" : "text-muted-foreground"}`} />
+                      {powerMode === "PUMP_ONLY" && <Check className="h-3.5 w-3.5 text-primary" />}
+                    </div>
+                    <p className="text-xs font-semibold text-foreground">Pump & Inverter Unit Only</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Connect to existing PV array or AC grid</p>
+                  </button>
                 </div>
 
-                <Button className="w-full mt-2 font-bold shadow-lg" onClick={handleCalculate} disabled={loading}>
+                {powerMode === "FULL_SOLAR" && (
+                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60 space-y-1.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <Label className="text-xs font-medium text-foreground">Module Wattage Rating</Label>
+                      <span className="font-mono text-xs text-primary font-bold">{panelUnitWatt}W Mono PERC</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[450, 550, 650].map((w) => (
+                        <Button
+                          key={w}
+                          type="button"
+                          size="sm"
+                          variant={panelUnitWatt === w ? "default" : "outline"}
+                          className="h-7 text-xs font-mono"
+                          onClick={() => setPanelUnitWatt(w)}
+                        >
+                          {w}W
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* STEP 3: Hydraulic & Borehole Breakdown */}
+            <Card className="border border-border/80 shadow-sm bg-card">
+              <CardHeader className="pb-3 border-b border-border/40">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">03</span>
+                    <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                      <AnimatedWaterIcon className="h-4 w-4 text-cyan-500" />
+                      Hydraulics & Wellhead
+                    </CardTitle>
+                  </div>
+                  <span className="text-xs font-mono font-semibold text-cyan-600 dark:text-cyan-400">
+                    TDH: {(Number(staticWaterLevel || 0) + Number(dynamicDrawdown || 0) + Number(tankElevation || 0) + (Number(pipeLength || 0) / 100) * getFrictionLossPer100m(Number(pipeDiameter || 1.25))).toFixed(1)}m
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-foreground">Water Source</Label>
+                  <select
+                    value={waterSourceType}
+                    onChange={(e) => {
+                      setWaterSourceType(e.target.value);
+                      setWaterSource(e.target.value);
+                    }}
+                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs focus-visible:outline-none"
+                  >
+                    <option value="Borehole">Deep Borehole / Tube Well</option>
+                    <option value="River / Stream">River / Continuous Stream</option>
+                    <option value="Open Pond">Open Reservoir / Pond</option>
+                    <option value="Shallow Well">Hand-Dug Shallow Well</option>
+                    <option value="Storage Tank">Ground Storage Cistern</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">Static Level (m)</Label>
+                    <Input
+                      type="number"
+                      placeholder="35"
+                      value={staticWaterLevel}
+                      onChange={(e) => setStaticWaterLevel(e.target.value)}
+                      className="h-8 text-xs font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">Drawdown (m)</Label>
+                    <Input
+                      type="number"
+                      placeholder="10"
+                      value={dynamicDrawdown}
+                      onChange={(e) => setDynamicDrawdown(e.target.value)}
+                      className="h-8 text-xs font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">Tank Height (m)</Label>
+                    <Input
+                      type="number"
+                      placeholder="5"
+                      value={tankElevation}
+                      onChange={(e) => setTankElevation(e.target.value)}
+                      className="h-8 text-xs font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/40">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">Pipeline Length (m)</Label>
+                    <Input
+                      type="number"
+                      placeholder="60"
+                      value={pipeLength}
+                      onChange={(e) => setPipeLength(e.target.value)}
+                      className="h-8 text-xs font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">Pipe Diameter</Label>
+                    <select
+                      value={pipeDiameter}
+                      onChange={(e) => setPipeDiameter(e.target.value)}
+                      className="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs focus-visible:outline-none"
+                    >
+                      <option value="1.0">1.0" (DN25)</option>
+                      <option value="1.25">1.25" (DN32 - Recommended)</option>
+                      <option value="1.5">1.5" (DN40)</option>
+                      <option value="2.0">2.0" (DN50)</option>
+                    </select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* STEP 4: Daily Water Need & Quick Calculator */}
+            <Card className="border border-border/80 shadow-sm bg-card">
+              <CardHeader className="pb-3 border-b border-border/40">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">04</span>
+                    <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                      <AnimatedGaugeIcon className="h-4 w-4 text-emerald-500" />
+                      Daily Water Target
+                    </CardTitle>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    {dailyWaterNeed} m³/day
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-3">
+                <div className="grid grid-cols-4 gap-1 p-1 bg-muted/60 rounded-lg text-center text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setDemandHelperType("DIRECT")}
+                    className={`py-1.5 px-2 rounded-md font-medium text-xs transition-all ${
+                      demandHelperType === "DIRECT" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Direct
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDemandHelperType("IRRIGATION");
+                      setDailyWaterNeed((parseFloat(farmHectares || "1") * cropTypeRate).toFixed(1));
+                    }}
+                    className={`py-1.5 px-2 rounded-md font-medium text-xs transition-all ${
+                      demandHelperType === "IRRIGATION" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Irrigation
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDemandHelperType("LIVESTOCK");
+                      setDailyWaterNeed(((parseFloat(cattleCount || "50") * 40) / 1000).toFixed(1));
+                    }}
+                    className={`py-1.5 px-2 rounded-md font-medium text-xs transition-all ${
+                      demandHelperType === "LIVESTOCK" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Livestock
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDemandHelperType("DOMESTIC");
+                      setDailyWaterNeed(((parseFloat(peopleCount || "100") * 25) / 1000).toFixed(1));
+                    }}
+                    className={`py-1.5 px-2 rounded-md font-medium text-xs transition-all ${
+                      demandHelperType === "DOMESTIC" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Domestic
+                  </button>
+                </div>
+
+                {demandHelperType === "IRRIGATION" && (
+                  <div className="p-3 bg-muted/30 border border-border/60 rounded-lg space-y-2 text-xs">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-[11px] text-muted-foreground">Area (Hectares)</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={farmHectares}
+                          onChange={(e) => {
+                            setFarmHectares(e.target.value);
+                            setDailyWaterNeed((parseFloat(e.target.value || "0") * cropTypeRate).toFixed(1));
+                          }}
+                          className="h-8 text-xs font-mono"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[11px] text-muted-foreground">Crop Factor</Label>
+                        <select
+                          value={cropTypeRate}
+                          onChange={(e) => {
+                            const rate = Number(e.target.value);
+                            setCropTypeRate(rate);
+                            setDailyWaterNeed((parseFloat(farmHectares || "0") * rate).toFixed(1));
+                          }}
+                          className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus-visible:outline-none"
+                        >
+                          <option value="35">Drip Veggies (35 m³/ha)</option>
+                          <option value="50">Cereals (50 m³/ha)</option>
+                          <option value="25">Fruit Orchard (25 m³/ha)</option>
+                          <option value="60">Forage (60 m³/ha)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {demandHelperType === "LIVESTOCK" && (
+                  <div className="p-3 bg-muted/30 border border-border/60 rounded-lg space-y-2 text-xs">
+                    <div>
+                      <Label className="text-[11px] text-muted-foreground">Cattle / Livestock Head Count (40 L/head/day)</Label>
+                      <Input
+                        type="number"
+                        value={cattleCount}
+                        onChange={(e) => {
+                          setCattleCount(e.target.value);
+                          setDailyWaterNeed(((parseFloat(e.target.value || "0") * 40) / 1000).toFixed(1));
+                        }}
+                        className="h-8 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {demandHelperType === "DOMESTIC" && (
+                  <div className="p-3 bg-muted/30 border border-border/60 rounded-lg space-y-2 text-xs">
+                    <div>
+                      <Label className="text-[11px] text-muted-foreground">Community Population (25 L/person/day)</Label>
+                      <Input
+                        type="number"
+                        value={peopleCount}
+                        onChange={(e) => {
+                          setPeopleCount(e.target.value);
+                          setDailyWaterNeed(((parseFloat(e.target.value || "0") * 25) / 1000).toFixed(1));
+                        }}
+                        className="h-8 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <Label htmlFor="demand" className="text-xs font-medium text-foreground">Target Daily Requirement (m³/day)</Label>
+                  <Input
+                    id="demand"
+                    type="number"
+                    placeholder="20"
+                    value={dailyWaterNeed}
+                    onChange={(e) => setDailyWaterNeed(e.target.value)}
+                    className="border-input focus-visible:ring-primary font-mono text-sm font-bold h-9"
+                  />
+                </div>
+
+                <Button className="w-full font-semibold text-xs h-10 shadow-sm" onClick={handleCalculate} disabled={loading}>
                   {loading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Solving System Equations...
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Solving Hydraulic Equations...
                     </>
                   ) : (
-                    "Size System & Draw Curves"
+                    <>
+                      <AnimatedPumpIcon className="mr-2 h-4 w-4" /> Size System & Generate Equipment Package
+                    </>
                   )}
                 </Button>
               </CardContent>
             </Card>
           </div>
     
-          {/* RIGHT COLUMN: AI Results & Charts */}
+          {/* RIGHT COLUMN: AI Results, Interactive Curves & Categorized BOM */}
           <div className="lg:col-span-7">
             {result ? (
               <div className="space-y-6">
                 
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-primary/5 p-4 rounded-xl border border-primary/20 flex flex-col justify-between">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Calculated TDH</span>
+                {/* 4 Top KPI Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-primary/5 p-3.5 rounded-xl border border-primary/20 flex flex-col justify-between">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Design TDH</span>
                     <div>
                       <span className="text-2xl font-bold text-primary font-mono">{result.calculated_tdh}</span>
-                      <span className="text-xs text-muted-foreground ml-1">meters</span>
+                      <span className="text-xs text-muted-foreground ml-1">m</span>
                     </div>
+                    <span className="text-[9px] text-muted-foreground mt-1">Static {result.static_lift}m + Loss {result.friction_loss}m</span>
                   </div>
                   
-                  <div className="bg-cyan-500/5 p-4 rounded-xl border border-cyan-500/20 flex flex-col justify-between">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Required Flow Rate</span>
+                  <div className="bg-cyan-500/5 p-3.5 rounded-xl border border-cyan-500/20 flex flex-col justify-between">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Operating Flow</span>
                     <div>
-                      <span className="text-2xl font-bold text-cyan-600 font-mono">{result.target_flow_m3h}</span>
+                      <span className="text-2xl font-bold text-cyan-600 font-mono">{result.exact_match?.calculated_flow_m3h || 0}</span>
                       <span className="text-xs text-muted-foreground ml-1">m³/h</span>
                     </div>
+                    <span className="text-[9px] text-cyan-700 dark:text-cyan-400 mt-1">Target: {result.target_flow_m3h} m³/h</span>
                   </div>
 
-                  <div className="bg-amber-500/5 p-4 rounded-xl border border-amber-500/20 flex flex-col justify-between">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Avg Daily Yield</span>
+                  <div className="bg-amber-500/5 p-3.5 rounded-xl border border-amber-500/20 flex flex-col justify-between">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Daily Output</span>
                     <div>
                       <span className="text-2xl font-bold text-amber-600 font-mono">{result.exact_match?.daily_water_yield_m3 || 0}</span>
                       <span className="text-xs text-muted-foreground ml-1">m³/day</span>
                     </div>
+                    <span className="text-[9px] text-amber-700 dark:text-amber-400 mt-1">Scaled for local NASA PSH</span>
+                  </div>
+
+                  <div className="bg-emerald-500/5 p-3.5 rounded-xl border border-emerald-500/20 flex flex-col justify-between">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Solar PV Array</span>
+                    <div>
+                      {result.power_mode === "FULL_SOLAR" ? (
+                        <>
+                          <span className="text-2xl font-bold text-emerald-600 font-mono">{result.exact_match?.pvInfo?.totalArrayWatt || 0}</span>
+                          <span className="text-xs text-muted-foreground ml-1">Wp</span>
+                        </>
+                      ) : (
+                        <span className="text-sm font-bold text-emerald-700 font-mono block mt-1">Pump Only</span>
+                      )}
+                    </div>
+                    <span className="text-[9px] text-emerald-700 dark:text-emerald-400 mt-1">
+                      {result.power_mode === "FULL_SOLAR" ? `${result.exact_match?.pvInfo?.panelCount} × ${panelUnitWatt}W (${result.exact_match?.pvInfo?.stringConfig})` : "Using Existing PV/Grid"}
+                    </span>
                   </div>
                 </div>
 
-                {/* 2 Recommendations Comparison Section */}
-                <div className="grid grid-cols-1 gap-4">
+                {/* Candidate Pump Cards (Redbud & Difful) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* REDBUD Option */}
                   {result.redbud_match && (
                     <Card
@@ -959,7 +1467,7 @@ export default function PumpSizingPage() {
                       )}
                       <CardHeader className="pb-2 pt-4">
                         <div className="flex justify-between items-start">
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-mono">REDBUD RECOMMENDED PUMP</span>
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-mono">REDBUD OPTION</span>
                           <Badge variant="outline" className="text-[9px] font-bold border-primary/20 text-primary">Score: {result.redbud_match.score}/100</Badge>
                         </div>
                         <CardTitle className="text-base font-bold font-heading mt-1 text-foreground">
@@ -1014,7 +1522,7 @@ export default function PumpSizingPage() {
                       )}
                       <CardHeader className="pb-2 pt-4">
                         <div className="flex justify-between items-start">
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-mono">DIFFUL RECOMMENDED PUMP</span>
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-mono">DIFFUL OPTION</span>
                           <Badge variant="outline" className="text-[9px] font-bold border-primary/20 text-primary">Score: {result.difful_match.score}/100</Badge>
                         </div>
                         <CardTitle className="text-base font-bold font-heading mt-1 text-foreground">
@@ -1053,23 +1561,23 @@ export default function PumpSizingPage() {
                   <Card className="border border-border shadow-md overflow-hidden">
                     <div className="bg-muted/50 p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                       <div>
-                        <span className="text-[10px] bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Active Sizing Details</span>
+                        <span className="text-[10px] bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Active System Specification</span>
                         <h2 className="text-2xl font-bold font-heading mt-1 text-foreground">
                           {result.exact_match.model} <span className="text-muted-foreground text-sm font-normal">[{result.exact_match.brand}]</span>
                         </h2>
-                        <p className="text-xs text-muted-foreground">{result.exact_match.firstCategory || result.exact_match.secondCategory || 'Solar Pump'}</p>
+                        <p className="text-xs text-muted-foreground">{result.exact_match.firstCategory || result.exact_match.secondCategory || 'Solar Submersible Pump'}</p>
                       </div>
                       <div className="flex flex-wrap gap-2 items-center">
-                        <Badge className="bg-slate-800 text-white hover:bg-slate-800/90">{result.exact_match.power}</Badge>
-                        <Badge className="bg-blue-600 text-white hover:bg-blue-600/90">{result.exact_match.voltage}</Badge>
+                        <Badge className="bg-slate-800 text-white hover:bg-slate-800/90 font-mono">{result.exact_match.power}</Badge>
+                        <Badge className="bg-blue-600 text-white hover:bg-blue-600/90 font-mono">{result.exact_match.voltage}</Badge>
                         <Button
                           size="sm"
                           onClick={() => {
                             document.getElementById("customer-data-section")?.scrollIntoView({ behavior: "smooth" });
                           }}
-                          className="gap-1.5 ml-2 font-semibold bg-emerald-500 hover:bg-emerald-600 text-white shadow"
+                          className="gap-1.5 ml-2 font-semibold bg-emerald-500 hover:bg-emerald-600 text-white shadow text-xs"
                         >
-                          <UserCheck className="h-3.5 w-3.5" /> Save Lead Info ↓
+                          <UserCheck className="h-3.5 w-3.5" /> Save Customer Lead ↓
                         </Button>
                       </div>
                     </div>
@@ -1080,17 +1588,17 @@ export default function PumpSizingPage() {
                           <TabsTrigger value="curves" className="text-xs py-2 font-semibold">Operating Curves</TabsTrigger>
                           <TabsTrigger value="monthly" className="text-xs py-2 font-semibold">Monthly Yield</TabsTrigger>
                           <TabsTrigger value="daily" className="text-xs py-2 font-semibold">Daily Profile</TabsTrigger>
-                          <TabsTrigger value="equipment" className="text-xs py-2 font-semibold">Required Kit</TabsTrigger>
+                          <TabsTrigger value="equipment" className="text-xs py-2 font-semibold">Bill of Materials</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="curves" className="space-y-4 outline-none">
                           <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                               <h3 className="text-sm font-semibold flex items-center gap-1.5 text-foreground">
-                                <Activity className="h-4 w-4 text-primary" /> Hydraulic Operating Point (H-Q Performance & System Loss Curves)
+                                <Activity className="h-4 w-4 text-primary" /> Hydraulic Operating Point (H-Q Curve & System Resistance)
                               </h3>
                               <Badge variant="outline" className="text-[10px] font-mono bg-background text-emerald-600 border-emerald-500/30 w-fit">
-                                Operating Duty Point: {result.exact_match.calculated_flow_m3h} m³/h @ {result.calculated_tdh}m TDH
+                                Duty Point: {result.exact_match.calculated_flow_m3h} m³/h @ {result.calculated_tdh}m TDH
                               </Badge>
                             </div>
 
@@ -1132,7 +1640,6 @@ export default function PumpSizingPage() {
                                   />
                                   <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: '10px', fontSize: '12px' }} />
 
-                                  {/* Smooth Pump Characteristic Curve */}
                                   <Area
                                     type="monotone"
                                     dataKey="pumpHead"
@@ -1144,7 +1651,6 @@ export default function PumpSizingPage() {
                                     activeDot={{ r: 6, fill: '#2563eb' }}
                                   />
 
-                                  {/* Dynamic Piping System Head Curve */}
                                   <Line
                                     type="monotone"
                                     dataKey="systemHead"
@@ -1155,20 +1661,19 @@ export default function PumpSizingPage() {
                                     dot={false}
                                   />
 
-                                  {/* Duty Point Intersection Highlights */}
                                   <ReferenceLine
                                     x={result.exact_match.calculated_flow_m3h}
                                     stroke="#22c55e"
                                     strokeWidth={1.5}
                                     strokeDasharray="3 3"
-                                    label={{ value: `Operating Flow: ${result.exact_match.calculated_flow_m3h} m³/h`, position: 'top', fill: '#16a34a', fontSize: 10, fontWeight: 'bold' }}
+                                    label={{ value: `Flow: ${result.exact_match.calculated_flow_m3h} m³/h`, position: 'top', fill: '#16a34a', fontSize: 10, fontWeight: 'bold' }}
                                   />
                                   <ReferenceLine
                                     y={result.calculated_tdh}
                                     stroke="#22c55e"
                                     strokeWidth={1.5}
                                     strokeDasharray="3 3"
-                                    label={{ value: `Duty Head: ${result.calculated_tdh}m`, position: 'right', fill: '#16a34a', fontSize: 10, fontWeight: 'bold' }}
+                                    label={{ value: `TDH: ${result.calculated_tdh}m`, position: 'right', fill: '#16a34a', fontSize: 10, fontWeight: 'bold' }}
                                   />
                                   <ReferenceDot
                                     x={result.exact_match.calculated_flow_m3h}
@@ -1187,7 +1692,7 @@ export default function PumpSizingPage() {
                           <div className="bg-muted/40 p-4 rounded-xl border space-y-3 text-xs">
                             <div className="flex items-center justify-between">
                               <span className="font-bold text-foreground flex items-center gap-1.5">
-                                <Sparkles className="h-4 w-4 text-emerald-600" /> Hydraulic Analysis Breakdown
+                                <Sparkles className="h-4 w-4 text-emerald-600" /> Sizing Verification
                               </span>
                               <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/30">
                                 Match Score: {result.exact_match.score}/100
@@ -1195,16 +1700,16 @@ export default function PumpSizingPage() {
                             </div>
 
                             <p className="italic text-muted-foreground bg-background p-2.5 rounded-lg border border-border">
-                              "{result.ai_reasoning || "Selected based on optimal efficiency for the specified Total Dynamic Head (TDH) and daily requirements."}"
+                              "{result.ai_reasoning || "Selected based on optimum pump efficiency for the calculated Total Dynamic Head and daily requirement."}"
                             </p>
 
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                               <div className="bg-primary/5 p-2.5 rounded-lg border border-primary/20">
-                                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Operating Flow Rate</span>
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Operating Flow</span>
                                 <span className="text-sm font-bold text-primary font-mono">{result.exact_match.calculated_flow_m3h} m³/h</span>
                               </div>
                               <div className="bg-cyan-500/5 p-2.5 rounded-lg border border-cyan-500/20">
-                                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Design Head (TDH)</span>
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Total Dynamic Head</span>
                                 <span className="text-sm font-bold text-cyan-600 font-mono">{result.calculated_tdh} meters</span>
                               </div>
                               <div className="bg-amber-500/5 p-2.5 rounded-lg border border-amber-500/20">
@@ -1233,17 +1738,11 @@ export default function PumpSizingPage() {
                                   <YAxis yAxisId="right" orientation="right" label={{ value: "Daily Yield (m³/day)", angle: 90, position: "insideRight", offset: 0 }} />
                                   <Tooltip formatter={(value: any, name: any) => [value, name]} />
                                   <Legend />
-                                  <Bar yAxisId="left" dataKey="insolation" name="Solar Insolation" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                                  <Area yAxisId="right" type="monotone" dataKey="yield" name="Water Yield" fill="#3b82f6" stroke="#1d4ed8" fillOpacity={0.2} />
+                                  <Bar yAxisId="left" dataKey="insolation" name="Solar Insolation (PSH)" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                                  <Area yAxisId="right" type="monotone" dataKey="yield" name="Water Yield (m³/day)" fill="#3b82f6" stroke="#1d4ed8" fillOpacity={0.2} />
                                 </ComposedChart>
                               </ResponsiveContainer>
                             </div>
-                          </div>
-
-                          <div className="bg-muted/40 p-4 rounded-xl border text-xs space-y-1">
-                            <div className="font-semibold text-foreground mb-1">NASA Weather Station Context:</div>
-                            <div>• Annual Solar Climatology Average: <span className="font-semibold font-mono">{(result.climate_data?.sol_insolation ? (result.climate_data.sol_insolation.reduce((a:any,b:any)=>a+b, 0)/12).toFixed(2) : 5.5)} kWh/m²/day</span></div>
-                            <div>• Average Ground Skin Temperature: <span className="font-semibold font-mono">{(result.climate_data?.temperature ? (result.climate_data.temperature.reduce((a:any,b:any)=>a+b, 0)/12).toFixed(1) : 20.0)} °C</span></div>
                           </div>
                         </TabsContent>
 
@@ -1261,45 +1760,136 @@ export default function PumpSizingPage() {
                                   <YAxis yAxisId="right" orientation="right" label={{ value: "Flow Rate (m³/h)", angle: 90, position: "insideRight", offset: 0 }} />
                                   <Tooltip formatter={(value: any, name: any) => [value, name]} />
                                   <Legend />
-                                  <Area yAxisId="left" type="monotone" dataKey="irradiance" name="Solar Radiation" fill="#fef08a" stroke="#ca8a04" fillOpacity={0.3} />
-                                  <Line yAxisId="right" type="monotone" dataKey="flow" name="Pump Flow Rate" stroke="#06b6d4" strokeWidth={3} dot={false} />
+                                  <Area yAxisId="left" type="monotone" dataKey="irradiance" name="Solar Radiation (W/m²)" fill="#fef08a" stroke="#ca8a04" fillOpacity={0.3} />
+                                  <Line yAxisId="right" type="monotone" dataKey="flow" name="Pump Flow Rate (m³/h)" stroke="#06b6d4" strokeWidth={3} dot={false} />
                                 </ComposedChart>
                               </ResponsiveContainer>
                             </div>
                           </div>
-                          <div className="bg-muted/40 p-4 rounded-xl border text-xs">
-                            💡 **Threshold Detection**: Flow starts when solar radiation exceeds **200 W/m²** (startup threshold of the MPPT inverter controller). Flow rate dynamically scales matching solar power availability.
+                          <div className="bg-muted/30 px-3.5 py-2 rounded-lg border border-border/50 text-xs text-muted-foreground">
+                            <span className="font-semibold text-foreground">Operational Threshold:</span> Pumping commences when irradiance exceeds 200 W/m² (inverter MPPT start threshold).
                           </div>
                         </TabsContent>
 
+                        {/* CATEGORIZED BILL OF MATERIALS TAB */}
                         <TabsContent value="equipment" className="space-y-4 outline-none">
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-center mb-1">
-                              <h3 className="text-sm font-semibold text-foreground">Itemized Equipment Invoice Package</h3>
-                              <span className="text-[10px] text-muted-foreground">Standard Retail Rates</span>
-                            </div>
-                            
-                            <div className="divide-y border rounded-lg bg-background overflow-hidden">
-                              {result.exact_match.equipment && result.exact_match.equipment.map((item: any, idx: number) => (
-                                <div key={idx} className="flex justify-between items-center p-3 text-xs hover:bg-muted/20">
-                                  <div>
-                                    <p className="font-semibold text-foreground">{item.name}</p>
-                                    <p className="text-[10px] text-muted-foreground font-mono">{item.productId} • Qty: {item.quantity} {item.unit}</p>
-                                  </div>
-                                  <div className="text-right font-mono font-semibold">
-                                    ${(item.price * item.quantity).toLocaleString()}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                            
-                            <div className="bg-primary/5 p-4 rounded-lg border border-primary/20 flex justify-between items-center mt-4">
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-center">
                               <div>
-                                <p className="text-xs font-semibold text-primary">System Total Price Package</p>
-                                <p className="text-[9px] text-muted-foreground">Excludes shipping, installation labor, and optional storage tanks.</p>
+                                <h3 className="text-sm font-semibold text-foreground">Bill of Materials (BOM)</h3>
+                                <p className="text-xs text-muted-foreground">Itemized equipment package and electrical accessories.</p>
+                              </div>
+                              <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30">
+                                {result.power_mode === "FULL_SOLAR" ? "Full Solar Package" : "Pump & Controller Only"}
+                              </Badge>
+                            </div>
+
+                            {/* Group 1: Submersible Pump Unit */}
+                            <div className="border rounded-xl bg-card overflow-hidden">
+                              <div className="bg-muted/60 px-4 py-2 border-b flex justify-between items-center">
+                                <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                  <AnimatedPumpIcon className="h-3.5 w-3.5 text-primary" /> Group 1: Submersible Pump & Motor
+                                </span>
+                                <span className="text-xs font-mono font-semibold text-primary">
+                                  ${(result.exact_match.bomCategories?.pump || []).reduce((acc: number, it: any) => acc + (it.price * it.quantity), 0).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="divide-y text-xs">
+                                {(result.exact_match.bomCategories?.pump || []).map((item: any, idx: number) => (
+                                  <div key={idx} className="p-3 flex justify-between items-center hover:bg-muted/10">
+                                    <div>
+                                      <p className="font-medium text-foreground">{item.name}</p>
+                                      <p className="text-[10px] text-muted-foreground font-mono">Qty: {item.quantity} {item.unit}</p>
+                                    </div>
+                                    <span className="font-mono font-medium text-foreground">${(item.price * item.quantity).toLocaleString()}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Group 2: MPPT Controller */}
+                            <div className="border rounded-xl bg-card overflow-hidden">
+                              <div className="bg-muted/60 px-4 py-2 border-b flex justify-between items-center">
+                                <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                  <AnimatedZapIcon className="h-3.5 w-3.5 text-amber-500" /> Group 2: Intelligent MPPT Inverter & Controller
+                                </span>
+                                <span className="text-xs font-mono font-semibold text-primary">
+                                  ${(result.exact_match.bomCategories?.controller || []).reduce((acc: number, it: any) => acc + (it.price * it.quantity), 0).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="divide-y text-xs">
+                                {(result.exact_match.bomCategories?.controller || []).map((item: any, idx: number) => (
+                                  <div key={idx} className="p-3 flex justify-between items-center hover:bg-muted/10">
+                                    <div>
+                                      <p className="font-medium text-foreground">{item.name}</p>
+                                      <p className="text-[10px] text-muted-foreground font-mono">Qty: {item.quantity} {item.unit}</p>
+                                    </div>
+                                    <span className="font-mono font-medium text-foreground">${(item.price * item.quantity).toLocaleString()}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Group 3: Solar PV Generator (if Full Solar) */}
+                            {result.power_mode === "FULL_SOLAR" ? (
+                              <div className="border rounded-xl bg-card overflow-hidden">
+                                <div className="bg-muted/60 px-4 py-2 border-b flex justify-between items-center">
+                                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                    <AnimatedSunIcon className="h-3.5 w-3.5 text-amber-500" /> Group 3: Solar PV Generator Array & Racking
+                                  </span>
+                                  <span className="text-xs font-mono font-semibold text-primary">
+                                    ${(result.exact_match.bomCategories?.pv || []).reduce((acc: number, it: any) => acc + (it.price * it.quantity), 0).toLocaleString()}
+                                  </span>
+                                </div>
+                                <div className="divide-y text-xs">
+                                  {(result.exact_match.bomCategories?.pv || []).map((item: any, idx: number) => (
+                                    <div key={idx} className="p-3 flex justify-between items-center hover:bg-muted/10">
+                                      <div>
+                                        <p className="font-medium text-foreground">{item.name}</p>
+                                        <p className="text-[10px] text-muted-foreground font-mono">Qty: {item.quantity} {item.unit}</p>
+                                      </div>
+                                      <span className="font-mono font-medium text-foreground">${(item.price * item.quantity).toLocaleString()}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="p-3 bg-muted/20 border border-dashed rounded-lg text-center text-xs text-muted-foreground">
+                                Solar PV modules excluded per client configuration.
+                              </div>
+                            )}
+
+                            {/* Group 4: Piping & Wellhead Accessories */}
+                            <div className="border rounded-xl bg-card overflow-hidden">
+                              <div className="bg-muted/60 px-4 py-2 border-b flex justify-between items-center">
+                                <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                  <Wrench className="h-3.5 w-3.5 text-cyan-600" /> Group 4: Piping, Cable & Wellhead Accessories
+                                </span>
+                                <span className="text-xs font-mono font-semibold text-primary">
+                                  ${(result.exact_match.bomCategories?.accessories || []).reduce((acc: number, it: any) => acc + (it.price * it.quantity), 0).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="divide-y text-xs">
+                                {(result.exact_match.bomCategories?.accessories || []).map((item: any, idx: number) => (
+                                  <div key={idx} className="p-3 flex justify-between items-center hover:bg-muted/10">
+                                    <div>
+                                      <p className="font-medium text-foreground">{item.name}</p>
+                                      <p className="text-[10px] text-muted-foreground font-mono">Qty: {item.quantity} {item.unit}</p>
+                                    </div>
+                                    <span className="font-mono font-medium text-foreground">${(item.price * item.quantity).toLocaleString()}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Total Summary Banner */}
+                            <div className="bg-muted/40 p-4 rounded-xl border border-border/80 flex flex-wrap justify-between items-center gap-3">
+                              <div>
+                                <p className="text-xs font-semibold text-foreground">Estimated Hardware Subtotal</p>
+                                <p className="text-[10px] text-muted-foreground">Excludes freight and commercial installation labor.</p>
                               </div>
                               <div className="text-xl font-bold font-mono text-primary">
-                                ${result.exact_match.equipment ? result.exact_match.equipment.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0).toLocaleString() : 0}
+                                ${(result.exact_match.equipment ? result.exact_match.equipment.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0) : 0).toLocaleString()}
                               </div>
                             </div>
                           </div>
@@ -1309,14 +1899,12 @@ export default function PumpSizingPage() {
                   </Card>
                 )}
 
-
-
               </div>
             ) : (
-              <div className="h-full min-h-[450px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-muted-foreground bg-muted/20 p-8 text-center border-border">
-                <Droplets className="h-16 w-16 mb-4 text-muted-foreground/30 animate-pulse" />
-                <h3 className="text-lg font-medium text-foreground mb-1">Awaiting Sizing Coordinates</h3>
-                <p className="text-sm max-w-sm">Provide map context coordinates, hydraulic plumbing dimensions, and daily water needs, then calculate to render detailed pump curve graphs and monthly climate diagnostics.</p>
+              <div className="h-full min-h-[450px] border border-dashed rounded-xl flex flex-col items-center justify-center text-muted-foreground bg-muted/10 p-8 text-center border-border">
+                <AnimatedWaterIcon className="h-12 w-12 mb-3 text-muted-foreground/40" />
+                <h3 className="text-base font-semibold text-foreground mb-1">Awaiting Sizing Inputs</h3>
+                <p className="text-xs text-muted-foreground max-w-xs">Enter site location, hydraulic parameters, and water target to calculate system sizing.</p>
               </div>
             )}
           </div>
@@ -1439,7 +2027,7 @@ export default function PumpSizingPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {proposals.map((p) => {
-                const isTM = hasAccess(["fieldwork"]);
+                const isTM = hasAccess(["fieldwork", "ttl", "manager"]);
                 const isFinance = hasAccess(["finance"]);
 
                 const statusColors: Record<string, string> = {

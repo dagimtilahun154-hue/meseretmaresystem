@@ -1,54 +1,55 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
   Search, ShoppingCart, Package, Droplets, Briefcase, DollarSign, Users,
-  LayoutDashboard, FileUp, Sparkles, Sun, Zap, Bell, Inbox, MessageSquare,
-  BarChart3, Compass, ArrowRight
+  LayoutDashboard, FileUp, Zap, Bell, Inbox, MessageSquare,
+  BarChart3, Compass, ArrowRight, CornerDownLeft, Sparkles
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth, UserRole } from "@/context/AuthContext";
+import { AnimatedZapIcon } from "@/components/ui/animated-icons";
 
 interface CommandItem {
+  id: string;
   title: string;
-  category: "Navigation" | "Actions" | "Communications";
+  category: "Navigation" | "Quick Actions";
   url: string;
   icon: React.ElementType;
   roles: UserRole[];
 }
 
 const COMMAND_ITEMS: CommandItem[] = [
-  // Overview & Communications
-  { title: "Dashboard Command Center", category: "Navigation", url: "/", icon: LayoutDashboard, roles: ["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance", "hr"] },
-  { title: "Alerts & Operational Activity", category: "Navigation", url: "/alerts", icon: Bell, roles: ["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance", "hr"] },
-  { title: "Approvals & Tasks Requests", category: "Navigation", url: "/inbox", icon: Inbox, roles: ["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance", "hr"] },
-  { title: "Team Chat Channels", category: "Navigation", url: "/chat", icon: MessageSquare, roles: ["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance", "hr"] },
-
-  // Operational Pages
-  { title: "Pump Products Catalog", category: "Navigation", url: "/pumps", icon: Droplets, roles: ["admin", "manager", "storekeeper", "fieldwork", "ttl", "sales", "technician"] },
-  { title: "Pump Sizing Calculator", category: "Navigation", url: "/fieldwork/sizing", icon: Droplets, roles: ["admin", "manager", "fieldwork", "ttl", "sales"] },
-  { title: "Point of Sale (POS)", category: "Navigation", url: "/pos", icon: ShoppingCart, roles: ["admin", "finance", "storekeeper", "sales"] },
-  { title: "Inventory Store Management", category: "Navigation", url: "/inventory", icon: Package, roles: ["admin", "storekeeper"] },
-  { title: "Field Work Overview", category: "Navigation", url: "/fieldwork/overview", icon: Compass, roles: ["admin", "manager", "fieldwork", "ttl"] },
-  { title: "Field Operations & Jobs", category: "Navigation", url: "/fieldwork/jobs", icon: Briefcase, roles: ["admin", "fieldwork", "ttl"] },
-  { title: "Finance Center", category: "Navigation", url: "/finance", icon: DollarSign, roles: ["admin", "finance"] },
-  { title: "Peachtree 2010 Bridge", category: "Navigation", url: "/finance/peachtree", icon: FileUp, roles: ["admin", "finance"] },
-  { title: "Business Performance Reports", category: "Navigation", url: "/reports", icon: BarChart3, roles: ["admin", "manager", "finance"] },
-  { title: "HR & Workforce Hub", category: "Navigation", url: "/hr/dashboard", icon: Users, roles: ["admin", "hr"] },
-  { title: "User Accounts & Role Security", category: "Navigation", url: "/users", icon: Users, roles: ["admin"] },
+  // Navigation
+  { id: "dash", title: "Dashboard Command Center", category: "Navigation", url: "/", icon: LayoutDashboard, roles: ["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance", "hr"] },
+  { id: "alerts", title: "Alerts & Operational Activity", category: "Navigation", url: "/alerts", icon: Bell, roles: ["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance", "hr"] },
+  { id: "inbox", title: "Approvals & Tasks Requests", category: "Navigation", url: "/inbox", icon: Inbox, roles: ["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance", "hr"] },
+  { id: "chat", title: "Team Chat Channels", category: "Navigation", url: "/chat", icon: MessageSquare, roles: ["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance", "hr"] },
+  { id: "pumps", title: "Pump Products Catalog", category: "Navigation", url: "/pumps", icon: Droplets, roles: ["admin", "manager", "storekeeper", "fieldwork", "ttl", "sales", "technician"] },
+  { id: "sizing", title: "Pump Sizing Calculator", category: "Navigation", url: "/fieldwork/sizing", icon: Droplets, roles: ["admin", "manager", "fieldwork", "ttl", "sales"] },
+  { id: "pos", title: "Point of Sale (POS)", category: "Navigation", url: "/pos", icon: ShoppingCart, roles: ["admin", "finance", "sales"] },
+  { id: "inventory", title: "Inventory Store Management", category: "Navigation", url: "/inventory", icon: Package, roles: ["admin", "storekeeper"] },
+  { id: "field-over", title: "Field Work Overview", category: "Navigation", url: "/fieldwork/overview", icon: Compass, roles: ["admin", "manager", "fieldwork", "ttl"] },
+  { id: "field-jobs", title: "Field Operations & Jobs", category: "Navigation", url: "/fieldwork/jobs", icon: Briefcase, roles: ["admin", "fieldwork", "ttl"] },
+  { id: "finance", title: "Finance Center", category: "Navigation", url: "/finance", icon: DollarSign, roles: ["admin", "finance"] },
+  { id: "peachtree", title: "Peachtree 2010 Bridge", category: "Navigation", url: "/finance/peachtree", icon: FileUp, roles: ["admin", "finance"] },
+  { id: "reports", title: "Business Performance Reports", category: "Navigation", url: "/reports", icon: BarChart3, roles: ["admin", "manager", "finance"] },
+  { id: "hr", title: "HR & Workforce Hub", category: "Navigation", url: "/hr/dashboard", icon: Users, roles: ["admin", "hr"] },
+  { id: "users", title: "User Accounts & Role Security", category: "Navigation", url: "/users", icon: Users, roles: ["admin"] },
 
   // Quick Operational Actions
-  { title: "Submit Expense Write-off Request", category: "Actions", url: "/inbox", icon: DollarSign, roles: ["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance", "hr"] },
-  { title: "Request Stock Reorder", category: "Actions", url: "/inventory", icon: Package, roles: ["admin", "storekeeper"] },
-  { title: "Run Solar Pump Sizing", category: "Actions", url: "/fieldwork/sizing", icon: Droplets, roles: ["admin", "manager", "fieldwork", "ttl", "sales"] },
+  { id: "act-sizing", title: "Run New Solar Pump Sizing", category: "Quick Actions", url: "/fieldwork/sizing", icon: Droplets, roles: ["admin", "manager", "fieldwork", "ttl", "sales"] },
+  { id: "act-expense", title: "Submit Expense Write-off Request", category: "Quick Actions", url: "/inbox", icon: DollarSign, roles: ["admin", "manager", "finance", "storekeeper", "fieldwork", "ttl", "sales", "technician", "attendance", "hr"] },
+  { id: "act-reorder", title: "Request Warehouse Stock Reorder", category: "Quick Actions", url: "/inventory", icon: Package, roles: ["admin", "storekeeper"] },
 ];
 
 export const CommandPalette: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const { hasAccess, currentUser } = useAuth();
   const navigate = useNavigate();
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -69,86 +70,124 @@ export const CommandPalette: React.FC = () => {
     item.category.toLowerCase().includes(query.toLowerCase())
   );
 
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [query]);
+
   const handleSelect = (url: string) => {
     setOpen(false);
     setQuery("");
     navigate(url);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (filteredItems.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev + 1) % filteredItems.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev - 1 + filteredItems.length) % filteredItems.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (filteredItems[selectedIndex]) {
+        handleSelect(filteredItems[selectedIndex].url);
+      }
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="p-0 bg-slate-950/95 text-white border-amber-500/30 max-w-xl overflow-hidden shadow-2xl rounded-2xl backdrop-blur-xl">
-        {/* Branded Header Banner */}
-        <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 px-4 py-3 flex items-center justify-between border-b border-amber-500/30">
+      <DialogContent className="p-0 bg-popover text-popover-foreground border border-border max-w-xl overflow-hidden shadow-2xl rounded-xl">
+        {/* Clean Header */}
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/40">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-white backdrop-blur-md">
-              <Sun className="h-4 w-4 animate-spin-slow text-yellow-200" />
-            </div>
+            <AnimatedZapIcon className="h-4 w-4 text-primary" />
             <div>
-              <h3 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-1.5">
-                SolarFlow Command Palette <Sparkles className="h-3 w-3 text-yellow-300" />
+              <h3 className="text-xs font-semibold text-foreground tracking-wide">
+                Quick Actions & Navigation
               </h3>
-              <p className="text-[10px] text-amber-100/80">Role-Aware Quick Navigation & Actions</p>
+              <p className="text-[10px] text-muted-foreground">Meseret Mare ERP Command Center</p>
             </div>
           </div>
-          <Badge className="bg-black/30 text-amber-200 border-amber-400/30 text-[10px]">
+          <Badge variant="outline" className="text-[10px] font-mono border-border bg-background text-muted-foreground">
             {currentUser?.displayName || currentUser?.username} ({currentUser?.role})
           </Badge>
         </div>
 
         {/* Search Input Bar */}
-        <div className="flex items-center border-b border-white/10 px-4 py-2.5 bg-slate-900/60">
-          <Search className="h-4 w-4 text-amber-400 mr-2 shrink-0" />
-          <Input
+        <div className="flex items-center border-b border-border px-4 py-2.5 bg-background">
+          <Search className="h-4 w-4 text-muted-foreground mr-2.5 shrink-0" />
+          <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Type to search page or command... (Ctrl + K)"
-            className="border-none bg-transparent text-white placeholder:text-slate-400 focus-visible:ring-0 text-sm h-8"
+            onKeyDown={handleKeyDown}
+            placeholder="Search commands, pages, or tools... (Ctrl + K)"
+            className="w-full bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none"
             autoFocus
           />
-          <Badge variant="outline" className="text-[10px] text-slate-400 border-white/15 font-mono">
+          <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
             ESC
-          </Badge>
+          </kbd>
         </div>
 
         {/* Results List */}
-        <div className="max-h-[320px] overflow-y-auto p-2 space-y-1">
+        <div ref={listRef} className="max-h-[320px] overflow-y-auto p-2 space-y-1">
           {filteredItems.length > 0 ? (
-            filteredItems.map((item, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSelect(item.url)}
-                className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-amber-500/15 border border-transparent hover:border-amber-500/30 text-left transition-all text-sm group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-white/5 border border-white/10 text-amber-400 group-hover:bg-amber-500 group-hover:text-slate-950 transition-all shadow-sm">
-                    <item.icon className="h-4 w-4" />
+            filteredItems.map((item, idx) => {
+              const isSelected = idx === selectedIndex;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleSelect(item.url)}
+                  onMouseEnter={() => setSelectedIndex(idx)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors text-xs group ${
+                    isSelected
+                      ? "bg-muted text-foreground font-medium"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-1.5 rounded-md transition-colors ${
+                      isSelected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                    }`}>
+                      <item.icon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className={`text-xs ${isSelected ? "text-foreground font-semibold" : "text-foreground/90 font-medium"}`}>
+                        {item.title}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">{item.category}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-white group-hover:text-amber-300">{item.title}</p>
-                    <p className="text-[11px] text-slate-400">{item.category}</p>
+                  <div className="flex items-center gap-2">
+                    {isSelected ? (
+                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-mono bg-background px-1.5 py-0.5 rounded border border-border">
+                        Jump <CornerDownLeft className="h-2.5 w-2.5" />
+                      </span>
+                    ) : null}
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-white/5 text-slate-300 border-white/10 text-[10px] group-hover:border-amber-400/40">
-                    Open <ArrowRight className="h-3 w-3 ml-1 text-amber-400 inline" />
-                  </Badge>
-                </div>
-              </button>
-            ))
+                </button>
+              );
+            })
           ) : (
-            <div className="p-8 text-center text-slate-400 text-sm">
-              No matching commands permitted for your role.
+            <div className="p-8 text-center text-muted-foreground text-xs">
+              No matching commands found for your current role.
             </div>
           )}
         </div>
 
-        {/* Branded Footer */}
-        <div className="border-t border-white/10 px-4 py-2 bg-slate-950 flex items-center justify-between text-[11px] text-slate-400 font-mono">
-          <span className="flex items-center gap-1 text-amber-400/80">
-            <Zap className="h-3 w-3" /> SolarFlow Enterprise OS
+        {/* Minimal Clean Footer */}
+        <div className="border-t border-border px-4 py-2 bg-muted/30 flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+          <span className="flex items-center gap-1 font-semibold text-foreground/80">
+            Meseret Mare ERP
           </span>
-          <span>Press ↑ ↓ to navigate · ↵ to select · ESC to exit</span>
+          <div className="flex items-center gap-3 text-[10px]">
+            <span><kbd className="bg-background px-1 py-0.5 rounded border border-border">↑</kbd> <kbd className="bg-background px-1 py-0.5 rounded border border-border">↓</kbd> navigate</span>
+            <span><kbd className="bg-background px-1 py-0.5 rounded border border-border">↵</kbd> select</span>
+            <span><kbd className="bg-background px-1 py-0.5 rounded border border-border">ESC</kbd> close</span>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

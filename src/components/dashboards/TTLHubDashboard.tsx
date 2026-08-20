@@ -5,16 +5,24 @@ import { Badge } from "@/components/ui/badge";
 import { Wrench, CheckCircle2, ClipboardList, MapPin, ShieldCheck, UserCheck, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/context/StoreContext";
+import { useAuth } from "@/context/AuthContext";
 import { DashboardHeaderBanner } from "./widgets/DashboardHeaderBanner";
 import { StatCardGrid } from "./widgets/StatCardGrid";
 import { EodActivityWidget } from "./widgets/EodActivityWidget";
 
 export function TTLHubDashboard() {
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
   const { fieldWorks = [], eodReports = [] } = useStore() as any;
 
-  const assignedTrips = fieldWorks.filter((fw: any) => fw.status === "Approved and ready to go" || fw.status === "in-progress");
-  const completedTrips = fieldWorks.filter((fw: any) => fw.status === "completed_ttl" || fw.status === "completed");
+  const myFieldWorks = fieldWorks.filter((fw: any) => fw.assignedTo === currentUser?.username);
+
+  const assignedTrips = myFieldWorks.filter((fw: any) =>
+    ["planning", "accepted", "submitted_tm", "checked_tm", "approved_gm", "Approved and ready to go", "crew_dispatched"].includes(fw.status)
+  );
+  const completedTrips = myFieldWorks.filter((fw: any) =>
+    fw.status === "completed_ttl" || fw.status === "completed" || fw.status === "done"
+  );
 
   const statCards = [
     {
@@ -53,7 +61,7 @@ export function TTLHubDashboard() {
         roleBadge="Technical Team Lead Desk"
         title="TTL Operational Workspace"
         description="On-Site Installation Execution, Crew Per-Diem Management, Daily Field Reports & Tool Condition Sign-off."
-        gradientClass="bg-gradient-to-r from-emerald-700 via-teal-700 to-indigo-800"
+        gradientClass="bg-gradient-to-r from-[#2cb563] via-[#0d9488] to-[#115e59]"
         actions={[
           {
             label: "Field Work Workspace",

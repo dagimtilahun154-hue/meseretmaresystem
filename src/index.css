@@ -15,18 +15,18 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 30% 10%;
 
-    /* Brand Yellow - Solar Power & Energy (PRIMARY Highlight) */
-    --primary: 48 100% 50%;
-    --primary-foreground: 220 30% 10%;
+    /* Brand Green - Solar Power & Growth (PRIMARY Highlight) */
+    --primary: 145 65% 42%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Brand Green - Stability & Growth (SECONDARY Accent) */
-    --secondary: 142 72% 29%;
-    --secondary-foreground: 0 0% 100%;
+    /* Brand Yellow - Solar Energy (SECONDARY Accent) */
+    --secondary: 45 100% 48%;
+    --secondary-foreground: 220 30% 10%;
 
     --muted: 210 20% 96%;
     --muted-foreground: 220 15% 45%;
 
-    --accent: 48 100% 50%;
+    --accent: 45 100% 48%;
     --accent-foreground: 220 30% 10%;
 
     --destructive: 0 84% 60%;
@@ -44,7 +44,7 @@
 
     --border: 210 20% 90%;
     --input: 210 20% 90%;
-    --ring: 48 100% 50%;
+    --ring: 145 65% 42%;
 
     --radius: 1rem;
 
@@ -86,19 +86,19 @@
     box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.05);
   }
   .stat-gradient-sales {
-    background: linear-gradient(135deg, hsl(142 72% 29%) 0%, hsl(45 93% 47%) 100%);
+    background: linear-gradient(135deg, #2cb563 0%, #15803d 50%, #14532d 100%);
   }
   .stat-gradient-products {
-    background: linear-gradient(135deg, hsl(200 90% 45%) 0%, hsl(190 80% 55%) 100%);
+    background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
   }
   .stat-gradient-customers {
-    background: linear-gradient(135deg, hsl(142 72% 35%) 0%, hsl(160 60% 45%) 100%);
+    background: linear-gradient(135deg, #f5a600 0%, #d97706 50%, #b45309 100%);
   }
   .stat-gradient-profit {
-    background: linear-gradient(135deg, hsl(45 93% 47%) 0%, hsl(35 90% 55%) 100%);
+    background: linear-gradient(135deg, #f5a600 0%, #d97706 50%, #b45309 100%);
   }
   .stat-gradient-vat {
-    background: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(350 70% 50%) 100%);
+    background: linear-gradient(135deg, #f43f5e 0%, #e11d48 50%, #be123c 100%);
   }
 
   /* Custom Thin Scrollbar */

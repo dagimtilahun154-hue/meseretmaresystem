@@ -74,8 +74,8 @@ export function ClientFileModal({ open, onOpenChange, proposal }: ClientFileModa
         <div className="hidden print:block">
           <ExecutiveDocumentPdfTemplate
             data={{
-              documentTitle: "SolarFlow Master Client Information Sheet",
-              subtitle: "Technical & Commercial Pump Sizing Dossier",
+              documentTitle: "Meseret Mare Master Client Information Sheet",
+              subtitle: "Comprehensive 360° Technical & Commercial Site File",
               refNumber: proposal.id || "SZ-1001",
               date: proposal.createdAt ? new Date(proposal.createdAt).toLocaleDateString() : new Date().toLocaleDateString(),
               clientSection: {

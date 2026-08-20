@@ -27,12 +27,84 @@ CREATE TABLE IF NOT EXISTS products (
     code VARCHAR(50),
     name VARCHAR(255) NOT NULL,
     category VARCHAR(100),
-    quantity DECIMAL(10, 2) DEFAULT 0,
+    product_category ENUM('PUMP', 'PUMP_EQUIPMENT', 'COMPANY_TOOL', 'WORK_TOOL') DEFAULT 'WORK_TOOL',
+    quantity DECIMAL(15, 2) DEFAULT 0,
+    min_stock_level DECIMAL(15, 2) DEFAULT 0,
     cost_price DECIMAL(15, 2) DEFAULT 0,
     sell_price DECIMAL(15, 2) DEFAULT 0,
     unit VARCHAR(20),
     measurement_unit VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    shelf_location VARCHAR(100),
+    metadata JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 2b. Inventory Transactions (Double-Entry Audit Ledger)
+CREATE TABLE IF NOT EXISTS inventory_transactions (
+    id VARCHAR(50) PRIMARY KEY,
+    product_id VARCHAR(50),
+    product_code VARCHAR(50),
+    product_name VARCHAR(255) NOT NULL,
+    category ENUM('PUMP', 'PUMP_EQUIPMENT', 'COMPANY_TOOL', 'WORK_TOOL') DEFAULT 'WORK_TOOL',
+    transaction_type ENUM('RECEIVE', 'ISSUE', 'RETURN', 'ADJUSTMENT', 'BOUGHT', 'WRITE_OFF') NOT NULL,
+    quantity DECIMAL(15, 2) NOT NULL,
+    unit VARCHAR(20),
+    unit_price DECIMAL(15, 2) DEFAULT 0,
+    serial_number VARCHAR(100),
+    field_work_job_id VARCHAR(50),
+    reference VARCHAR(100),
+    performed_by VARCHAR(100),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
+);
+
+-- 2c. Stock Counts & Audits
+CREATE TABLE IF NOT EXISTS stock_counts (
+    id VARCHAR(50) PRIMARY KEY,
+    category ENUM('PUMP', 'PUMP_EQUIPMENT', 'COMPANY_TOOL', 'WORK_TOOL'),
+    status ENUM('IN_PROGRESS', 'SUBMITTED', 'APPROVED') DEFAULT 'IN_PROGRESS',
+    counted_by VARCHAR(100) NOT NULL,
+    approved_by VARCHAR(100),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS stock_count_items (
+    id VARCHAR(50) PRIMARY KEY,
+    stock_count_id VARCHAR(50) NOT NULL,
+    product_id VARCHAR(50) NOT NULL,
+    product_name VARCHAR(255) NOT NULL,
+    category ENUM('PUMP', 'PUMP_EQUIPMENT', 'COMPANY_TOOL', 'WORK_TOOL') DEFAULT 'WORK_TOOL',
+    system_qty DECIMAL(15, 2) NOT NULL,
+    counted_qty DECIMAL(15, 2) NOT NULL,
+    variance DECIMAL(15, 2) NOT NULL,
+    unit VARCHAR(20),
+    notes TEXT,
+    FOREIGN KEY (stock_count_id) REFERENCES stock_counts(id) ON DELETE CASCADE
+);
+
+-- 2d. Field Job Materials (Planned Materials)
+CREATE TABLE IF NOT EXISTS field_job_materials (
+    id VARCHAR(50) PRIMARY KEY,
+    field_work_job_id VARCHAR(50) NOT NULL,
+    product_id VARCHAR(50),
+    product_code VARCHAR(50),
+    category ENUM('PUMP', 'PUMP_EQUIPMENT', 'COMPANY_TOOL', 'WORK_TOOL') DEFAULT 'WORK_TOOL',
+    name VARCHAR(255) NOT NULL,
+    serial_number VARCHAR(100),
+    quantity DECIMAL(15, 2) DEFAULT 1,
+    unit VARCHAR(20) DEFAULT 'Piece',
+    unit_price DECIMAL(15, 2) DEFAULT 0,
+    source ENUM('FROM_STOCK', 'BOUGHT') DEFAULT 'FROM_STOCK',
+    status VARCHAR(50) DEFAULT 'PLANNED',
+    quantity_returned DECIMAL(15, 2) DEFAULT 0,
+    return_condition VARCHAR(50),
+    return_notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- 3. POS Transactions

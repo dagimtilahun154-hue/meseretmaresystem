@@ -18,6 +18,7 @@ import { CommentsModule } from "./comments/comments.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { SizingModule } from "./sizing/sizing.module";
 import { AssetsModule } from "./assets/assets.module";
+import { InventoryModule } from "./inventory/inventory.module";
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { AssetsModule } from "./assets/assets.module";
     NotificationsModule,
     SizingModule,
     AssetsModule,
+    InventoryModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

@@ -1,8 +1,9 @@
-import { useEffect, useState, useMemo } from "react";
-import { Server, Users, FileText, BookOpen, RefreshCcw, DollarSign } from "lucide-react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { Server, Users, FileText, BookOpen, RefreshCcw, DollarSign, Upload, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/context/StoreContext";
 import { peachtreeDB } from "@/lib/db-service";
+import { financeStore } from "@/lib/finance-hub-store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,9 +65,11 @@ type SyncedData = {
 };
 
 export default function PeachtreePage() {
-  const { financeEntity, financePayments } = useStore() as any;
+  const { financeEntity, financePayments, refreshStoreData } = useStore() as any;
   const [data, setData] = useState<SyncedData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -87,6 +90,87 @@ export default function PeachtreePage() {
   useEffect(() => {
     loadData();
   }, [financeEntity]);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const res = await peachtreeDB.upload(file, financeEntity);
+      if (res.success) {
+        if (res.duplicate) {
+          toast.warning("This Peachtree export file was already imported previously.");
+        } else {
+          toast.success(`Successfully imported Peachtree export file: ${file.name}`);
+          loadData();
+        }
+      } else if (res.offline) {
+        toast.info("Offline: Peachtree import has been queued for background synchronization.");
+      } else {
+        toast.error(res.errorMessage || "Failed to import Peachtree file.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Error uploading Peachtree export file.");
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAutoFix = async () => {
+    let fixCount = 0;
+    try {
+      for (const item of reconciliationItems) {
+        if (item.status === "Discrepancy") {
+          const payment = financePayments.find((p: any) => p.id === item.id);
+          if (payment && item.peachtreeMatch) {
+            const updated = {
+              ...payment,
+              amount: item.peachtreeMatch.total,
+              note: `${payment.note || ""}\n[Reconciled: Adjusted amount to match Peachtree invoice total of ${item.peachtreeMatch.total}]`.trim()
+            };
+            await financeStore.savePayment(updated);
+            fixCount++;
+          }
+        } else if (item.status === "Missing in Local Records") {
+          const newPayment: any = {
+            id: `PAY-SYNC-${item.ref}`,
+            reference: item.ref,
+            entityId: "C-SYNC",
+            entityName: item.entityName,
+            invoiceOrBillId: item.ref,
+            amount: item.amount,
+            method: "Bank Transfer",
+            bankName: "Commercial Bank of Ethiopia",
+            note: "Peachtree Sync Auto-generated payment record",
+            date: item.date,
+            type: "received"
+          };
+          await financeStore.savePayment(newPayment);
+          fixCount++;
+        }
+      }
+      
+      if (fixCount > 0) {
+        toast.success(`Successfully reconciled ${fixCount} ERP discrepancies with Peachtree!`);
+        if (refreshStoreData) {
+          await refreshStoreData();
+        }
+        await loadData();
+      } else {
+        toast.info("No discrepancies found to reconcile.");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to auto-fix ERP discrepancies.");
+    }
+  };
 
   const reconciliationItems = useMemo(() => {
     if (!data) return [];
@@ -138,7 +222,7 @@ export default function PeachtreePage() {
 
   const formatCurrency = (val: number | string) => {
     const num = typeof val === 'string' ? parseFloat(val) : val;
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num || 0);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'ETB', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(num || 0);
   };
 
   const formatDate = (dateStr: string) => {
@@ -160,10 +244,21 @@ export default function PeachtreePage() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
             {financeEntity}
           </Badge>
+          <Button variant="outline" size="sm" onClick={triggerFileInput} disabled={uploading}>
+            <Upload className={`mr-2 h-4 w-4 ${uploading ? 'animate-pulse' : ''}`} />
+            {uploading ? "Importing..." : "Manual Import"}
+          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept=".txt,.csv"
+            className="hidden"
+          />
           <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
             <RefreshCcw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Sync Now
@@ -372,9 +467,7 @@ export default function PeachtreePage() {
                 </div>
                 <Button 
                   className="bg-[#0b1324] hover:bg-slate-800 text-white font-semibold flex items-center gap-2 text-xs border border-white/10"
-                  onClick={() => {
-                    toast.success("Local ERP ledger discrepancies auto-adjusted to match Peachtree totals. (Peachtree DB remained untouched - READ ONLY).");
-                  }}
+                  onClick={handleAutoFix}
                 >
                   <RefreshCcw className="h-3.5 w-3.5 text-emerald-400" /> Auto-Fix ERP Discrepancies (Local Only)
                 </Button>

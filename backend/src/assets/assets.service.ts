@@ -226,7 +226,25 @@ export class AssetsService {
     return updated;
   }
 
-  async submitPlan(id: string, payload: { workers: any[], notes: string, companyTools: string[], fuelAmount?: number, fuelPrice?: number, startDate?: string, endDate?: string, scheduledDate?: string, completedDate?: string }, userId?: string, displayName?: string) {
+  async submitPlan(
+    id: string,
+    payload: {
+      workers: any[];
+      notes: string;
+      companyTools: string[];
+      fuelAmount?: number;
+      fuelPrice?: number;
+      startDate?: string;
+      endDate?: string;
+      scheduledDate?: string;
+      completedDate?: string;
+      materials?: any[];
+      pumpSerial?: string;
+      pumpSource?: 'FROM_STOCK' | 'BOUGHT';
+    },
+    userId?: string,
+    displayName?: string,
+  ) {
     const job = await this.prisma.fieldWorkJob.findUnique({ where: { id } });
     if (!job) throw new NotFoundException(`Field work job ${id} not found`);
 
@@ -239,7 +257,7 @@ export class AssetsService {
 
     const msPerDay = 1000 * 60 * 60 * 24;
     const days = Math.max(1, Math.ceil(Math.abs(end.getTime() - start.getTime()) / msPerDay) + 1);
-    const perDiemTotal = payload.workers.reduce((sum, w) => sum + (Number(w.perDiem) || 0) * days, 0);
+    const perDiemTotal = (payload.workers || []).reduce((sum, w) => sum + (Number(w.perDiem) || 0) * days, 0);
     const fuelCost = (Number(payload.fuelAmount) || 0) * (Number(payload.fuelPrice) || 0);
     const totalCost = perDiemTotal + fuelCost;
 
@@ -248,7 +266,32 @@ export class AssetsService {
       try {
         await this.checkoutAssets(id, payload.companyTools);
       } catch (e: any) {
-        throw new BadRequestException(e.message || "Failed to checkout some company assets");
+        // Warning only — allow submission
+        console.warn("Tool checkout note:", e.message);
+      }
+    }
+
+    // Persist planned materials in field_job_materials table
+    if (payload.materials && Array.isArray(payload.materials)) {
+      // Clear any prior draft materials for this job
+      await this.prisma.fieldJobMaterial.deleteMany({ where: { fieldWorkJobId: id } });
+
+      for (const m of payload.materials) {
+        await this.prisma.fieldJobMaterial.create({
+          data: {
+            fieldWorkJobId: id,
+            productId: m.productId || null,
+            productCode: m.productCode || null,
+            category: m.category || 'WORK_TOOL',
+            name: m.name,
+            serialNumber: m.serialNumber || (m.category === 'PUMP' ? payload.pumpSerial : null),
+            quantity: m.quantity || 1,
+            unit: m.unit || 'Piece',
+            unitPrice: m.price || m.unitPrice || 0,
+            source: (m.source || 'FROM_STOCK') as any,
+            status: 'PLANNED',
+          },
+        });
       }
     }
 
@@ -258,6 +301,9 @@ export class AssetsService {
       ...existingPayload,
       workers: payload.workers,
       companyTools: payload.companyTools,
+      materials: payload.materials,
+      pumpSerial: payload.pumpSerial,
+      pumpSource: payload.pumpSource,
       fuelAmount: payload.fuelAmount,
       fuelPrice: payload.fuelPrice,
       startDate: start.toISOString(),
@@ -669,14 +715,113 @@ export class AssetsService {
     return updated;
   }
 
-  async storekeeperVerifyReturns(id: string, userId?: string, displayName?: string) {
+  async storekeeperVerifyReturns(
+    id: string,
+    payload: {
+      verifiedMaterials?: { productId?: string; name: string; quantity: number; unit?: string }[];
+      verifiedTools?: { companyAssetId: string; name: string; condition: string; notes?: string }[];
+      notes?: string;
+    },
+    userId?: string,
+    displayName?: string,
+  ) {
     const job = await this.prisma.fieldWorkJob.findUnique({ where: { id } });
     if (!job) throw new NotFoundException(`Field work job ${id} not found`);
+
+    const existingPayload = job.payload && typeof job.payload === 'object' ? (job.payload as any) : {};
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Process verified materials (consumables returned)
+      const verifiedMaterials = payload?.verifiedMaterials || [];
+      for (const mat of verifiedMaterials) {
+        const qty = Number(mat.quantity) || 0;
+        if (qty <= 0) continue;
+
+        // Skip fuel
+        const isFuel = String(mat.name || '').toLowerCase().includes('fuel');
+        if (isFuel) continue;
+
+        const product = mat.productId
+          ? await tx.product.findUnique({ where: { id: mat.productId } })
+          : await tx.product.findFirst({ where: { name: mat.name } });
+
+        if (product) {
+          const currentQty = Number(product.quantity) || 0;
+          await tx.product.update({
+            where: { id: product.id },
+            data: { quantity: currentQty + qty },
+          });
+
+          // Log transaction
+          await tx.inventoryTransaction.create({
+            data: {
+              productId: product.id,
+              productCode: product.code,
+              productName: product.name,
+              category: product.productCategory,
+              transactionType: 'RETURN',
+              quantity: qty,
+              unit: product.unit,
+              unitPrice: product.costPrice,
+              fieldWorkJobId: id,
+              reference: `RETURN:${job.title || id}`,
+              performedBy: displayName || 'Storekeeper',
+              notes: `Returned from field job ${job.title || id} (Verified by Storekeeper)`,
+            },
+          });
+        }
+      }
+
+      // 2. Process verified tools (company tools return)
+      const verifiedTools = payload?.verifiedTools || [];
+      for (const tool of verifiedTools) {
+        const checkoutRecord = await tx.fieldWorkAsset.findFirst({
+          where: {
+            fieldWorkJobId: id,
+            companyAssetId: tool.companyAssetId,
+            status: 'CHECKED_OUT',
+          },
+        });
+
+        if (checkoutRecord) {
+          // Update checkout log
+          await tx.fieldWorkAsset.update({
+            where: { id: checkoutRecord.id },
+            data: {
+              status: 'RETURNED',
+              returnedAt: new Date(),
+              notes: tool.notes || `Returned in ${tool.condition} condition`,
+            },
+          });
+
+          // Update asset status and condition
+          await tx.companyAsset.update({
+            where: { id: tool.companyAssetId },
+            data: {
+              status: 'WAREHOUSE',
+              condition: (tool.condition || 'GOOD').toUpperCase(),
+            },
+          });
+        }
+      }
+    });
+
+    const updatedPayload = {
+      ...existingPayload,
+      storekeeperVerification: {
+        verifiedMaterials: payload?.verifiedMaterials || [],
+        verifiedTools: payload?.verifiedTools || [],
+        notes: payload?.notes || '',
+        verifiedAt: new Date().toISOString(),
+        verifiedBy: displayName || 'Storekeeper',
+      },
+    };
 
     const updated = await this.prisma.fieldWorkJob.update({
       where: { id },
       data: {
         status: 'verified_storekeeper',
+        payload: updatedPayload,
       },
     });
 
@@ -686,11 +831,11 @@ export class AssetsService {
         roles: {
           some: {
             role: {
-              name: 'manager'
-            }
-          }
-        }
-      }
+              name: 'manager',
+            },
+          },
+        },
+      },
     });
 
     for (const mgr of managers) {
@@ -699,16 +844,16 @@ export class AssetsService {
           userId: mgr.id,
           type: 'TASK_ASSIGNED',
           title: `Storekeeper Return Verified - ${job.title}`,
-          content: `Storekeeper ${displayName || ''} verified returned tools & fuel. Ready for TM final sign-off.`,
+          content: `Storekeeper ${displayName || ''} verified returned tools & materials. Ready for TM final sign-off.`,
           link: '/fieldwork',
-        }
+        },
       });
     }
 
     await this.logCustomerMilestone(
       job.customerName || 'Customer',
-      `Storekeeper ${displayName || 'Storekeeper'} verified returned warehouse tools & fuel. Status set to verified_storekeeper.`,
-      userId
+      `Storekeeper ${displayName || 'Storekeeper'} verified returned warehouse tools & materials. Status set to verified_storekeeper.`,
+      userId,
     );
 
     return updated;
@@ -754,6 +899,31 @@ export class AssetsService {
           }
         });
       }
+    }
+
+    // Notify General Managers
+    const generalManagers = await this.prisma.user.findMany({
+      where: {
+        roles: {
+          some: {
+            role: {
+              name: 'manager',
+            },
+          },
+        },
+      },
+    });
+
+    for (const gm of generalManagers) {
+      await this.prisma.notification.create({
+        data: {
+          userId: gm.id,
+          type: 'TASK_ASSIGNED',
+          title: `Fieldwork Completed & Approved - ${job.title}`,
+          content: `Technical Manager ${displayName} approved completion report & returns for "${job.title}". Job is officially completed.`,
+          link: '/fieldwork',
+        },
+      });
     }
 
     await this.logCustomerMilestone(

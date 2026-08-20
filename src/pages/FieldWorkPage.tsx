@@ -28,6 +28,7 @@ import {
   Truck,
   Send,
   Download,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,7 +49,8 @@ import { useStore } from "@/context/StoreContext";
 import { useAuth } from "@/context/AuthContext";
 import { apiClient } from "@/lib/api/client";
 import { ClientFileModal } from "@/components/ClientFileModal";
-import { FieldWork, FieldWorkEquipment, FieldWorker, ReturnForm } from "@/lib/fieldwork-data";
+import { FieldWork, FieldWorkEquipment, FieldWorker, ReturnForm, PlannedMaterialItem, MaterialSource } from "@/lib/fieldwork-data";
+import { FieldWorkMaterialPlanning } from "@/components/fieldwork/FieldWorkMaterialPlanning";
 import { hierarchyRequestsDB, pumpProductsDB } from "@/lib/db-service";
 import { useParams } from "react-router-dom";
 import { WaterSource } from "@/lib/pump-sizing";
@@ -132,7 +134,7 @@ const statusLabels: Record<string, string> = {
 export default function FieldWorkPage({ standalone = true, preSelectedCustomerId }: any) {
   const { section } = useParams<{ section: string }>();
   const { currentUser, users = [], hasAccess } = useAuth();
-  const { fieldWorks, addFieldWork, updateFieldWork, deleteFieldWork: dbDeleteFieldWork, addReturnForm, sales = [], refreshStoreData } = useStore() as any;
+  const { products, fieldWorks, addFieldWork, updateFieldWork, deleteFieldWork: dbDeleteFieldWork, addReturnForm, sales = [], refreshStoreData } = useStore() as any;
 
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -144,6 +146,7 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
   const [hrWorkersList, setHrWorkersList] = useState<any[]>([]);
   const [assigningTtlId, setAssigningTtlId] = useState<Record<string, string>>({});
   const [planningFwId, setPlanningFwId] = useState<string | null>(null);
+  const [checklistChecked, setChecklistChecked] = useState<Record<string, Record<string, boolean>>>({});
 
   const ttlCandidates = useMemo(() => {
     const list: { username: string; displayName: string }[] = [];
@@ -196,6 +199,9 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
   // States for planning form
   const [selectedPlanWorkers, setSelectedPlanWorkers] = useState<{ id: string; name: string; position: string; perDiem: number }[]>([]);
   const [selectedPlanTools, setSelectedPlanTools] = useState<string[]>([]);
+  const [plannedMaterials, setPlannedMaterials] = useState<PlannedMaterialItem[]>([]);
+  const [plannedPumpSerial, setPlannedPumpSerial] = useState<string>("");
+  const [plannedPumpSource, setPlannedPumpSource] = useState<MaterialSource>("FROM_STOCK");
   const [planNotes, setPlanNotes] = useState("");
   const [planFuelAmount, setPlanFuelAmount] = useState<string>("");
   const [planFuelPrice, setPlanFuelPrice] = useState<string>("");
@@ -255,6 +261,9 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
         workers: selectedPlanWorkers,
         notes: planNotes,
         companyTools: selectedPlanTools,
+        materials: plannedMaterials,
+        pumpSerial: plannedPumpSerial,
+        pumpSource: plannedPumpSource,
         fuelAmount: planFuelAmount ? parseFloat(planFuelAmount) : undefined,
         fuelPrice: planFuelPrice ? parseFloat(planFuelPrice) : undefined,
         startDate: planStartDate || undefined,
@@ -263,6 +272,8 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
       toast.success("Fieldwork plan submitted & tools checked out.");
       setSelectedPlanWorkers([]);
       setSelectedPlanTools([]);
+      setPlannedMaterials([]);
+      setPlannedPumpSerial("");
       setPlanNotes("");
       setPlanFuelAmount("");
       setPlanFuelPrice("");
@@ -532,9 +543,7 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
     return sum + fwTotal;
   }, 0);
 
-  const completeFieldWork = async (id: string) => {
-    await handleCompleteJobTTL(id);
-  };
+
 
   const submitCrewForApproval = async (id: string) => {
     const fw = fieldWorks.find((f: FieldWork) => f.id === id);
@@ -1213,7 +1222,7 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                         {fw.status === "pending" && (
                           <div className="space-y-3">
                             <p className="text-xs text-muted-foreground">Awaiting Technical Manager review. Select a Technical Team Leader to assign this fieldwork installation job.</p>
-                            {hasAccess(["fieldwork"]) ? (
+                            {hasAccess(["fieldwork", "manager", "ttl"]) ? (
                               <div className="flex items-center gap-3">
                                 <Select
                                   value={assigningTtlId[fw.id] || (ttlCandidates[0]?.username || "tech_leader")}
@@ -1349,36 +1358,17 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                                       </div>
                                     </div>
 
-                                    {/* Company Tools Checklist */}
-                                    <div className="space-y-2">
-                                      <Label className="text-xs font-semibold">Check Out Reusable Company Tools (Warehouse)</Label>
-                                      {availableTools.length > 0 ? (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg bg-muted/10 max-h-40 overflow-y-auto">
-                                          {availableTools.map((tool) => (
-                                            <label key={tool.id} className="flex items-center gap-2 p-1.5 border rounded hover:bg-muted/30 cursor-pointer">
-                                              <input
-                                                type="checkbox"
-                                                checked={selectedPlanTools.includes(tool.id)}
-                                                onChange={(e) => {
-                                                  if (e.target.checked) {
-                                                    setSelectedPlanTools([...selectedPlanTools, tool.id]);
-                                                  } else {
-                                                    setSelectedPlanTools(selectedPlanTools.filter(id => id !== tool.id));
-                                                  }
-                                                }}
-                                                className="rounded border-gray-300 mr-2"
-                                              />
-                                              <div>
-                                                <span className="text-xs font-medium text-foreground">{tool.name}</span>
-                                                <span className="text-[9px] text-muted-foreground block font-mono">S/N: {tool.serialNumber}</span>
-                                              </div>
-                                            </label>
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <p className="text-xs text-muted-foreground">All tools are checked out or in maintenance.</p>
-                                      )}
-                                    </div>
+                                    {/* 4-Category Material & Tool Planning */}
+                                     <FieldWorkMaterialPlanning
+                                       pumpModel={fw.pumpModel || ""}
+                                       products={products}
+                                       availableCompanyTools={availableTools}
+                                       selectedTools={selectedPlanTools}
+                                       onSelectedToolsChange={setSelectedPlanTools}
+                                       onMaterialsChange={setPlannedMaterials}
+                                       onPumpSerialChange={setPlannedPumpSerial}
+                                       onPumpSourceChange={setPlannedPumpSource}
+                                     />
 
                                     {/* Plan Notes */}
                                     <div className="space-y-1">
@@ -1472,7 +1462,7 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                               <p className="font-bold text-primary">• Total Travel Budget: {Number(fw.cost).toLocaleString()} ETB</p>
                             </div>
 
-                            {hasAccess(["fieldwork"]) ? (
+                            {hasAccess(["fieldwork", "manager", "ttl"]) ? (
                               <Button size="sm" onClick={() => handleTmCheck(fw.id)} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold">
                                 TM Check & Sign Fieldwork Plan
                               </Button>
@@ -1528,20 +1518,123 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                           <div className="space-y-3">
                             <div className="flex items-center gap-2 text-green-700 dark:text-green-400 bg-green-500/10 p-3 rounded border border-green-500/20 text-xs font-semibold">
                               <CheckCircle2 className="h-4 w-4" />
-                              <span>Approved and ready to go! Per diem budget released. Field crew is authorized.</span>
+                              <span>Approved and ready to go!</span>
                             </div>
-                            
                             <p className="text-xs text-muted-foreground font-medium">To begin the field trip and unlock reporting, the Technical Team Leader (TTL) must confirm departure below.</p>
                             
-                            {currentUser?.username === fw.assignedTo && (
-                              <Button
-                                size="sm"
-                                onClick={() => handleDispatchCrew(fw.id)}
-                                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold flex items-center gap-1.5 mt-2"
-                              >
-                                <Truck className="h-4 w-4 animate-bounce" /> Confirm Departure & Start Journey
-                              </Button>
-                            )}
+                            {(() => {
+                              const pendingReleases = (fw.materials || []).filter(
+                                (m: any) => m.source === "FROM_STOCK" && m.status !== "RELEASED"
+                              );
+                              const hasPendingReleases = pendingReleases.length > 0;
+
+                              const materialsCount = (fw.materials || []).length;
+                              const companyToolsCount = (fw.payload?.companyTools || []).length;
+                              const totalChecklistItems = materialsCount + companyToolsCount;
+                              const checkedCount = Object.values(checklistChecked[fw.id] || {}).filter(Boolean).length;
+                              const isChecklistComplete = checkedCount >= totalChecklistItems;
+
+                              return (
+                                <div className="space-y-3">
+                                  {hasPendingReleases ? (
+                                    <div className="flex flex-col gap-2 p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 text-xs font-semibold text-amber-700 dark:text-amber-400 mt-2">
+                                      <p className="font-bold flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                                        <AlertTriangle className="h-4 w-4 animate-pulse" /> Storekeeper Release Pending
+                                      </p>
+                                      <p className="font-normal text-[11px] text-muted-foreground mt-0.5">
+                                        The storekeeper must release all stock materials before you can proceed to pre-deployment checks and dispatch. Pending items:
+                                      </p>
+                                      <ul className="list-disc pl-4 font-normal text-[11px] text-muted-foreground mt-1 space-y-0.5">
+                                        {pendingReleases.map((m: any) => (
+                                          <li key={m.id}>
+                                            {m.name} ({m.quantity} {m.unit || "pcs"})
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ) : (
+                                    currentUser?.username === fw.assignedTo && (
+                                      <div className="space-y-3">
+                                        {/* Pre-deployment checklist */}
+                                        <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 space-y-3 my-2">
+                                          <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-400">
+                                            <ClipboardCheck className="h-4 w-4" /> Pre-Deployment Equipment Checklist ({checkedCount}/{totalChecklistItems})
+                                          </div>
+                                          <p className="text-[11px] text-muted-foreground">
+                                            Verify you have all physical equipment and materials on hand before departure. Tick all items to authorize departure.
+                                          </p>
+
+                                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                            {/* Material items */}
+                                            {(fw.materials || []).map((m: any) => {
+                                              const isChecked = Boolean(checklistChecked[fw.id]?.[m.id]);
+                                              return (
+                                                <label key={m.id} className="flex items-center gap-2 text-[11px] font-medium text-foreground cursor-pointer hover:bg-muted/30 p-1.5 rounded transition-all">
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={(e) => {
+                                                      setChecklistChecked(prev => ({
+                                                        ...prev,
+                                                        [fw.id]: {
+                                                          ...(prev[fw.id] || {}),
+                                                          [m.id]: e.target.checked
+                                                        }
+                                                      }));
+                                                    }}
+                                                    className="rounded border-border text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5 cursor-pointer"
+                                                  />
+                                                  <span>
+                                                    {m.name} ({m.quantity} {m.unit || "pcs"}) - <span className="text-[10px] uppercase font-bold text-muted-foreground">{m.source === "FROM_STOCK" ? "From Stock" : "Direct Purchase"}</span>
+                                                  </span>
+                                                </label>
+                                              );
+                                            })}
+
+                                            {/* Company tools */}
+                                            {(fw.payload?.companyTools || []).map((tool: string, idx: number) => {
+                                              const isChecked = Boolean(checklistChecked[fw.id]?.[`tool-${idx}`]);
+                                              return (
+                                                <label key={`tool-${idx}`} className="flex items-center gap-2 text-[11px] font-medium text-foreground cursor-pointer hover:bg-muted/30 p-1.5 rounded transition-all">
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={(e) => {
+                                                      setChecklistChecked(prev => ({
+                                                        ...prev,
+                                                        [fw.id]: {
+                                                          ...(prev[fw.id] || {}),
+                                                          [`tool-${idx}`]: e.target.checked
+                                                        }
+                                                      }));
+                                                    }}
+                                                    className="rounded border-border text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5 cursor-pointer"
+                                                  />
+                                                  <span>Company Tool: {tool}</span>
+                                                </label>
+                                              );
+                                            })}
+
+                                            {(!fw.materials?.length && !fw.payload?.companyTools?.length) && (
+                                              <div className="text-[11px] text-muted-foreground italic">No materials or tools planned for this job. Ready to depart.</div>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleDispatchCrew(fw.id)}
+                                          disabled={!isChecklistComplete}
+                                          className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold flex items-center gap-1.5 mt-2"
+                                        >
+                                          <Truck className="h-4 w-4 animate-bounce" /> Confirm Departure & Start Journey
+                                        </Button>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
                         )}
 
@@ -1580,9 +1673,9 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                             )}
                             
                             {(currentUser?.role === 'storekeeper' || currentUser?.roles?.includes('storekeeper') || currentUser?.role === 'admin') ? (
-                              <Button size="sm" onClick={() => handleStorekeeperVerify(fw.id)} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold">
-                                Verify Returned Warehouse Assets & Fuel
-                              </Button>
+                              <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/50">
+                                Awaiting Storekeeper verification in the {"Inventory -> Returns"} workspace...
+                              </Badge>
                             ) : (
                               <Badge className="bg-muted text-muted-foreground">Awaiting Storekeeper warehouse return verification...</Badge>
                             )}
@@ -1612,7 +1705,7 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                               </div>
                             )}
                             
-                            {(currentUser?.role === 'manager' || currentUser?.roles?.includes('manager')) ? (
+                            {hasAccess(["fieldwork", "manager"]) ? (
                               <Button size="sm" onClick={() => handleApproveReturns(fw.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
                                 Review Completion Photos & Sign Off Fieldwork
                               </Button>
@@ -1638,14 +1731,9 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                           </Button>
                         )}
                         {(fw.status === "Approved and ready to go" || fw.status === "crew_dispatched") && currentUser?.username === fw.assignedTo && (
-                          <>
-                            <Button size="sm" variant="outline" onClick={() => openReturnForm(fw)}>
-                              <RotateCcw className="h-4 w-4 mr-1" /> Add Return Form
-                            </Button>
-                            <Button size="sm" onClick={() => completeFieldWork(fw.id)}>
-                              <UserCheck className="h-4 w-4 mr-1" /> Mark Completed
-                            </Button>
-                          </>
+                          <Button size="sm" onClick={() => openReturnForm(fw)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+                            <UserCheck className="h-4 w-4 mr-1" /> Mark Completed
+                          </Button>
                         )}
                         <Button size="sm" variant="destructive" onClick={() => requestSecurity(() => deleteFieldWork(fw.id))}>
                           <Trash2 className="h-4 w-4 mr-1" /> Delete
@@ -1714,7 +1802,7 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
         {filtered.length > 0 && (
           <ExecutiveDocumentPdfTemplate
             data={{
-              documentTitle: "SolarFlow Field Work Operations & Asset Release Sheet",
+              documentTitle: "Meseret Mare Field Work Operations & Asset Release Sheet",
               subtitle: "Field Engineering & Installation Operations Summary",
               refNumber: filtered[0].id,
               date: new Date().toLocaleDateString(),
@@ -2485,26 +2573,13 @@ function ReturnFormComponent({
       return;
     }
 
-    // Submit tool returns
     const activeCheckouts = checkedOutTools.filter(t => t.status === 'CHECKED_OUT');
-    if (activeCheckouts.length > 0) {
-      const returns = activeCheckouts.map(item => ({
-        companyAssetId: item.companyAssetId,
-        condition: toolReturns[item.companyAssetId]?.condition || 'GOOD',
-        notes: toolReturns[item.companyAssetId]?.notes || '',
-      }));
-      try {
-        await apiClient.post('/fieldwork-assets/return', {
-          fieldWorkJobId: fieldWork.id,
-          returns
-        });
-        toast.success("Company tools returned successfully!");
-      } catch (e: any) {
-        console.error(e);
-        toast.error("Failed to return some company tools. Please check asset conditions.");
-        return;
-      }
-    }
+    const toolReturnsPayload = activeCheckouts.map(item => ({
+      companyAssetId: item.companyAssetId,
+      name: item.asset?.name || item.companyAssetId,
+      condition: toolReturns[item.companyAssetId]?.condition || 'GOOD',
+      notes: toolReturns[item.companyAssetId]?.notes || '',
+    }));
 
     const photos = [photoInverter, photoPanels, photoPump, photoSite].filter(Boolean);
 
@@ -2514,6 +2589,7 @@ function ReturnFormComponent({
       workerName,
       date: format(date, "yyyy-MM-dd"),
       returnedMaterials: validMaterials.map(m => ({ ...m, quantity: Number(m.quantity) || 0 })),
+      toolReturns: toolReturnsPayload,
       comments,
       otherNotes,
       status: "pending",

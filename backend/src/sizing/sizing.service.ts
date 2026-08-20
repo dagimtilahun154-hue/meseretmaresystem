@@ -434,7 +434,8 @@ export class SizingService {
     const pumpPrice = dbPump ? Number(dbPump.sellPrice) : 850;
     items.push({
       id: dbPump ? dbPump.id : 'PUMP-MOCK-ID',
-      name: `Water Pump Model: ${pumpModel}`,
+      name: pumpModel,
+      category: 'PUMP',
       qty: 1,
       price: pumpPrice,
       total: pumpPrice,
@@ -442,14 +443,37 @@ export class SizingService {
     });
 
     // 2. Solar Panels
+    let panelName = 'Solar Panel 250W';
+    let panelQty = verticalLift > 60 ? 6 : verticalLift > 30 ? 4 : 2;
+
+    const pumpModelLower = (request.selectedPumpModel || '').toLowerCase();
+    if (pumpModelLower.includes('5.5kw') || pumpModelLower.includes('5500w')) {
+      panelName = 'Solar Panel 550W';
+      panelQty = verticalLift > 60 ? 12 : verticalLift > 30 ? 8 : 6;
+    } else if (pumpModelLower.includes('3.0kw') || pumpModelLower.includes('3000w')) {
+      panelName = 'Solar Panel 450W';
+      panelQty = verticalLift > 60 ? 8 : verticalLift > 30 ? 6 : 4;
+    } else if (pumpModelLower.includes('1.5kw') || pumpModelLower.includes('1500w')) {
+      panelName = 'Solar Panel 350W';
+      panelQty = verticalLift > 60 ? 6 : verticalLift > 30 ? 4 : 3;
+    }
+
     const dbPanels = await this.prisma.product.findFirst({
-      where: { name: { contains: 'Panel' } }
+      where: {
+        AND: [
+          { name: { contains: panelName } },
+          { productCategory: 'SOLAR_PANEL' }
+        ]
+      }
     });
-    const panelPrice = dbPanels ? Number(dbPanels.sellPrice) : 180;
-    const panelQty = verticalLift > 60 ? 6 : verticalLift > 30 ? 4 : 2;
+
+    const panelPrice = dbPanels ? Number(dbPanels.sellPrice) : (panelName.includes('550W') ? 14000 : panelName.includes('450W') ? 11000 : panelName.includes('350W') ? 8500 : 6000);
+    const panelId = dbPanels ? dbPanels.id : (panelName.includes('550W') ? 'PRD-PANEL-SF-550W' : panelName.includes('450W') ? 'PRD-PANEL-SF-450W' : panelName.includes('350W') ? 'PRD-PANEL-SF-350W' : 'PRD-PANEL-SF-250W');
+
     items.push({
-      id: dbPanels ? dbPanels.id : 'PANEL-MOCK-ID',
-      name: 'Solar Panel 250W',
+      id: panelId,
+      name: panelName,
+      category: 'SOLAR_PANEL',
       qty: panelQty,
       price: panelPrice,
       total: panelPrice * panelQty,
@@ -464,6 +488,7 @@ export class SizingService {
     items.push({
       id: dbController ? dbController.id : 'CONTROLLER-MOCK-ID',
       name: `Pump Controller / Inverter`,
+      category: 'PUMP_EQUIPMENT',
       qty: 1,
       price: controllerPrice,
       total: controllerPrice,
@@ -479,6 +504,7 @@ export class SizingService {
     items.push({
       id: dbPipes ? dbPipes.id : 'PIPE-MOCK-ID',
       name: `PE Piping (meters)`,
+      category: 'WORK_TOOL',
       qty: pipesQty,
       price: pipePrice,
       total: Number((pipePrice * pipesQty).toFixed(2)),
@@ -494,6 +520,7 @@ export class SizingService {
     items.push({
       id: dbCables ? dbCables.id : 'CABLE-MOCK-ID',
       name: `Submersible Cable (meters)`,
+      category: 'PUMP_EQUIPMENT',
       qty: cableQty,
       price: cablePrice,
       total: Number((cablePrice * cableQty).toFixed(2)),
@@ -504,6 +531,7 @@ export class SizingService {
     items.push({
       id: 'SCREWS-FITTINGS-ID',
       name: `Installation Fittings & Screws Kit`,
+      category: 'WORK_TOOL',
       qty: 1,
       price: 45.0,
       total: 45.0,

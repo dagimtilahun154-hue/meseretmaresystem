@@ -417,7 +417,7 @@ export default function Reports() {
       </Tabs>
       <div className="pt-8 border-t border-slate-100">
         <div className="flex items-center gap-6 justify-center grayscale opacity-30">
-          <div className="text-xs font-black tracking-tighter">SOLARFLOW</div>
+          <div className="text-xs font-black tracking-tighter">MESERET MARE</div>
           <div className="text-xs font-black tracking-tighter text-primary italic">
             FINANCE HUB
           </div>

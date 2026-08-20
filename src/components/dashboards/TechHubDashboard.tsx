@@ -63,7 +63,7 @@ export function TechHubDashboard() {
         roleBadge="Engineering & Field Dispatch"
         title="Technical Manager Workspace"
         description="Pump Sizing Calculations, Engineering Approvals, TTL Dispatch, & Tool Return Sign-offs."
-        gradientClass="bg-gradient-to-r from-purple-700 via-indigo-700 to-blue-800"
+        gradientClass="bg-gradient-to-r from-[#2cb563] via-[#10b981] to-[#047857]"
         actions={[
           {
             label: "Pump Sizing Studio",

@@ -1,10 +1,33 @@
+import { ProductCategory } from "./data";
+
+export type MaterialSource = "FROM_STOCK" | "BOUGHT";
+
 export interface FieldWorkEquipment {
   productId?: string;
+  productCode?: string;
   name: string;
+  category?: ProductCategory;
+  serialNumber?: string;
   quantityTaken: number;
   quantityReturned: number;
   quantityUsed: number;
   unit: string;
+  unitPrice?: number;
+  source?: MaterialSource;
+}
+
+export interface PlannedMaterialItem {
+  id?: string;
+  productId?: string;
+  productCode?: string;
+  name: string;
+  category: ProductCategory;
+  serialNumber?: string;
+  quantity: number;
+  unit: string;
+  price: number;
+  source: MaterialSource;
+  availableStock?: number;
 }
 
 export interface FieldWorker {
@@ -42,11 +65,15 @@ export interface FieldWork {
   endDate: string;
   workers: FieldWorker[];
   pumpModel: string;
+  pumpSerial?: string;
+  pumpSource?: MaterialSource;
   location: string;
   customerName?: string;
   assignedTo?: string;
   status: "pending" | "planning" | "accepted" | "submitted_tm" | "checked_tm" | "approved_gm" | "Approved and ready to go" | "completed_ttl" | "completed" | "done" | string;
   equipment: FieldWorkEquipment[];
+  companyTools?: string[];
+  materials?: PlannedMaterialItem[];
   notes: string;
   returnForms?: ReturnForm[];
   saleId?: string;

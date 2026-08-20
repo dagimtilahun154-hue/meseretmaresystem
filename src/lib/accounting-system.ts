@@ -53,15 +53,48 @@ export const DEFAULT_ACCOUNTS: Account[] = [
   { id: "acc-5300", code: "5300", name: "Transport & Logistics", category: "expense", description: "Travel and shipping costs" },
 ];
 
-export function getAccountById(id: string): Account | undefined {
-  return DEFAULT_ACCOUNTS.find(a => a.id === id);
+function mapStoreAccountToLocal(acc: any): Account {
+  const typeMap: Record<string, AccountCategory> = {
+    assets: "asset",
+    asset: "asset",
+    liabilities: "liability",
+    liability: "liability",
+    equity: "equity",
+    revenue: "revenue",
+    expense: "expense",
+    expenses: "expense"
+  };
+  const category = typeMap[String(acc.type || "").toLowerCase()] || "asset";
+  return {
+    id: acc.id,
+    code: acc.code || acc.id.replace("acc-", ""),
+    name: acc.name,
+    category,
+    description: acc.description || ""
+  };
 }
 
-export function calculateAccountBalance(accountId: string, entries: JournalEntry[]): number {
-  const account = getAccountById(accountId);
+export function getAccountById(id: string, customAccounts?: any[]): Account | undefined {
+  const accountsToUse = customAccounts && customAccounts.length > 0
+    ? customAccounts.map(mapStoreAccountToLocal)
+    : DEFAULT_ACCOUNTS;
+  return accountsToUse.find(a => a.id === id);
+}
+
+export function calculateAccountBalance(accountId: string, entries: JournalEntry[], customAccounts?: any[]): number {
+  const accountsToUse = customAccounts && customAccounts.length > 0
+    ? customAccounts.map(mapStoreAccountToLocal)
+    : DEFAULT_ACCOUNTS;
+
+  const account = accountsToUse.find(a => a.id === accountId);
   if (!account) return 0;
 
   let balance = 0;
+  const storeAcc = customAccounts?.find(a => a.id === accountId);
+  if (storeAcc) {
+    balance = toMoneyNumber(storeAcc.openingBalance || 0);
+  }
+
   entries.forEach(entry => {
     entry.lines.filter(l => l.accountId === accountId).forEach(line => {
       // Normal balance rules
@@ -80,20 +113,24 @@ export function calculateAccountBalance(accountId: string, entries: JournalEntry
   return balance;
 }
 
-export function generateBalanceSheet(entries: JournalEntry[]) {
-  const assets = DEFAULT_ACCOUNTS.filter(a => a.category === "asset").map(a => ({
+export function generateBalanceSheet(entries: JournalEntry[], customAccounts?: any[]) {
+  const accountsToUse = customAccounts && customAccounts.length > 0
+    ? customAccounts.map(mapStoreAccountToLocal)
+    : DEFAULT_ACCOUNTS;
+
+  const assets = accountsToUse.filter(a => a.category === "asset").map(a => ({
     name: a.name,
-    balance: calculateAccountBalance(a.id, entries)
+    balance: calculateAccountBalance(a.id, entries, customAccounts)
   }));
   
-  const liabilities = DEFAULT_ACCOUNTS.filter(a => a.category === "liability").map(a => ({
+  const liabilities = accountsToUse.filter(a => a.category === "liability").map(a => ({
     name: a.name,
-    balance: calculateAccountBalance(a.id, entries)
+    balance: calculateAccountBalance(a.id, entries, customAccounts)
   }));
 
-  const equity = DEFAULT_ACCOUNTS.filter(a => a.category === "equity").map(a => ({
+  const equity = accountsToUse.filter(a => a.category === "equity").map(a => ({
     name: a.name,
-    balance: calculateAccountBalance(a.id, entries)
+    balance: calculateAccountBalance(a.id, entries, customAccounts)
   }));
 
   const totalAssets = assets.reduce((s, a) => s + toMoneyNumber(a.balance), 0);
@@ -103,15 +140,19 @@ export function generateBalanceSheet(entries: JournalEntry[]) {
   return { assets, liabilities, equity, totalAssets, totalLiabilities, totalEquity };
 }
 
-export function generateIncomeStatement(entries: JournalEntry[]) {
-  const revenue = DEFAULT_ACCOUNTS.filter(a => a.category === "revenue").map(a => ({
+export function generateIncomeStatement(entries: JournalEntry[], customAccounts?: any[]) {
+  const accountsToUse = customAccounts && customAccounts.length > 0
+    ? customAccounts.map(mapStoreAccountToLocal)
+    : DEFAULT_ACCOUNTS;
+
+  const revenue = accountsToUse.filter(a => a.category === "revenue").map(a => ({
     name: a.name,
-    balance: calculateAccountBalance(a.id, entries)
+    balance: calculateAccountBalance(a.id, entries, customAccounts)
   }));
 
-  const expenses = DEFAULT_ACCOUNTS.filter(a => a.category === "expense").map(a => ({
+  const expenses = accountsToUse.filter(a => a.category === "expense").map(a => ({
     name: a.name,
-    balance: calculateAccountBalance(a.id, entries)
+    balance: calculateAccountBalance(a.id, entries, customAccounts)
   }));
 
   const totalRevenue = revenue.reduce((s, r) => s + toMoneyNumber(r.balance), 0);

@@ -156,7 +156,7 @@ export default function VatManagement() {
         </CardContent>
       </Card>
       <p className="text-[10px] text-slate-400 text-center uppercase tracking-[0.2em] font-medium pt-4">
-        Official Solarflow Accounting Compliance Module
+        Official Meseret Mare Accounting Compliance Module
       </p>
     </div>
   );

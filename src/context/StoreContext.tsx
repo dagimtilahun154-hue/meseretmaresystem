@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
-import { Product, Sale } from "@/lib/data";
+import { Product, Sale, getItemProductCategory } from "@/lib/data";
 import { FieldWork, ReturnForm } from "@/lib/fieldwork-data";
+import { recordLocalInventoryTransaction } from "@/lib/inventory-history-store";
 
 type ProductWithCode = Product & {
   code?: string | number;
@@ -292,14 +293,52 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
 
     if (result.queued) {
+      // Record transaction for sold items
+      sale.items.forEach((item) => {
+        const prod = products.find((p) => p.id === item.productId || p.name === item.productName);
+        recordLocalInventoryTransaction({
+          productId: item.productId,
+          productCode: prod?.code ? String(prod.code) : undefined,
+          productName: item.productName,
+          category: getItemProductCategory(prod || { name: item.productName }),
+          transactionType: "ISSUE",
+          quantity: item.quantity,
+          unit: prod?.unit || "Piece",
+          unitPrice: item.price,
+          reference: `POS-SALE-${String(sale.id).slice(-6)}`,
+          performedBy: currentUser?.displayName || "Cashier",
+          notes: `Direct POS Sale to ${sale.customer.name}`,
+        });
+      });
       return "queued";
     }
+
+    // Record transaction for sold items
+    sale.items.forEach((item) => {
+      const prod = products.find((p) => p.id === item.productId || p.name === item.productName);
+      recordLocalInventoryTransaction({
+        productId: item.productId,
+        productCode: prod?.code ? String(prod.code) : undefined,
+        productName: item.productName,
+        category: getItemProductCategory(prod || { name: item.productName }),
+        transactionType: "ISSUE",
+        quantity: item.quantity,
+        unit: prod?.unit || "Piece",
+        unitPrice: item.price,
+        reference: `POS-SALE-${String(sale.id).slice(-6)}`,
+        performedBy: currentUser?.displayName || "Cashier",
+        notes: `Direct POS Sale to ${sale.customer.name}`,
+      });
+    });
 
     await refreshProductsSalesPayments();
     return "saved";
   };
 
   const updateProduct = async (product: ProductWithCode) => {
+    // 1. Update UI state immediately
+    setProducts((prev) => prev.map((p) => (p.id === product.id ? product : p)));
+
     const dbProductData: any = {
       ...product,
       cost_price: product.costPrice || 0,
@@ -307,40 +346,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       measurement_unit: product.measurementUnit || product.unit || "Piece"
     };
 
-    const success = await productsDB.update(dbProductData);
-    if (success) {
-      // Fetch fresh data from DB to ensure sync
-      const dbProds = await productsDB.getAll();
-      if (dbProds.length > 0) {
-        const mappedProducts: ProductWithCode[] = dbProds.map(p => ({
-          ...p,
-          quantity: Number(p.quantity || 0),
-          costPrice: Number(p.cost_price || p.costPrice || 0),
-          sellPrice: Number(p.sell_price || p.sellPrice || 0),
-          measurementUnit: p.measurement_unit || p.measurementUnit || "Piece"
-        }));
-        setProducts(mappedProducts);
-      } else {
-        // Fallback to updating local state if fetch fails but update was success
-        setProducts((prev) => prev.map((p) => (p.id === product.id ? product : p)));
-      }
+    try {
+      await productsDB.update(dbProductData);
+    } catch (e) {
+      console.warn("Background updateProduct sync warning:", e);
     }
   };
 
   const addProduct = async (product: ProductWithCode) => {
-    const hasValidCode =
-      product.code !== undefined &&
-      product.code !== null &&
-      String(product.code).trim() !== "" &&
-      !Number.isNaN(Number(product.code));
-
-    const finalCode = hasValidCode ? Number(product.code) : getNextCode(products);
+    const finalCode = product.code !== undefined && product.code !== null && String(product.code).trim() !== ""
+      ? String(product.code).trim()
+      : String(getNextCode(products));
 
     const newProduct: ProductWithCode = {
       ...product,
-      id: product.id || `P${Date.now()}`,
+      id: product.id || `PRD-${Date.now()}`,
       code: finalCode,
     };
+
+    // 1. Update local state immediately
+    setProducts((prev) => {
+      const exists = prev.some((p) => p.id === newProduct.id || (p.code && String(p.code).toLowerCase() === String(newProduct.code).toLowerCase()));
+      return exists ? prev : [...prev, newProduct];
+    });
 
     const dbProductData: any = {
       ...newProduct,
@@ -349,16 +377,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       measurement_unit: newProduct.measurementUnit || "Piece"
     };
 
-    const success = await productsDB.add(dbProductData);
-    if (success) {
-      setProducts((prev) => [...prev, newProduct]);
+    try {
+      await productsDB.add(dbProductData);
+    } catch (e) {
+      console.warn("Background addProduct sync warning:", e);
     }
   };
 
   const deleteProduct = async (id: string) => {
-    const success = await productsDB.delete(id);
-    if (success) {
-      setProducts((prev) => prev.filter((p) => p.id !== id));
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+    try {
+      await productsDB.delete(id);
+    } catch (e) {
+      console.warn("Background deleteProduct sync warning:", e);
     }
   };
 

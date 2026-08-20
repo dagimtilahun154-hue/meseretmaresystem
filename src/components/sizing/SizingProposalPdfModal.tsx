@@ -58,7 +58,7 @@ export function SizingProposalPdfModal({ proposal, open, onOpenChange }: SizingP
           <ExecutiveDocumentPdfTemplate
             data={{
               documentTitle: "Solar Pumping System Technical & Commercial Proposal",
-              subtitle: "SolarFlow Engineering Turnkey Proposal",
+              subtitle: "Meseret Mare Engineering Turnkey Proposal",
               refNumber: proposal.id || "SZ-1001",
               date,
               clientSection: {
@@ -110,15 +110,15 @@ export function SizingProposalPdfModal({ proposal, open, onOpenChange }: SizingP
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <div className="h-8 w-8 bg-amber-500 rounded-lg flex items-center justify-center font-black text-slate-950 text-base">
-                  SF
+                  MM
                 </div>
-                <span className="text-2xl font-black tracking-wider text-slate-900 uppercase">SOLARFLOW ENERGY</span>
+                <span className="text-2xl font-black tracking-wider text-slate-900 uppercase">MESERET MARE SOLAR ENGINEERING</span>
               </div>
               <p className="text-xs text-slate-600 font-semibold uppercase tracking-wider">
                 Solar Water Pumping Systems & Rural Electrification Engineering
               </p>
               <p className="text-[11px] text-slate-500">
-                HQ Address: Bole Sub-city, Addis Ababa, Ethiopia | Tell: +251 911 000 000 | Email: sales@solarflow.et
+                HQ Address: Bole Sub-city, Addis Ababa, Ethiopia | Tell: +251 911 000 000 | Email: sales@meseretmare.et
               </p>
             </div>
             <div className="text-right space-y-1">
@@ -244,7 +244,7 @@ export function SizingProposalPdfModal({ proposal, open, onOpenChange }: SizingP
           {/* Sign-off & Approval Section */}
           <div className="pt-6 border-t border-slate-200 grid grid-cols-2 gap-8">
             <div className="space-y-8">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">PREPARED BY (SOLARFLOW TECHNICAL TEAM)</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">PREPARED BY (MESERET MARE TECHNICAL TEAM)</span>
               <div className="border-b border-slate-400 pb-1">
                 <p className="text-xs font-bold text-slate-900">Eng. Technical Manager / Lead Sizing Specialist</p>
               </div>

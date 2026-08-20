@@ -42,7 +42,7 @@ export function ExecutiveDocumentPdfTemplate({ data }: { data: ExecutivePdfData 
       {/* Header Banner */}
       <div className="text-center mb-8 border-b pb-4">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 uppercase font-serif">
-          {data.documentTitle || "SolarFlow Master Client Information Sheet"}
+          {data.documentTitle || "Meseret Mare Master Client Information Sheet"}
         </h1>
         {data.subtitle && (
           <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider mt-1">
@@ -50,7 +50,7 @@ export function ExecutiveDocumentPdfTemplate({ data }: { data: ExecutivePdfData 
           </p>
         )}
         <div className="flex justify-between items-center text-[10px] text-slate-500 mt-3 font-mono">
-          <span>REF NO: {data.refNumber || `SF-${Date.now().toString().slice(-6)}`}</span>
+          <span>REF NO: {data.refNumber || `MM-${Date.now().toString().slice(-6)}`}</span>
           <span>DATE: {data.date || new Date().toLocaleDateString()}</span>
         </div>
       </div>
@@ -209,7 +209,7 @@ export function ExecutiveDocumentPdfTemplate({ data }: { data: ExecutivePdfData 
       {/* Signature Sign-Off Footer */}
       <div className="pt-8 border-t border-slate-300 grid grid-cols-2 gap-8 page-break-inside-avoid">
         <div className="space-y-6">
-          <span className="text-[10px] font-bold text-slate-500 uppercase block">SOLARFLOW AUTHORIZED OFFICER SIGNATURE</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase block">MESERET MARE AUTHORIZED OFFICER SIGNATURE</span>
           <div className="border-b border-slate-400 pb-1">
             <span className="text-xs font-bold text-slate-900 block">Lead Engineer / Officer Signature</span>
           </div>

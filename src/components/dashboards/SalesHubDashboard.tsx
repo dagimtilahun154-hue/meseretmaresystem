@@ -78,7 +78,7 @@ export function SalesHubDashboard() {
         roleBadge="Sales & Commercial Desk"
         title="Sales Hub Workspace"
         description="Customer Intake, Digital Master Dossier, POS Commercial Sales & Pump Package Proposals."
-        gradientClass="bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800"
+        gradientClass="bg-gradient-to-r from-[#f5a600] via-[#d97706] to-[#b45309]"
         actions={[
           {
             label: "Direct Retail POS",
