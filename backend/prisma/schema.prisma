@@ -508,18 +508,18 @@ model HrDepartment {
 }
 
 model HrWorker {
-  id            String   @id
-  workerCode    String?  @unique
-  fullName      String
-  phone         String?
-  position      String?
-  departmentId  String?
+  id             String   @id
+  workerCode     String?
+  fullName       String
+  phone          String?
+  position       String?
+  departmentId   String?
   departmentName String?
-  photoUrl      String?  @db.Text
-  fingerprintId String?  @unique
-  status        String   @default("Active")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  photoUrl       String?  @db.LongText
+  fingerprintId  String?  @db.LongText
+  status         String   @default("Active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@map("hr_workers")
 }

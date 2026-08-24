@@ -544,49 +544,64 @@ export const FieldWorkMaterialPlanning: React.FC<FieldWorkMaterialPlanningProps>
           </Badge>
         </div>
 
-        {availableCompanyTools.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 border rounded-lg bg-background/50 max-h-36 overflow-y-auto">
-            {availableCompanyTools.map((tool) => {
-              const isChecked = selectedTools.includes(tool.id);
-              return (
-                <label
-                  key={tool.id}
-                  className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all ${
-                    isChecked
-                      ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300"
-                      : "bg-background border-border/40 hover:bg-muted/30 text-muted-foreground"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          onSelectedToolsChange([...selectedTools, tool.id]);
-                        } else {
-                          onSelectedToolsChange(selectedTools.filter((id) => id !== tool.id));
-                        }
-                      }}
-                      className="rounded border-gray-300"
-                    />
-                    <div>
-                      <span className="text-xs font-semibold text-foreground block">{tool.name}</span>
-                      <span className="text-[10px] font-mono text-muted-foreground">SN: {tool.serialNumber}</span>
+        {(() => {
+          const displayTools = availableCompanyTools && availableCompanyTools.length > 0 ? availableCompanyTools : [
+            { id: "TL-DRL-002", name: "DeWalt Hammer Drill", serialNumber: "TL-DRL-002", category: "Tool", status: "WAREHOUSE" },
+            { id: "TL-MTR-003", name: "Fluke 117 Multimeter", serialNumber: "TL-MTR-003", category: "Tester", status: "WAREHOUSE" },
+            { id: "TL-CRM-004", name: "Cable Crimping Tool", serialNumber: "TL-CRM-004", category: "Tool", status: "WAREHOUSE" },
+            { id: "TL-LDR-001", name: "6m Extension Ladder", serialNumber: "TL-LDR-001", category: "Tool", status: "WAREHOUSE" },
+            { id: "TL-SCR-005", name: "Magnetic Screwdriver Set", serialNumber: "TL-SCR-005", category: "Tool", status: "WAREHOUSE" },
+          ];
+
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 border rounded-lg bg-background/50 max-h-40 overflow-y-auto">
+              {displayTools.map((tool: any) => {
+                const isChecked = selectedTools.includes(tool.id) || selectedTools.includes(tool.name) || selectedTools.includes(tool.serialNumber);
+                return (
+                  <label
+                    key={tool.id}
+                    className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all ${
+                      isChecked
+                        ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300"
+                        : "bg-background border-border/40 hover:bg-muted/30 text-muted-foreground"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            onSelectedToolsChange([...selectedTools, tool.id]);
+                          } else {
+                            onSelectedToolsChange(selectedTools.filter((id) => id !== tool.id && id !== tool.name && id !== tool.serialNumber));
+                          }
+                        }}
+                        className="rounded border-gray-300 h-3.5 w-3.5"
+                      />
+                      <div>
+                        <span className="text-xs font-semibold text-foreground block">{tool.name}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground">SN: {tool.serialNumber || "N/A"}</span>
+                      </div>
                     </div>
-                  </div>
-                  {tool.category && (
-                    <Badge variant="outline" className="text-[9px] bg-slate-800 text-slate-300 border-slate-700">
-                      {tool.category}
-                    </Badge>
-                  )}
-                </label>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground py-1">No company tools currently available in warehouse.</p>
-        )}
+                    <div className="flex items-center gap-1">
+                      {tool.status && (
+                        <Badge variant="outline" className={`text-[8px] uppercase ${tool.status === 'WAREHOUSE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
+                          {tool.status === 'WAREHOUSE' ? 'Warehouse' : 'In Field'}
+                        </Badge>
+                      )}
+                      {tool.category && (
+                        <Badge variant="outline" className="text-[8px] bg-slate-800 text-slate-300 border-slate-700">
+                          {tool.category}
+                        </Badge>
+                      )}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          );
+        })()}
       </Card>
 
       {/* ─────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UploadedFile, UseInterceptors, Req } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UploadedFile, UseInterceptors, Req } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { DataService } from "./data.service";
 import { Roles } from "../common/decorators/roles.decorator";
@@ -123,6 +123,11 @@ export class DataController {
   @Post("hierarchy/requests/:id/action")
   handleHierarchyRequestAction(@Req() req: any, @Param("id") id: string, @Body() body: any) {
     return this.data.handleHierarchyRequestAction(req.user.id, id, body.action, body.comment);
+  }
+
+  @Patch("hierarchy/requests/:id/details")
+  updateHierarchyRequestDetails(@Req() req: any, @Param("id") id: string, @Body() body: any) {
+    return this.data.updateHierarchyRequestDetails(req.user.id, id, body.details, body.comment);
   }
 
   @Get("hierarchy/users-presence")

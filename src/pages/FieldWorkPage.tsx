@@ -142,6 +142,7 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
   const [fileModalOpen, setFileModalOpen] = useState(false);
   const [fileModalProposal, setFileModalProposal] = useState<any | null>(null);
   
+  const [allCompanyAssets, setAllCompanyAssets] = useState<any[]>([]);
   const [availableTools, setAvailableTools] = useState<any[]>([]);
   const [hrWorkersList, setHrWorkersList] = useState<any[]>([]);
   const [assigningTtlId, setAssigningTtlId] = useState<Record<string, string>>({});
@@ -214,8 +215,10 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
         apiClient.get("/company-assets"),
         apiClient.get("/hr/workers")
       ]);
-      setAvailableTools(toolsRes.data.filter((t: any) => t.status === "WAREHOUSE"));
-      setHrWorkersList(workersRes.data.filter((w: any) => w.status === "Active"));
+      const assetsData = Array.isArray(toolsRes.data) ? toolsRes.data : [];
+      setAllCompanyAssets(assetsData);
+      setAvailableTools(assetsData);
+      setHrWorkersList((workersRes.data || []).filter((w: any) => w.status === "Active"));
     } catch (e) {
       console.error("Failed to load planning lists:", e);
     }
@@ -1222,7 +1225,7 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                         {fw.status === "pending" && (
                           <div className="space-y-3">
                             <p className="text-xs text-muted-foreground">Awaiting Technical Manager review. Select a Technical Team Leader to assign this fieldwork installation job.</p>
-                            {hasAccess(["fieldwork", "manager", "ttl"]) ? (
+                            {hasAccess(["fieldwork"]) ? (
                               <div className="flex items-center gap-3">
                                 <Select
                                   value={assigningTtlId[fw.id] || (ttlCandidates[0]?.username || "tech_leader")}
@@ -1261,8 +1264,24 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                                 {planningFwId !== fw.id ? (
                                   <div className="flex items-center gap-3">
                                     <Button size="sm" onClick={() => {
+                                      const ttlUsername = fw.assignedTo || currentUser?.displayName || currentUser?.username || "Technical Team Leader";
+                                      const matchedTtl = hrWorkersList.find(
+                                        (w: any) =>
+                                          w.fullName?.toLowerCase() === ttlUsername?.toLowerCase() ||
+                                          w.username?.toLowerCase() === ttlUsername?.toLowerCase() ||
+                                          w.workerCode?.toLowerCase() === ttlUsername?.toLowerCase()
+                                      );
+
+                                      const ttlEntry = {
+                                        id: matchedTtl?.id || `ttl-${fw.id}`,
+                                        name: matchedTtl?.fullName || ttlUsername,
+                                        position: matchedTtl?.position || "Technical Team Leader (Trip Lead)",
+                                        perDiem: 600,
+                                        isTtl: true,
+                                      };
+
                                       setPlanningFwId(fw.id);
-                                      setSelectedPlanWorkers([]);
+                                      setSelectedPlanWorkers([ttlEntry]);
                                       setSelectedPlanTools([]);
                                       setPlanNotes("");
                                       setPlanFuelAmount("");
@@ -1280,58 +1299,116 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                                   <Card className="p-4 border bg-background space-y-4">
                                     <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground border-b pb-1">Trip Planning & Budget Config</h4>
                                     
-                                    {/* Worker Assigning */}
-                                    <div className="space-y-2">
-                                      <Label className="text-xs font-semibold">Assign Workers & Per Diem (ETB/day)</Label>
-                                      {hrWorkersList.length > 0 ? (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg bg-muted/10 max-h-48 overflow-y-auto">
-                                          {hrWorkersList.map((worker) => {
-                                            const isSelected = selectedPlanWorkers.some(w => w.id === worker.id);
-                                            const match = selectedPlanWorkers.find(w => w.id === worker.id);
-                                            const currentPerDiem = match ? match.perDiem : 500;
-
-                                            return (
-                                              <div key={worker.id} className="flex items-center justify-between p-1.5 border rounded hover:bg-muted/30">
-                                                <div className="flex items-center gap-2">
-                                                  <input
-                                                    type="checkbox"
-                                                    checked={isSelected}
-                                                    onChange={(e) => {
-                                                      if (e.target.checked) {
-                                                        setSelectedPlanWorkers([...selectedPlanWorkers, { id: worker.id, name: worker.fullName, position: worker.position || "Tech", perDiem: 500 }]);
-                                                      } else {
-                                                        setSelectedPlanWorkers(selectedPlanWorkers.filter(w => w.id !== worker.id));
-                                                      }
-                                                    }}
-                                                    className="rounded border-gray-300 mr-2"
-                                                  />
-                                                  <div>
-                                                    <span className="text-xs font-medium text-foreground">{worker.fullName}</span>
-                                                    <span className="text-[10px] text-muted-foreground block">{worker.position || "Technician"}</span>
-                                                  </div>
-                                                </div>
-                                                
-                                                {isSelected && (
-                                                  <div className="flex items-center gap-1.5">
-                                                    <Input
-                                                      type="number"
-                                                      value={currentPerDiem}
-                                                      onChange={(e) => {
-                                                        const val = parseFloat(e.target.value) || 0;
-                                                        setSelectedPlanWorkers(selectedPlanWorkers.map(w => w.id === worker.id ? { ...w, perDiem: val } : w));
-                                                      }}
-                                                      className="w-20 h-7 text-xs px-2 text-right bg-background border-border"
-                                                    />
-                                                    <span className="text-[10px] text-muted-foreground font-mono">ETB</span>
-                                                  </div>
-                                                )}
+                                    {/* Lead TTL & Crew Assignment with Multi-Department Staff */}
+                                    <div className="space-y-3">
+                                      {/* 1. Trip Lead TTL (Auto-Included) */}
+                                      {(() => {
+                                        const ttl = selectedPlanWorkers.find(w => (w as any).isTtl);
+                                        return ttl ? (
+                                          <div className="p-2.5 rounded-lg border-2 border-amber-500/30 bg-amber-500/5 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                              <Badge className="bg-amber-600 text-white font-bold text-[10px] uppercase">
+                                                Trip Lead (TTL)
+                                              </Badge>
+                                              <div>
+                                                <span className="text-xs font-bold text-foreground">{ttl.name}</span>
+                                                <span className="text-[10px] text-muted-foreground block">{ttl.position} • Leading Fieldwork Trip</span>
                                               </div>
-                                            );
-                                          })}
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                              <span className="text-[11px] text-muted-foreground font-medium">TTL Per Diem:</span>
+                                              <Input
+                                                type="number"
+                                                value={ttl.perDiem}
+                                                onChange={(e) => {
+                                                  const val = parseFloat(e.target.value) || 0;
+                                                  setSelectedPlanWorkers(selectedPlanWorkers.map(w => (w as any).isTtl ? { ...w, perDiem: val } : w));
+                                                }}
+                                                className="w-20 h-7 text-xs px-2 text-right bg-background border-border font-bold font-mono"
+                                              />
+                                              <span className="text-[10px] text-muted-foreground font-mono">ETB/day</span>
+                                            </div>
+                                          </div>
+                                        ) : null;
+                                      })()}
+
+                                      {/* 2. Accompanying Personnel from Any Department */}
+                                      <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between">
+                                          <Label className="text-xs font-semibold">
+                                            Accompanying Personnel (All Departments: GM, Engineering, Field, Grants, etc.)
+                                          </Label>
+                                          <span className="text-[10px] text-muted-foreground font-mono">
+                                            {selectedPlanWorkers.filter(w => !(w as any).isTtl).length} accompanying worker(s) selected
+                                          </span>
                                         </div>
-                                      ) : (
-                                        <p className="text-xs text-muted-foreground">No active workers found in HR registry.</p>
-                                      )}
+
+                                        {hrWorkersList.length > 0 ? (
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 border rounded-lg bg-muted/10 max-h-56 overflow-y-auto">
+                                            {hrWorkersList
+                                              .filter(worker => {
+                                                const ttl = selectedPlanWorkers.find(w => (w as any).isTtl);
+                                                return worker.id !== ttl?.id && worker.fullName !== ttl?.name;
+                                              })
+                                              .map((worker) => {
+                                                const isSelected = selectedPlanWorkers.some(w => w.id === worker.id && !(w as any).isTtl);
+                                                const match = selectedPlanWorkers.find(w => w.id === worker.id);
+                                                const currentPerDiem = match ? match.perDiem : 500;
+                                                const dept = worker.departmentName || worker.department || "Field Operations";
+
+                                                return (
+                                                  <div key={worker.id} className="flex items-center justify-between p-2 border rounded-lg bg-card hover:bg-muted/40 transition-colors">
+                                                    <div className="flex items-center gap-2 overflow-hidden">
+                                                      <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={(e) => {
+                                                          if (e.target.checked) {
+                                                            setSelectedPlanWorkers([
+                                                              ...selectedPlanWorkers,
+                                                              { id: worker.id, name: worker.fullName, position: worker.position || "Staff", perDiem: 500 }
+                                                            ]);
+                                                          } else {
+                                                            setSelectedPlanWorkers(selectedPlanWorkers.filter(w => w.id !== worker.id));
+                                                          }
+                                                        }}
+                                                        className="rounded border-gray-300 mr-1"
+                                                      />
+                                                      <div className="truncate">
+                                                        <div className="flex items-center gap-1.5">
+                                                          <span className="text-xs font-semibold text-foreground truncate">{worker.fullName}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 mt-0.5">
+                                                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-primary/30 text-primary">
+                                                            {dept}
+                                                          </Badge>
+                                                          <span className="text-[10px] text-muted-foreground truncate">{worker.position || "Staff"}</span>
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                    
+                                                    {isSelected && (
+                                                      <div className="flex items-center gap-1 ml-2 shrink-0">
+                                                        <Input
+                                                          type="number"
+                                                          value={currentPerDiem}
+                                                          onChange={(e) => {
+                                                            const val = parseFloat(e.target.value) || 0;
+                                                            setSelectedPlanWorkers(selectedPlanWorkers.map(w => w.id === worker.id ? { ...w, perDiem: val } : w));
+                                                          }}
+                                                          className="w-16 h-6 text-xs px-1.5 text-right bg-background border-border font-mono font-semibold"
+                                                        />
+                                                        <span className="text-[9px] text-muted-foreground font-mono">ETB</span>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                );
+                                              })}
+                                          </div>
+                                        ) : (
+                                          <p className="text-xs text-muted-foreground">No active personnel found in HR workforce registry.</p>
+                                        )}
+                                      </div>
                                     </div>
 
                                     {/* Fuel Budget */}
@@ -1462,7 +1539,7 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                               <p className="font-bold text-primary">• Total Travel Budget: {Number(fw.cost).toLocaleString()} ETB</p>
                             </div>
 
-                            {hasAccess(["fieldwork", "manager", "ttl"]) ? (
+                            {hasAccess(["fieldwork"]) ? (
                               <Button size="sm" onClick={() => handleTmCheck(fw.id)} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold">
                                 TM Check & Sign Fieldwork Plan
                               </Button>
@@ -1482,7 +1559,7 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                               <p>• Assigned Crew: {(fw.payload?.workers || []).map((w: any) => w.name).join(', ')}</p>
                             </div>
 
-                            {(currentUser?.role === 'manager' || currentUser?.roles?.includes('manager')) ? (
+                            {hasAccess(["manager"]) ? (
                               <Button size="sm" onClick={() => handleGmApprovePlan(fw.id)} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
                                 GM Approve Fieldwork Plan
                               </Button>
@@ -1503,7 +1580,7 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                               <p>• Payment Reference: PAY-FW-{fw.id}</p>
                             </div>
 
-                            {(currentUser?.role === 'finance' || currentUser?.roles?.includes('finance')) ? (
+                            {hasAccess(["finance"]) ? (
                               <Button size="sm" onClick={() => handleFinanceApprove(fw.id)} className="bg-green-600 hover:bg-green-700 text-white font-semibold">
                                 Finance Release & Approve Budget
                               </Button>
@@ -1523,16 +1600,83 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                             <p className="text-xs text-muted-foreground font-medium">To begin the field trip and unlock reporting, the Technical Team Leader (TTL) must confirm departure below.</p>
                             
                             {(() => {
+                              // 1. Build comprehensive checklist items (Pump + Panels + Accessories + Tools)
+                              const checklistItems: {
+                                id: string;
+                                category: "PUMP" | "SOLAR_PANEL" | "PUMP_EQUIPMENT" | "WORK_TOOL" | "COMPANY_TOOL";
+                                badgeText: string;
+                                badgeColor: string;
+                                title: string;
+                                subtitle?: string;
+                                source?: string;
+                              }[] = [];
+
+                              // A. Main Pump Unit
+                              const pumpName = fw.pumpModel || fw.payload?.pumpModel || "Solar Submersible Pump";
+                              const pumpSerial = fw.payload?.pumpSerial;
+                              const pumpSource = fw.payload?.pumpSource || "FROM_STOCK";
+                              checklistItems.push({
+                                id: `pump-${fw.id}`,
+                                category: "PUMP",
+                                badgeText: "PUMP UNIT",
+                                badgeColor: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+                                title: `${pumpName}${pumpSerial ? ` (SN: ${pumpSerial})` : ""}`,
+                                subtitle: pumpSerial ? `Verified Physical Serial: ${pumpSerial}` : "Physical Pump Unit ready for site deployment",
+                                source: pumpSource === "FROM_STOCK" ? "From Warehouse Stock" : "Direct Procured",
+                              });
+
+                              // B. Planned Equipment, Solar Panels & Consumables
+                              const rawMaterials = (fw.materials && fw.materials.length > 0) ? fw.materials : (fw.payload?.materials || []);
+                              rawMaterials.forEach((m: any, mIdx: number) => {
+                                if (m.category === "PUMP" && (m.name === pumpName || m.name === fw.pumpModel)) {
+                                  return; // avoid duplicate pump
+                                }
+                                const cat = (m.category || "PUMP_EQUIPMENT").toUpperCase();
+                                const isPanel = cat === "SOLAR_PANEL" || m.name?.toLowerCase().includes("panel");
+                                const isEquip = cat === "PUMP_EQUIPMENT" || m.name?.toLowerCase().includes("controller") || m.name?.toLowerCase().includes("inverter");
+
+                                checklistItems.push({
+                                  id: m.id ? String(m.id) : `mat-${mIdx}`,
+                                  category: isPanel ? "SOLAR_PANEL" : isEquip ? "PUMP_EQUIPMENT" : "WORK_TOOL",
+                                  badgeText: isPanel ? "SOLAR PANELS" : isEquip ? "EQUIPMENT" : "CONSUMABLE / ACC",
+                                  badgeColor: isPanel 
+                                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                                    : isEquip 
+                                    ? "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30"
+                                    : "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30",
+                                  title: `${m.name} (${m.quantity || 1} ${m.unit || "pcs"})`,
+                                  subtitle: m.source === "FROM_STOCK" ? "Allocated from Stock" : "Direct Purchase",
+                                  source: m.source === "FROM_STOCK" ? "From Stock" : "Direct Purchase",
+                                });
+                              });
+
+                              // C. Checked Out Company Reusable Tools (Resolve Names & Serials)
+                              (fw.payload?.companyTools || []).forEach((toolIdOrName: any, tIdx: number) => {
+                                const toolObj = allCompanyAssets.find((t: any) => t.id === toolIdOrName || t.serialNumber === toolIdOrName || t.name === toolIdOrName) ||
+                                                availableTools.find((t: any) => t.id === toolIdOrName || t.serialNumber === toolIdOrName || t.name === toolIdOrName);
+                                
+                                const toolName = toolObj?.name || (typeof toolIdOrName === "object" ? toolIdOrName.name : null) || (typeof toolIdOrName === "string" && !toolIdOrName.startsWith("cm") && !toolIdOrName.startsWith("cly") && toolIdOrName.length < 30 ? toolIdOrName : "Company Reusable Tool");
+                                const toolSerial = toolObj?.serialNumber || (typeof toolIdOrName === "object" ? toolIdOrName.serialNumber : null);
+
+                                checklistItems.push({
+                                  id: `tool-${tIdx}`,
+                                  category: "COMPANY_TOOL",
+                                  badgeText: "COMPANY TOOL",
+                                  badgeColor: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30",
+                                  title: `${toolName}${toolSerial ? ` (S/N: ${toolSerial})` : ""}`,
+                                  subtitle: toolObj ? `Checked Out Reusable Asset - Condition: ${toolObj.condition || 'GOOD'}` : "Checked Out Company Reusable Asset",
+                                  source: "Company Equipment",
+                                });
+                              });
+
                               const pendingReleases = (fw.materials || []).filter(
                                 (m: any) => m.source === "FROM_STOCK" && m.status !== "RELEASED"
                               );
                               const hasPendingReleases = pendingReleases.length > 0;
 
-                              const materialsCount = (fw.materials || []).length;
-                              const companyToolsCount = (fw.payload?.companyTools || []).length;
-                              const totalChecklistItems = materialsCount + companyToolsCount;
-                              const checkedCount = Object.values(checklistChecked[fw.id] || {}).filter(Boolean).length;
-                              const isChecklistComplete = checkedCount >= totalChecklistItems;
+                              const totalChecklistItems = checklistItems.length;
+                              const checkedCount = checklistItems.filter(item => Boolean(checklistChecked[fw.id]?.[item.id])).length;
+                              const isChecklistComplete = totalChecklistItems > 0 && checkedCount >= totalChecklistItems;
 
                               return (
                                 <div className="space-y-3">
@@ -1557,66 +1701,57 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                                       <div className="space-y-3">
                                         {/* Pre-deployment checklist */}
                                         <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 space-y-3 my-2">
-                                          <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-400">
-                                            <ClipboardCheck className="h-4 w-4" /> Pre-Deployment Equipment Checklist ({checkedCount}/{totalChecklistItems})
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-400">
+                                              <ClipboardCheck className="h-4 w-4" /> Pre-Deployment Physical Equipment Checklist ({checkedCount}/{totalChecklistItems})
+                                            </div>
+                                            <Badge className={isChecklistComplete ? "bg-emerald-600 text-white text-[10px]" : "bg-muted text-muted-foreground text-[10px]"}>
+                                              {isChecklistComplete ? "ALL ITEMS VERIFIED ON HAND" : `${totalChecklistItems - checkedCount} REMAINING`}
+                                            </Badge>
                                           </div>
                                           <p className="text-[11px] text-muted-foreground">
-                                            Verify you have all physical equipment and materials on hand before departure. Tick all items to authorize departure.
+                                            Verify and tick each physical pump unit, solar panels, controller, and company tools on hand before departure:
                                           </p>
 
-                                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                                            {/* Material items */}
-                                            {(fw.materials || []).map((m: any) => {
-                                              const isChecked = Boolean(checklistChecked[fw.id]?.[m.id]);
+                                          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                                            {checklistItems.map((item) => {
+                                              const isChecked = Boolean(checklistChecked[fw.id]?.[item.id]);
                                               return (
-                                                <label key={m.id} className="flex items-center gap-2 text-[11px] font-medium text-foreground cursor-pointer hover:bg-muted/30 p-1.5 rounded transition-all">
-                                                  <input
-                                                    type="checkbox"
-                                                    checked={isChecked}
-                                                    onChange={(e) => {
-                                                      setChecklistChecked(prev => ({
-                                                        ...prev,
-                                                        [fw.id]: {
-                                                          ...(prev[fw.id] || {}),
-                                                          [m.id]: e.target.checked
-                                                        }
-                                                      }));
-                                                    }}
-                                                    className="rounded border-border text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5 cursor-pointer"
-                                                  />
-                                                  <span>
-                                                    {m.name} ({m.quantity} {m.unit || "pcs"}) - <span className="text-[10px] uppercase font-bold text-muted-foreground">{m.source === "FROM_STOCK" ? "From Stock" : "Direct Purchase"}</span>
-                                                  </span>
+                                                <label key={item.id} className={`flex items-center justify-between gap-2 text-[11px] font-medium p-2 rounded-lg border transition-all cursor-pointer ${
+                                                  isChecked ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-950 dark:text-emerald-200" : "bg-card hover:bg-muted/40 border-border text-foreground"
+                                                }`}>
+                                                  <div className="flex items-center gap-2.5 min-w-0">
+                                                    <input
+                                                      type="checkbox"
+                                                      checked={isChecked}
+                                                      onChange={(e) => {
+                                                        setChecklistChecked(prev => ({
+                                                          ...prev,
+                                                          [fw.id]: {
+                                                            ...(prev[fw.id] || {}),
+                                                            [item.id]: e.target.checked
+                                                          }
+                                                        }));
+                                                      }}
+                                                      className="rounded border-border text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer shrink-0"
+                                                    />
+                                                    <div className="truncate">
+                                                      <span className="font-bold block truncate">{item.title}</span>
+                                                      {item.subtitle && (
+                                                        <span className="text-[10px] text-muted-foreground font-mono block truncate">{item.subtitle}</span>
+                                                      )}
+                                                    </div>
+                                                  </div>
+
+                                                  <Badge className={`${item.badgeColor} text-[9px] font-bold shrink-0 uppercase tracking-wider`}>
+                                                    {item.badgeText}
+                                                  </Badge>
                                                 </label>
                                               );
                                             })}
 
-                                            {/* Company tools */}
-                                            {(fw.payload?.companyTools || []).map((tool: string, idx: number) => {
-                                              const isChecked = Boolean(checklistChecked[fw.id]?.[`tool-${idx}`]);
-                                              return (
-                                                <label key={`tool-${idx}`} className="flex items-center gap-2 text-[11px] font-medium text-foreground cursor-pointer hover:bg-muted/30 p-1.5 rounded transition-all">
-                                                  <input
-                                                    type="checkbox"
-                                                    checked={isChecked}
-                                                    onChange={(e) => {
-                                                      setChecklistChecked(prev => ({
-                                                        ...prev,
-                                                        [fw.id]: {
-                                                          ...(prev[fw.id] || {}),
-                                                          [`tool-${idx}`]: e.target.checked
-                                                        }
-                                                      }));
-                                                    }}
-                                                    className="rounded border-border text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5 cursor-pointer"
-                                                  />
-                                                  <span>Company Tool: {tool}</span>
-                                                </label>
-                                              );
-                                            })}
-
-                                            {(!fw.materials?.length && !fw.payload?.companyTools?.length) && (
-                                              <div className="text-[11px] text-muted-foreground italic">No materials or tools planned for this job. Ready to depart.</div>
+                                            {checklistItems.length === 0 && (
+                                              <div className="text-[11px] text-muted-foreground italic py-2">No materials or tools planned for this job. Ready to depart.</div>
                                             )}
                                           </div>
                                         </div>
@@ -1625,7 +1760,7 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                                           size="sm"
                                           onClick={() => handleDispatchCrew(fw.id)}
                                           disabled={!isChecklistComplete}
-                                          className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold flex items-center gap-1.5 mt-2"
+                                          className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold flex items-center gap-1.5 mt-2 shadow-sm"
                                         >
                                           <Truck className="h-4 w-4 animate-bounce" /> Confirm Departure & Start Journey
                                         </Button>
@@ -1705,7 +1840,7 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                               </div>
                             )}
                             
-                            {hasAccess(["fieldwork", "manager"]) ? (
+                            {hasAccess(["fieldwork"]) ? (
                               <Button size="sm" onClick={() => handleApproveReturns(fw.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
                                 Review Completion Photos & Sign Off Fieldwork
                               </Button>

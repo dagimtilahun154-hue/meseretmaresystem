@@ -352,7 +352,7 @@ export default function ReportsPage() {
                         )}
 
                         {/* Forward option for Department Leads */}
-                        {hasAccess(["ttl", "finance", "admin"]) && rep.status !== "FORWARDED_TO_GM" && (
+                        {hasAccess(["fieldwork", "ttl", "finance", "admin"]) && rep.status !== "FORWARDED_TO_GM" && (
                           <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-2">
                             <Label className="text-xs font-semibold text-amber-800 dark:text-amber-300">
                               Department Lead Review (Attach summary & forward to GM):

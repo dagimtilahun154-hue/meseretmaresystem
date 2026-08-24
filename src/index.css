@@ -161,14 +161,15 @@
   }
 
   /* When printable executive PDF is present, display it prominently */
-  .printable-executive-pdf {
+  .printable-executive-pdf, .company-document-header {
     display: block !important;
     position: static !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 0 !important;
+    margin-bottom: 1.25rem !important;
     box-shadow: none !important;
     page-break-after: auto;
+    page-break-inside: avoid !important;
   }
 
   /* Expand Radix Dialog for Full Page Printing */

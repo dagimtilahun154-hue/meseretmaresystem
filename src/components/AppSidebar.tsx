@@ -114,20 +114,8 @@ const navItems: NavItem[] = [
   { title: "Reports", url: "/reports", icon: BarChart3, roles: ["admin", "manager", "finance"] },
 
   // Phase 6: Administration & Workforce
-  {
-    title: "HR & Attendance",
-    url: "/hr",
-    icon: Users,
-    roles: ["admin", "attendance", "hr"],
-    subItems: [
-      { title: "Dashboard", url: "/hr/dashboard", icon: LayoutDashboard, roles: ["admin", "hr"] },
-      { title: "Workers", url: "/hr/workers", icon: Users, roles: ["admin", "hr"] },
-      { title: "Registration", url: "/hr/registration", icon: Fingerprint, roles: ["admin", "hr"] },
-      { title: "Scan Page", url: "/hr/scan", icon: Clock, roles: ["admin", "attendance", "hr"] },
-      { title: "Reports", url: "/hr/reports", icon: ClipboardList, roles: ["admin", "hr"] },
-      { title: "Settings", url: "/hr/settings", icon: Settings, roles: ["admin", "hr"] },
-    ]
-  },
+  { title: "Workforce Registry", url: "/hr/workers", icon: Users, roles: ["admin", "hr", "manager", "finance"] },
+  { title: "Monthly Payroll", url: "/hr/payroll", icon: DollarSign, roles: ["admin", "hr", "manager", "finance"] },
   { title: "User Accounts", url: "/users", icon: Users, roles: ["admin"] },
 ];
 
@@ -159,7 +147,6 @@ export function AppSidebar() {
   }[];
 
   const [financeOpen, setFinanceOpen] = useState(false);
-  const [hrOpen, setHrOpen] = useState(false);
   const [fieldworkOpen, setFieldworkOpen] = useState(false);
   const [sizingPayCount, setSizingPayCount] = useState<number>(0);
   const { counts } = useWebSocket();
@@ -194,9 +181,6 @@ export function AppSidebar() {
     if (location.pathname.startsWith("/finance")) {
       setFinanceOpen(true);
     }
-    if (location.pathname.startsWith("/hr")) {
-      setHrOpen(true);
-    }
     if (location.pathname.startsWith("/fieldwork")) {
       setFieldworkOpen(true);
     }
@@ -219,22 +203,24 @@ export function AppSidebar() {
     >
       <SidebarHeader className="border-b border-white/10 px-3 py-3 overflow-hidden">
         <motion.div
-          animate={{ height: collapsed ? 40 : 56 }}
+          animate={{ height: collapsed ? 44 : 56 }}
           transition={{ type: "spring", stiffness: 180, damping: 22 }}
           className="flex items-center justify-center w-full relative overflow-hidden"
         >
-          <motion.img
-            src="/uploads/logo3.jpg"
-            alt="Meseret Mare Solar"
-            animate={{
-              height: collapsed ? 32 : 48,
-            }}
-            transition={{ type: "spring", stiffness: 180, damping: 22 }}
-            className={cn(
-              "w-auto object-contain pointer-events-none select-none origin-center transition-all duration-200",
-              collapsed ? "max-w-12" : ""
-            )}
-          />
+          <div className="bg-white rounded-xl px-2 py-1 flex items-center justify-center shadow-md border border-white/20">
+            <motion.img
+              src="/uploads/Untitled_design__4_-removebg-preview.png"
+              alt="Meseret Mare Solar"
+              animate={{
+                height: collapsed ? 30 : 42,
+              }}
+              transition={{ type: "spring", stiffness: 180, damping: 22 }}
+              className={cn(
+                "w-auto object-contain pointer-events-none select-none origin-center transition-all duration-200",
+                collapsed ? "max-w-9" : ""
+              )}
+            />
+          </div>
         </motion.div>
       </SidebarHeader>
 
@@ -248,10 +234,9 @@ export function AppSidebar() {
             <SidebarMenu className={cn("transition-all duration-200 space-y-1", collapsed ? "px-2 py-2" : "p-0")}>
               {visibleItems.map((item) => {
                 const hasSubItems = item.subItems && item.subItems.length > 0;
-                const isFinance = item.title === "Finance Center";
-                const isHR = item.title === "HR & Attendance";
-                const isFieldwork = item.title === "Field Work";
-                const isOpen = isFinance ? financeOpen : isHR ? hrOpen : isFieldwork ? fieldworkOpen : false;
+                const isFinance = item.title.includes("Finance") || item.url.startsWith("/finance");
+                const isFieldwork = item.title.includes("Field") || item.url.startsWith("/fieldwork");
+                const isOpen = isFinance ? financeOpen : isFieldwork ? fieldworkOpen : false;
 
                 return (
                   <SidebarMenuItem key={item.title}>
@@ -268,7 +253,6 @@ export function AppSidebar() {
                           )}
                           onClick={() => {
                             if (isFinance) setFinanceOpen(!financeOpen);
-                            if (isHR) setHrOpen(!hrOpen);
                             if (isFieldwork) setFieldworkOpen(!fieldworkOpen);
                           }}
                         >

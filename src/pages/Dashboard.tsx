@@ -30,6 +30,7 @@ import { TTLHubDashboard } from "@/components/dashboards/TTLHubDashboard";
 import { FinanceHubDashboard } from "@/components/dashboards/FinanceHubDashboard";
 import { GMHubDashboard } from "@/components/dashboards/GMHubDashboard";
 import { AdminHubDashboard } from "@/components/dashboards/AdminHubDashboard";
+import { HRHubDashboard } from "@/components/dashboards/HRHubDashboard";
 
 export default function Dashboard() {
   const { currentUser, hasAccess } = useAuth();
@@ -541,6 +542,9 @@ export default function Dashboard() {
   }
   if (userRole === "fieldwork" || userRole === "field" || userRole === "tech" || userDept === "technical" || username === "field") {
     return <TechHubDashboard />;
+  }
+  if (userRole === "hr" || userRole === "attendance" || userDept === "hr" || username === "hr") {
+    return <HRHubDashboard />;
   }
 
 

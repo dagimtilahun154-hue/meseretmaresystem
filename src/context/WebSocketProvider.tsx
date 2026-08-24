@@ -45,16 +45,23 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     const socketUrl = "http://localhost:4000";
     const socketInstance = io(socketUrl, {
       query: { userId: currentUser.id },
-      transports: ["websocket", "polling"],
+      transports: ["polling", "websocket"],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 3000,
+      timeout: 10000,
+      autoConnect: true,
     });
 
     socketInstance.on("connect", () => {
-      console.log("WebSocket connected:", socketInstance.id);
       setIsConnected(true);
     });
 
     socketInstance.on("disconnect", () => {
-      console.log("WebSocket disconnected");
+      setIsConnected(false);
+    });
+
+    socketInstance.on("connect_error", () => {
+      // Quietly fallback without breaking UI
       setIsConnected(false);
     });
 

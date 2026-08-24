@@ -21,7 +21,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   DollarSign, Users, BarChart3, FileText, Plus, Check, X,
   Clock, CheckCircle2, XCircle, Landmark,
-  CreditCard, Calendar, CalendarClock, ArrowUpRight, ArrowDownRight, Building, Coins, Droplets
+  CreditCard, Calendar, CalendarClock, ArrowUpRight, ArrowDownRight, Building, Coins, Droplets,
+  MapPin
 } from "lucide-react";
 import { toast } from "sonner";
 import {

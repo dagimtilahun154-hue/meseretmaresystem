@@ -35,6 +35,10 @@ apiClient.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  if (!config.headers["x-company-id"]) {
+    const savedEntity = localStorage.getItem("financeEntity") || "MM";
+    config.headers["x-company-id"] = savedEntity;
+  }
   config.headers["x-request-id"] = crypto.randomUUID();
   return config;
 });

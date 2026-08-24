@@ -29,8 +29,8 @@ import { CustomerDossierPage } from "@/pages/CustomerDossierPage";
 // HR Pages
 import HRDashboard from "@/components/hr/pages/Dashboard";
 import Workers from "@/components/hr/pages/Workers";
-import FingerprintRegistration from "@/components/hr/pages/FingerprintRegistration";
-import AttendanceScan from "@/components/hr/pages/AttendanceScan";
+import EmployeeProfilePage from "@/components/hr/pages/EmployeeProfilePage";
+import Payroll from "@/components/hr/pages/Payroll";
 import HRReports from "@/components/hr/pages/Reports";
 import HRSettings from "@/components/hr/pages/Settings";
 
@@ -256,13 +256,12 @@ function AuthenticatedApp() {
           }
         />
 
-        {/* HR & Attendance Routes */}
-        <Route path="/hr/dashboard" element={<ProtectedRoute roles={["admin", "hr"]}><HRDashboard /></ProtectedRoute>} />
-        <Route path="/hr/workers" element={<ProtectedRoute roles={["admin", "hr"]}><Workers /></ProtectedRoute>} />
-        <Route path="/hr/registration" element={<ProtectedRoute roles={["admin", "hr"]}><FingerprintRegistration /></ProtectedRoute>} />
-        <Route path="/hr/scan" element={<ProtectedRoute roles={["admin", "attendance", "hr"]}><AttendanceScan /></ProtectedRoute>} />
-        <Route path="/hr/reports" element={<ProtectedRoute roles={["admin", "hr"]}><HRReports /></ProtectedRoute>} />
-        <Route path="/hr/settings" element={<ProtectedRoute roles={["admin", "hr"]}><HRSettings /></ProtectedRoute>} />
+        {/* HR & Workforce Routes */}
+        <Route path="/hr" element={<Navigate to="/hr/workers" replace />} />
+        <Route path="/hr/dashboard" element={<Navigate to="/hr/workers" replace />} />
+        <Route path="/hr/workers" element={<ProtectedRoute roles={["admin", "hr", "manager", "finance"]}><Workers /></ProtectedRoute>} />
+        <Route path="/hr/workers/:id" element={<ProtectedRoute roles={["admin", "hr", "manager", "finance"]}><EmployeeProfilePage /></ProtectedRoute>} />
+        <Route path="/hr/payroll" element={<ProtectedRoute roles={["admin", "hr", "manager", "finance"]}><Payroll /></ProtectedRoute>} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>

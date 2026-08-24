@@ -12,9 +12,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Check, X, Send, Inbox, FileText, ChevronRight, Share2, PlusCircle, Package, Wrench, UserCheck, ShoppingCart, Bell } from "lucide-react";
+import {
+  Check, X, Send, Inbox, FileText, ChevronRight, ChevronDown, ChevronUp,
+  Share2, PlusCircle, Package, Wrench, UserCheck, ShoppingCart, Bell,
+  CheckCircle2, Clock, Eye, ExternalLink, Wallet, Users, AlertCircle
+} from "lucide-react";
 import { toast } from "sonner";
 import { NotificationsList } from "./NotificationsList";
+import { formatCurrency } from "@/lib/data";
+import { format } from "date-fns";
 
 
 interface HierarchyRequest {
@@ -46,6 +52,8 @@ const TYPE_LABELS: Record<string, string> = {
   FIELD_TRIP: "Field Work Trip",
   MARKETING: "Marketing Budget",
   GENERAL: "Custom Memo / Decision",
+  INDIVIDUAL_PAYROLL: "Staff Monthly Payroll Disbursement",
+  PAYROLL_DISBURSEMENT: "Monthly Staff Payroll Batch",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -270,7 +278,106 @@ function renderDetailedRequest(req: HierarchyRequest) {
     }
   }
 
-  // Fallback to standard rendering
+  if (req.type === "INDIVIDUAL_PAYROLL") {
+    const details = (req as any).details || {};
+    return (
+      <div className="space-y-4">
+        {/* Employee Summary Card */}
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-3">
+          <div className="flex items-center justify-between border-b pb-2.5 border-emerald-500/15">
+            <div className="flex items-center gap-2.5">
+              {details.photoUrl ? (
+                <img src={details.photoUrl} alt={details.fullName || "Staff"} className="h-11 w-11 rounded-full object-cover border-2 border-emerald-500/30" />
+              ) : (
+                <div className="h-11 w-11 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-sm">
+                  {(details.fullName || "ST").slice(0, 2).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <span className="text-[10px] font-mono text-emerald-600 font-bold block">STAFF ID: {details.workerCode || "EMP"}</span>
+                <h4 className="font-bold text-sm text-foreground">{details.fullName || req.title}</h4>
+                <span className="text-[11px] text-muted-foreground">{details.position || "Staff"} • <strong className="text-foreground">{details.department || "General"}</strong></span>
+              </div>
+            </div>
+            {details.workerId && (
+              <a
+                href={`#/hr/workers/${details.workerId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20"
+              >
+                Inspect Dossier ↗
+              </a>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div>
+              <span className="text-muted-foreground block text-[10px] uppercase">Registered Salary</span>
+              <strong className="font-mono text-foreground">{Number(details.salary || 0).toLocaleString()} ETB</strong>
+            </div>
+            <div>
+              <span className="text-muted-foreground block text-[10px] uppercase text-amber-600">PAYE Tax</span>
+              <strong className="font-mono text-amber-600 dark:text-amber-400">-{Number(details.payeTax || 0).toLocaleString()} ETB</strong>
+            </div>
+            <div>
+              <span className="text-muted-foreground block text-[10px] uppercase text-blue-600">Pension (7%)</span>
+              <strong className="font-mono text-blue-600 dark:text-blue-400">-{Number(details.employeePension || 0).toLocaleString()} ETB</strong>
+            </div>
+            <div>
+              <span className="text-muted-foreground block text-[10px] uppercase text-destructive">Total Deductions</span>
+              <strong className="font-mono text-destructive">-{Number(details.totalDeductions || 0).toLocaleString()} ETB</strong>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-lg bg-emerald-600/10 border border-emerald-500/20 flex justify-between items-center">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-emerald-800 dark:text-emerald-300 block">Net Salary Payable</span>
+              <span className="text-xs text-muted-foreground">To {details.bankName || "CBE"}: <strong className="font-mono text-foreground">{details.bankAccountNo || "—"}</strong></span>
+            </div>
+            <div className="text-right">
+              <span className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">
+                {Number(details.payableAmount || req.amount || 0).toLocaleString()} ETB
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (req.type === "PAYROLL_DISBURSEMENT") {
+    const details = (req as any).details || {};
+    const employees: any[] = Array.isArray(details.employees) ? details.employees : [];
+    const paidCount = employees.filter((e) => e.paid).length;
+    return (
+      <div className="space-y-3">
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-3">
+          <div className="flex justify-between items-center border-b pb-2 border-emerald-500/15">
+            <div>
+              <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                {details.payrollMonth || "Monthly Payroll"}
+              </span>
+              <p className="text-[11px] text-muted-foreground">{employees.length} Staff Members in Batch</p>
+            </div>
+            <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold text-xs">
+              {paidCount} / {employees.length} Paid
+            </Badge>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span className="text-muted-foreground block text-[10px] uppercase">Gross Salary</span>
+              <strong className="text-foreground">{formatCurrency(Number(details.totalSalary || 0))}</strong>
+            </div>
+            <div>
+              <span className="text-muted-foreground block text-[10px] uppercase">Net Salary Payable</span>
+              <strong className="text-emerald-700 dark:text-emerald-400 font-bold">{formatCurrency(Number(details.totalPayable || req.amount || 0))}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-1.5">
       <span className="text-muted-foreground text-xs font-semibold block">Description</span>
@@ -363,13 +470,510 @@ export function ApprovalsInbox() {
     }
   };
 
-  const myRequests = requests.filter(r => r.createdById === currentUser?.id);
-  const pendingApprovals = requests.filter(r => r.assignedToId === currentUser?.id && !TERMINAL_STATUSES.includes(r.status?.toUpperCase()));
-  const historyRequests = requests.filter(r => (r.createdById === currentUser?.id || r.assignedToId === currentUser?.id) && TERMINAL_STATUSES.includes(r.status?.toUpperCase()));
+  // Dropdown expansion state for inline accordion
+  const [expandedReqIds, setExpandedReqIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedReqIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleMarkEmployeePaid = async (req: HierarchyRequest, empWorkerId: string) => {
+    try {
+      const details = (req as any).details || {};
+      const employees = Array.isArray(details.employees) ? [...details.employees] : [];
+      const targetEmp = employees.find((e: any) => e.workerId === empWorkerId || e.workerCode === empWorkerId);
+      if (!targetEmp) return;
+
+      const paidTimestamp = new Date().toISOString();
+      const paymentRef = `CBE-PAY-${req.id.slice(-6).toUpperCase()}`;
+
+      const updatedEmployees = employees.map((e: any) => {
+        if (e.workerId === empWorkerId || e.workerCode === empWorkerId) {
+          return {
+            ...e,
+            paid: true,
+            paidAt: paidTimestamp,
+            paymentRef,
+            paidBy: currentUser?.displayName || "Finance Dept",
+          };
+        }
+        return e;
+      });
+
+      const allNowPaid = updatedEmployees.every((e: any) => e.paid);
+
+      await hierarchyRequestsDB.updateDetails(
+        req.id,
+        {
+          employees: updatedEmployees,
+          status: allNowPaid ? "APPROVED" : req.status,
+        },
+        `Disbursed salary to ${targetEmp.fullName} (${targetEmp.workerCode}) via ${paymentRef}`
+      );
+
+      toast.success(`Disbursed salary for ${targetEmp.fullName}!`);
+      fetchRequests();
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Failed to mark employee as paid");
+    }
+  };
+
+  const handleMarkAllEmployeesPaid = async (req: HierarchyRequest) => {
+    try {
+      const details = (req as any).details || {};
+      const employees = Array.isArray(details.employees) ? [...details.employees] : [];
+      const paidTimestamp = new Date().toISOString();
+      const paymentRef = `CBE-BATCH-${req.id.slice(-6).toUpperCase()}`;
+
+      const updatedEmployees = employees.map((e: any) => ({
+        ...e,
+        paid: true,
+        paidAt: e.paidAt || paidTimestamp,
+        paymentRef: e.paymentRef || paymentRef,
+        paidBy: currentUser?.displayName || "Finance Dept",
+      }));
+
+      await hierarchyRequestsDB.updateDetails(
+        req.id,
+        {
+          employees: updatedEmployees,
+          status: "APPROVED",
+        },
+        `Batch marked all ${employees.length} employees as Paid via ${paymentRef}`
+      );
+
+      toast.success(`Successfully marked all ${employees.length} employees as Paid!`);
+      fetchRequests();
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Failed to mark all as paid");
+    }
+  };
+
+  const isFinanceOrAdmin = hasAccess(["finance", "admin"]);
+  const myRequests = requests.filter((r) => r.createdById === currentUser?.id);
+  const pendingApprovals = requests.filter((r) => {
+    const isTerminal = TERMINAL_STATUSES.includes(r.status?.toUpperCase());
+    if (isTerminal) return false;
+    if (r.assignedToId === currentUser?.id) return true;
+    if (isFinanceOrAdmin && (r.type === "INDIVIDUAL_PAYROLL" || r.type === "PAYROLL_DISBURSEMENT" || r.assignedTo?.department === "Finance")) {
+      return true;
+    }
+    return false;
+  });
+  const historyRequests = requests.filter((r) => {
+    const isTerminal = TERMINAL_STATUSES.includes(r.status?.toUpperCase());
+    if (!isTerminal) return false;
+    if (r.createdById === currentUser?.id || r.assignedToId === currentUser?.id) return true;
+    if (isFinanceOrAdmin && (r.type === "INDIVIDUAL_PAYROLL" || r.type === "PAYROLL_DISBURSEMENT")) return true;
+    return false;
+  });
+
+  const renderRequestRow = (req: HierarchyRequest, tab: "inbox" | "sent" | "history") => {
+    const isExpanded = expandedReqIds.has(req.id);
+    const isPayroll =
+      req.type === "PAYROLL_DISBURSEMENT" ||
+      req.type === "INDIVIDUAL_PAYROLL" ||
+      req.type?.toLowerCase().includes("payroll") ||
+      req.title?.toLowerCase().includes("payroll");
+
+    const details = (req as any).details || {};
+    const employees: any[] = Array.isArray(details.employees) ? details.employees : [];
+    const paidCount = employees.length > 0 ? employees.filter((e) => e.paid).length : (req.status === "APPROVED" || req.status === "PAID" ? 1 : 0);
+    const totalEmployees = employees.length || (req.type === "INDIVIDUAL_PAYROLL" ? 1 : details.staffCount || 0);
+    const progressPercent = totalEmployees > 0 ? Math.round((paidCount / totalEmployees) * 100) : 0;
+    const isFullyPaid = req.status === "APPROVED" || req.status === "PAID" || (employees.length > 0 && paidCount === totalEmployees);
+
+    return (
+      <div key={req.id} className="contents">
+        <TableRow
+          className={`hover:bg-muted/40 transition-colors ${isExpanded ? "bg-muted/20 border-b-0" : ""}`}
+        >
+          <TableCell>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleExpand(req.id);
+                }}
+                className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
+                title={isExpanded ? "Collapse dropdown" : "Expand dropdown"}
+              >
+                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </button>
+              <div className="flex flex-col">
+                <span className="font-semibold text-sm flex items-center gap-1.5">
+                  {req.title}
+                  {isPayroll && totalEmployees > 0 && (
+                    <Badge variant="outline" className={`text-[10px] font-bold ${isFullyPaid ? "bg-green-100 text-green-800 border-green-300" : "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300"}`}>
+                      {paidCount}/{totalEmployees} Paid
+                    </Badge>
+                  )}
+                </span>
+                {isPayroll && (
+                  <span className="text-[11px] text-muted-foreground">
+                    Click dropdown ▼ to review employees & execute disbursements inline
+                  </span>
+                )}
+              </div>
+            </div>
+          </TableCell>
+          <TableCell>
+            <Badge variant="secondary" className="text-xs font-normal">
+              {TYPE_LABELS[req.type] || req.type}
+            </Badge>
+          </TableCell>
+          <TableCell className="text-xs">
+            {tab === "sent" ? req.assignedTo?.displayName || "Self" : req.createdBy?.displayName || req.createdById}
+          </TableCell>
+          <TableCell className="font-semibold text-xs">
+            {req.amount ? `${Number(req.amount).toLocaleString()} ETB` : "—"}
+          </TableCell>
+          <TableCell className="text-xs text-muted-foreground">
+            {new Date(req.createdAt).toLocaleDateString()}
+          </TableCell>
+          <TableCell className="text-right">
+            <div className="flex items-center justify-end gap-1.5 flex-wrap">
+              {isFinanceOrAdmin && !isFullyPaid && (
+                <Button
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1 text-xs h-8 shadow-sm"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (employees.length > 0) {
+                      await handleMarkAllEmployeesPaid(req);
+                    } else {
+                      setSelectedRequest(req);
+                      await handleAction("APPROVE");
+                    }
+                  }}
+                  title="Authorize & mark as paid"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Mark Paid
+                </Button>
+              )}
+              {isFullyPaid && (
+                <Badge className="bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300 font-bold gap-1 text-xs h-7 px-2.5">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> PAID
+                </Badge>
+              )}
+              <Button
+                size="sm"
+                variant={isExpanded ? "secondary" : "outline"}
+                className="gap-1 text-xs h-8"
+                onClick={() => toggleExpand(req.id)}
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUp className="h-3.5 w-3.5" /> Collapse
+                  </>
+                ) : isPayroll ? (
+                  <>
+                    <Users className="h-3.5 w-3.5" /> {employees.length > 0 ? `View Roster (${totalEmployees})` : "View Details"}
+                  </>
+                ) : (
+                  <>
+                    Details <ChevronDown className="h-3.5 w-3.5" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </TableCell>
+        </TableRow>
+
+        {/* Expandable Inline Dropdown Row */}
+        {isExpanded && (
+          <TableRow className="bg-slate-50/80 dark:bg-slate-900/60 border-b border-border/80">
+            <TableCell colSpan={6} className="p-4 sm:p-5">
+              {isPayroll && employees.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Batch Overview Header */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3.5 rounded-lg bg-card border shadow-xs">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold">
+                          {details.payrollMonth || "Monthly Payroll"}
+                        </Badge>
+                        <span className="text-sm font-semibold">
+                          {totalEmployees} Employees Total
+                        </span>
+                        <span className="text-xs text-muted-foreground">•</span>
+                        <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                          Net Payable: {formatCurrency(Number(details.totalPayable || req.amount || 0))}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1.5">
+                        <span>Gross: {formatCurrency(Number(details.totalSalary || 0))}</span>
+                        <span>•</span>
+                        <span>PAYE: -{formatCurrency(Number(details.totalPaye || 0))}</span>
+                        <span>•</span>
+                        <span>Pension 7%: -{formatCurrency(Number(details.totalPension || 0))}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                      <div className="text-right text-xs">
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {paidCount} of {totalEmployees} Paid ({progressPercent}%)
+                        </span>
+                        <div className="w-28 bg-muted rounded-full h-2 mt-1 overflow-hidden border">
+                          <div
+                            className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {isFinanceOrAdmin && paidCount < totalEmployees && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleMarkAllEmployeesPaid(req)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 text-xs h-8 shadow-sm shrink-0"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Mark All as Paid
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Inline Employee Roster Table */}
+                  <div className="rounded-lg border bg-card overflow-hidden shadow-xs">
+                    <Table>
+                      <TableHeader className="bg-muted/40">
+                        <TableRow className="text-xs">
+                          <TableHead className="w-12 text-center">#</TableHead>
+                          <TableHead>Employee Details</TableHead>
+                          <TableHead>Department & Role</TableHead>
+                          <TableHead>Bank Account</TableHead>
+                          <TableHead className="text-right">Salary Payable</TableHead>
+                          <TableHead className="text-center">Dossier File</TableHead>
+                          <TableHead className="text-right">Payment Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {employees.map((emp: any, idx: number) => {
+                          const isPaid = Boolean(emp.paid);
+                          return (
+                            <TableRow key={emp.workerId || emp.workerCode || idx} className="text-xs hover:bg-muted/20">
+                              <TableCell className="text-center font-mono text-muted-foreground">
+                                {idx + 1}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2.5">
+                                  {emp.photoUrl ? (
+                                    <img
+                                      src={emp.photoUrl}
+                                      alt={emp.fullName}
+                                      className="w-8 h-8 rounded-full object-cover border shrink-0"
+                                    />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-xs shrink-0">
+                                      {(emp.fullName || "E").charAt(0)}
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="font-semibold text-foreground">{emp.fullName}</p>
+                                    <p className="text-[11px] font-mono text-muted-foreground">{emp.workerCode}</p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-[11px] bg-muted/40">
+                                  {emp.department}
+                                </Badge>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">{emp.position}</p>
+                              </TableCell>
+                              <TableCell>
+                                <p className="font-medium text-foreground">{emp.bankName}</p>
+                                <p className="text-[11px] font-mono text-muted-foreground">{emp.bankAccountNo}</p>
+                              </TableCell>
+                              <TableCell className="text-right font-bold text-emerald-700 dark:text-emerald-400">
+                                {formatCurrency(Number(emp.payableAmount || 0))}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    window.open(`/#/hr/workers/${emp.workerId || emp.workerCode}`, "_blank");
+                                  }}
+                                  className="h-7 text-[11px] gap-1 px-2.5"
+                                >
+                                  <ExternalLink className="h-3 w-3 text-primary" /> View File
+                                </Button>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {isPaid ? (
+                                  <div className="inline-flex flex-col items-end">
+                                    <Badge className="bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300 font-bold gap-1 text-[11px]">
+                                      <CheckCircle2 className="h-3 w-3" /> PAID
+                                    </Badge>
+                                    <span className="text-[10px] text-muted-foreground mt-0.5">
+                                      {emp.paidAt ? format(new Date(emp.paidAt), "dd MMM, HH:mm") : "Disbursed"}
+                                    </span>
+                                  </div>
+                                ) : isFinanceOrAdmin ? (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleMarkEmployeePaid(req, emp.workerId || emp.workerCode)}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] h-7 px-3 gap-1 shadow-xs"
+                                  >
+                                    <Wallet className="h-3 w-3" /> Mark Paid
+                                  </Button>
+                                ) : (
+                                  <Badge variant="outline" className="bg-amber-50 text-amber-700 text-[11px]">
+                                    Pending Review
+                                  </Badge>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              ) : isPayroll ? (
+                /* Individual Payroll Card */
+                <div className="p-4 bg-card rounded-lg border space-y-3">
+                  <div className="flex justify-between items-center border-b pb-3">
+                    <div className="flex items-center gap-3">
+                      {details.photoUrl ? (
+                        <img src={details.photoUrl} alt={details.fullName || "Staff"} className="w-10 h-10 rounded-full object-cover border" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-sm">
+                          {(details.fullName || "S").charAt(0)}
+                        </div>
+                      )}
+                      <div>
+                        <h4 className="font-bold text-sm text-foreground">{details.fullName || req.title}</h4>
+                        <p className="text-xs text-muted-foreground">{details.workerCode} • {details.department} • {details.position}</p>
+                      </div>
+                    </div>
+                    {details.workerId && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open(`/#/hr/workers/${details.workerId}`, "_blank")}
+                        className="text-xs h-7 gap-1"
+                      >
+                        <ExternalLink className="h-3 w-3 text-primary" /> View File
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div>
+                      <span className="text-muted-foreground block text-[10px] uppercase">Gross Salary</span>
+                      <strong>{formatCurrency(Number(details.salary || 0))}</strong>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[10px] uppercase">PAYE Tax</span>
+                      <strong className="text-amber-600">-{formatCurrency(Number(details.payeTax || 0))}</strong>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[10px] uppercase">Pension (7%)</span>
+                      <strong className="text-blue-600">-{formatCurrency(Number(details.employeePension || 0))}</strong>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[10px] uppercase">Salary Payable</span>
+                      <strong className="text-emerald-700 dark:text-emerald-400 font-bold text-sm">
+                        {formatCurrency(Number(details.payableAmount || req.amount || 0))}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <span className="text-xs text-muted-foreground">
+                      Disbursement Account: <strong>{details.bankName || "CBE"} ({details.bankAccountNo || "—"})</strong>
+                    </span>
+                    {isFinanceOrAdmin && !isFullyPaid && (
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          setSelectedRequest(req);
+                          await handleAction("APPROVE");
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 px-4 gap-1.5 shadow-sm"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Mark Paid
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* General Request Dropdown View with Instant Actions */
+                <div className="p-4 bg-card rounded-lg border text-xs space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">{req.title}</p>
+                      <p className="text-muted-foreground mt-1 whitespace-pre-wrap">{req.description || "No description provided."}</p>
+                    </div>
+                    {req.amount && (
+                      <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold text-xs">
+                        {Number(req.amount).toLocaleString()} ETB
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setSelectedRequest(req);
+                        setDialogOpen(true);
+                      }}
+                      className="text-xs h-7 text-muted-foreground hover:text-foreground"
+                    >
+                      More Details / History <ChevronRight className="h-3 w-3 ml-1" />
+                    </Button>
+
+                    {((req.assignedToId === currentUser?.id) || isFinanceOrAdmin) && !TERMINAL_STATUSES.includes(req.status?.toUpperCase()) && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={async () => {
+                            setSelectedRequest(req);
+                            await handleAction("REJECT");
+                          }}
+                          className="h-7 text-xs px-2.5"
+                        >
+                          <X className="h-3.5 w-3.5 mr-1" /> Reject
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            setSelectedRequest(req);
+                            await handleAction("APPROVE");
+                          }}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-7 text-xs px-3 shadow-xs"
+                        >
+                          <Check className="h-3.5 w-3.5 mr-1" /> Approve & Mark Paid
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </TableCell>
+          </TableRow>
+        )}
+      </div>
+    );
+  };
 
   return (
     <Card className="w-full">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
         <div>
           <CardTitle className="text-xl font-bold font-heading flex items-center gap-2">
             <Inbox className="h-5 w-5 text-primary" /> Requests & Approvals Hub
@@ -403,7 +1007,7 @@ export function ApprovalsInbox() {
                 No pending requests requiring your action.
               </div>
             ) : (
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -416,27 +1020,7 @@ export function ApprovalsInbox() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pendingApprovals.map((req) => (
-                      <TableRow key={req.id}>
-                        <TableCell className="font-semibold">{req.title}</TableCell>
-                        <TableCell>{TYPE_LABELS[req.type] || req.type}</TableCell>
-                        <TableCell>{req.createdBy?.displayName || req.createdById}</TableCell>
-                        <TableCell>{req.amount ? `$${Number(req.amount).toLocaleString()}` : "—"}</TableCell>
-                        <TableCell>{new Date(req.createdAt).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedRequest(req);
-                              setDialogOpen(true);
-                            }}
-                          >
-                            Review <ChevronRight className="h-3.5 w-3.5 ml-1" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {pendingApprovals.map((req) => renderRequestRow(req, "inbox"))}
                   </TableBody>
                 </Table>
               </div>
@@ -451,44 +1035,20 @@ export function ApprovalsInbox() {
                 You haven't submitted any requests yet.
               </div>
             ) : (
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Title</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Assigned To</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Amount</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {myRequests.map((req) => (
-                      <TableRow key={req.id}>
-                        <TableCell className="font-semibold">{req.title}</TableCell>
-                        <TableCell>{TYPE_LABELS[req.type] || req.type}</TableCell>
-                        <TableCell>{req.assignedTo?.displayName || "Self"}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={STATUS_COLORS[req.status?.toUpperCase()] || "bg-gray-100"}>
-                            {STATUS_LABELS[req.status?.toUpperCase()] || req.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{new Date(req.createdAt).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setSelectedRequest(req);
-                              setDialogOpen(true);
-                            }}
-                          >
-                            Details
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {myRequests.map((req) => renderRequestRow(req, "sent"))}
                   </TableBody>
                 </Table>
               </div>
@@ -503,46 +1063,20 @@ export function ApprovalsInbox() {
                 No completed requests yet.
               </div>
             ) : (
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Title</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>From</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>From / To</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {historyRequests.map((req) => (
-                      <TableRow key={req.id}>
-                        <TableCell className="font-semibold">{req.title}</TableCell>
-                        <TableCell>{TYPE_LABELS[req.type] || req.type}</TableCell>
-                        <TableCell>{req.createdBy?.displayName || req.createdById}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={STATUS_COLORS[req.status?.toUpperCase()] || "bg-gray-100"}>
-                            {STATUS_LABELS[req.status?.toUpperCase()] || req.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{req.amount ? `$${Number(req.amount).toLocaleString()}` : "—"}</TableCell>
-                        <TableCell>{new Date(req.createdAt).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setSelectedRequest(req);
-                              setDialogOpen(true);
-                            }}
-                          >
-                            Details
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {historyRequests.map((req) => renderRequestRow(req, "history"))}
                   </TableBody>
                 </Table>
               </div>
@@ -667,28 +1201,12 @@ export function ApprovalsInbox() {
                   <div>
                     <span className="text-muted-foreground block text-[11px] uppercase">Amount</span>
                     <strong className="font-semibold text-foreground">
-                      {selectedRequest.amount ? `$${Number(selectedRequest.amount).toLocaleString()}` : "—"}
+                      {selectedRequest.amount ? `${Number(selectedRequest.amount).toLocaleString()} ETB` : "—"}
                     </strong>
                   </div>
                 </div>
 
                 {renderDetailedRequest(selectedRequest)}
-
-                {/* 360 Customer Dossier Link */}
-                <div className="flex justify-end pt-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      const clientMatch = selectedRequest.title.replace("Sizing Payment Collection - ", "").trim();
-                      setDialogOpen(false);
-                      navigate(`/customers/${encodeURIComponent(clientMatch || selectedRequest.title)}`);
-                    }}
-                    className="gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
-                  >
-                    <FileText className="h-4 w-4" /> Open Full 360 Customer Dossier
-                  </Button>
-                </div>
 
                 {/* Audit Logs / Activity History */}
                 <div className="space-y-1.5">
@@ -711,39 +1229,43 @@ export function ApprovalsInbox() {
                   </div>
                 </div>
 
-                {/* Action Inputs - visible only if the user is the active assignee and status is not terminal */}
-                {selectedRequest.assignedToId === currentUser?.id && !TERMINAL_STATUSES.includes(selectedRequest.status?.toUpperCase()) && (
+                {/* Action Inputs - visible if assignee OR if user is Finance/Admin for payroll */}
+                {((selectedRequest.assignedToId === currentUser?.id) || (isFinanceOrAdmin && (selectedRequest.type === "INDIVIDUAL_PAYROLL" || selectedRequest.type === "PAYROLL_DISBURSEMENT"))) && !TERMINAL_STATUSES.includes(selectedRequest.status?.toUpperCase()) && (
                   <div className="border-t pt-4 space-y-3">
-                    <Label className="text-sm font-semibold">Take Action</Label>
+                    <Label className="text-sm font-semibold">
+                      {selectedRequest.type === "INDIVIDUAL_PAYROLL" ? "Finance Payment Execution & Reference" : "Take Action"}
+                    </Label>
                     <Textarea
-                      placeholder="Add a comment or routing message..."
+                      placeholder={selectedRequest.type === "INDIVIDUAL_PAYROLL" ? "Enter Bank Transfer Reference (e.g. CBE-FT-849201) or notes..." : "Add a comment or routing message..."}
                       value={actionComment}
                       onChange={e => setActionComment(e.target.value)}
                     />
                     
                     {/* Multi-tier Forwarding for any recipient */}
-                    <div className="space-y-1.5 border-t pt-3 border-border">
-                      <Label htmlFor="forward-user" className="text-xs font-semibold">Forward request to another person / role:</Label>
-                      <div className="flex gap-2">
-                        <Select value={forwardUser} onValueChange={setForwardUser}>
-                          <SelectTrigger id="forward-user" className="flex-1">
-                            <SelectValue placeholder="Select target user to forward to" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {systemUsers
-                              .filter(u => u.id !== currentUser.id && u.id !== selectedRequest.createdById)
-                              .map(u => (
-                                <SelectItem key={u.id} value={u.username || u.id}>
-                                  {u.displayName || u.username} ({u.role?.toUpperCase() || u.department || "User"})
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                        <Button size="sm" variant="secondary" onClick={() => handleAction("FORWARD")}>
-                          <Share2 className="h-4 w-4 mr-1" /> Forward
-                        </Button>
+                    {selectedRequest.type !== "INDIVIDUAL_PAYROLL" && (
+                      <div className="space-y-1.5 border-t pt-3 border-border">
+                        <Label htmlFor="forward-user" className="text-xs font-semibold">Forward request to another person / role:</Label>
+                        <div className="flex gap-2">
+                          <Select value={forwardUser} onValueChange={setForwardUser}>
+                            <SelectTrigger id="forward-user" className="flex-1">
+                              <SelectValue placeholder="Select target user to forward to" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {systemUsers
+                                .filter(u => u.id !== currentUser.id && u.id !== selectedRequest.createdById)
+                                .map(u => (
+                                  <SelectItem key={u.id} value={u.username || u.id}>
+                                    {u.displayName || u.username} ({u.role?.toUpperCase() || u.department || "User"})
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" variant="secondary" onClick={() => handleAction("FORWARD")}>
+                            <Share2 className="h-4 w-4 mr-1" /> Forward
+                          </Button>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="flex justify-end gap-2 pt-2">
                       <Button
@@ -755,10 +1277,11 @@ export function ApprovalsInbox() {
                       </Button>
                       <Button
                         size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
                         onClick={() => handleAction("APPROVE")}
                       >
-                        <Check className="h-4 w-4 mr-1" /> Approve
+                        <Check className="h-4 w-4 mr-1" />
+                        {selectedRequest.type === "INDIVIDUAL_PAYROLL" ? "Authorize & Mark as Paid" : "Approve"}
                       </Button>
                     </div>
                   </div>

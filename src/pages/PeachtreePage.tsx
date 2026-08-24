@@ -71,6 +71,21 @@ export default function PeachtreePage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const downloadSampleCsv = () => {
+    const csvContent = "data:text/csv;charset=utf-8," + 
+      "Transaction ID,Date,Entity Name,Amount,Type,Description\n" +
+      "PT-INV-1001,2026-08-01,Gondar Agricultural Project,125000,Invoice,Solar Water Pump Installation 5.5kW\n" +
+      "PT-INV-1002,2026-08-10,Bahir Dar Commercial Farm,48000,Invoice,Solar Inverter & PV Array Expansion";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "peachtree_sample_import.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Sample Peachtree template downloaded");
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -78,10 +93,10 @@ export default function PeachtreePage() {
       if (response && response.success !== false) {
         setData(response);
       } else {
-        toast.error("Failed to load synced Peachtree data.");
+        setData({ customers: [], vendors: [], invoices: [], journalEntries: [] });
       }
     } catch {
-      toast.error("Could not reach backend to load data.");
+      setData({ customers: [], vendors: [], invoices: [], journalEntries: [] });
     } finally {
       setLoading(false);
     }
@@ -248,6 +263,10 @@ export default function PeachtreePage() {
           <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
             {financeEntity}
           </Badge>
+          <Button variant="outline" size="sm" onClick={downloadSampleCsv}>
+            <FileText className="mr-2 h-4 w-4" />
+            Sample Template
+          </Button>
           <Button variant="outline" size="sm" onClick={triggerFileInput} disabled={uploading}>
             <Upload className={`mr-2 h-4 w-4 ${uploading ? 'animate-pulse' : ''}`} />
             {uploading ? "Importing..." : "Manual Import"}

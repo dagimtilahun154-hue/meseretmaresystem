@@ -118,7 +118,7 @@ export function SizingProposalPdfModal({ proposal, open, onOpenChange }: SizingP
                 Solar Water Pumping Systems & Rural Electrification Engineering
               </p>
               <p className="text-[11px] text-slate-500">
-                HQ Address: Bole Sub-city, Addis Ababa, Ethiopia | Tell: +251 911 000 000 | Email: sales@meseretmare.et
+                HQ Address: Addis Ababa, Gulele Sub-City, Addisu Gebeya, Ethiopia | Tell: +251 911 000 000 | Email: sales@meseretmare.et
               </p>
             </div>
             <div className="text-right space-y-1">

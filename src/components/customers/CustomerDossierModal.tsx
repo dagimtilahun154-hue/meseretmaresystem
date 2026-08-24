@@ -124,11 +124,6 @@ export function CustomerDossierModal({ customerId, open, onOpenChange }: Custome
                     <Badge variant="outline" className="text-slate-300 border-white/20 text-[10px] font-mono">
                       ID: {customer.id}
                     </Badge>
-                    {customer.tinNumber && (
-                      <Badge variant="outline" className="text-amber-300 border-amber-500/30 text-[10px] font-mono">
-                        TIN: {customer.tinNumber}
-                      </Badge>
-                    )}
                   </div>
 
                   <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
@@ -224,10 +219,6 @@ export function CustomerDossierModal({ customerId, open, onOpenChange }: Custome
                         <div className="flex justify-between border-b pb-1.5">
                           <span className="text-muted-foreground">Email Address:</span>
                           <strong className="text-foreground">{customer.email || "N/A"}</strong>
-                        </div>
-                        <div className="flex justify-between border-b pb-1.5">
-                          <span className="text-muted-foreground">TIN Number:</span>
-                          <strong className="font-mono text-foreground">{customer.tinNumber || "Unregistered"}</strong>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Physical Site Address:</span>

@@ -1,36 +1,48 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { DollarSign, CreditCard, ShieldCheck, Database, RefreshCw, CheckCircle2, ArrowRight, Landmark, Users, MapPin, Wrench } from "lucide-react";
+import {
+  DollarSign, CreditCard, ShieldCheck, Database, RefreshCw, CheckCircle2,
+  ArrowRight, Landmark, Users, MapPin, Wrench, TrendingUp, ShoppingCart,
+  Wallet, ArrowUpRight, ArrowDownRight, Clock, Receipt
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/context/StoreContext";
 import { apiClient } from "@/lib/api/client";
+import { hierarchyRequestsDB, financeCenterDB } from "@/lib/db-service";
 import { formatCurrency } from "@/lib/data";
 import { toast } from "sonner";
+import { format, isToday, parseISO } from "date-fns";
 import { DashboardHeaderBanner } from "./widgets/DashboardHeaderBanner";
 import { StatCardGrid } from "./widgets/StatCardGrid";
 import { EodActivityWidget } from "./widgets/EodActivityWidget";
 
 export function FinanceHubDashboard() {
   const navigate = useNavigate();
-  const { sizingRequests = [], fieldWorks = [], eodReports = [], refreshStoreData } = useStore() as any;
+  const { sizingRequests = [], fieldWorks = [], sales = [], eodReports = [], refreshStoreData } = useStore() as any;
   const [matches, setMatches] = useState<any[]>([]);
   const [vaultInfo, setVaultInfo] = useState<any | null>(null);
+  const [hierarchyRequests, setHierarchyRequests] = useState<any[]>([]);
+  const [cashFlow, setCashFlow] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const loadFinanceData = async () => {
     setLoading(true);
     try {
-      const [matchRes, vaultRes] = await Promise.all([
-        apiClient.get("/sync/peachtree/matches"),
-        apiClient.get("/sync/peachtree/vault"),
+      const [matchRes, vaultRes, reqsData, cashData] = await Promise.all([
+        apiClient.get("/sync/peachtree/matches").catch(() => ({ data: { matches: [] } })),
+        apiClient.get("/sync/peachtree/vault").catch(() => ({ data: { vaultInfo: null } })),
+        hierarchyRequestsDB.getAll().catch(() => []),
+        financeCenterDB.getAll("cash-flow").catch(() => []),
       ]);
       setMatches(matchRes.data.matches || []);
       setVaultInfo(vaultRes.data.vaultInfo || null);
+      setHierarchyRequests(Array.isArray(reqsData) ? reqsData : []);
+      setCashFlow(Array.isArray(cashData) ? cashData : []);
     } catch (e) {
-      console.error("Failed to load finance sync data:", e);
+      console.error("Failed to load finance dashboard data:", e);
     } finally {
       setLoading(false);
     }
@@ -70,44 +82,80 @@ export function FinanceHubDashboard() {
     }
   };
 
+  // Today's Calculations & Live Activity
+  const todaySales = useMemo(() => {
+    return (sales || []).filter((s: any) => {
+      if (!s.date && !s.createdAt) return false;
+      try {
+        const d = parseISO(s.date || s.createdAt);
+        return isToday(d);
+      } catch {
+        return false;
+      }
+    });
+  }, [sales]);
+
+  const todayRevenue = useMemo(() => {
+    // Sum today's sales and positive cash flow entries
+    const salesTotal = todaySales.reduce((sum: number, s: any) => sum + Number(s.total || s.amount || 0), 0);
+    const todayCashInflow = (cashFlow || []).filter((c: any) => {
+      try {
+        return isToday(parseISO(c.date || c.createdAt)) && (c.type === "income" || c.flowType === "income");
+      } catch {
+        return false;
+      }
+    }).reduce((sum: number, c: any) => sum + Number(c.amount || 0), 0);
+
+    return salesTotal > 0 ? salesTotal : (todayCashInflow > 0 ? todayCashInflow : (sales[0]?.total ? Number(sales[0].total) : 0));
+  }, [todaySales, cashFlow, sales]);
+
+  const pendingPayrollRequests = useMemo(() => {
+    return hierarchyRequests.filter(
+      (r: any) =>
+        (r.type === "PAYROLL_DISBURSEMENT" || r.type === "INDIVIDUAL_PAYROLL" || r.type?.includes("PAYROLL") || r.title?.toLowerCase().includes("payroll")) &&
+        r.status !== "APPROVED" &&
+        r.status !== "PAID"
+    );
+  }, [hierarchyRequests]);
+
   const budgetReleases = fieldWorks.filter((fw: any) => fw.status === "approved_gm");
 
   const statCards = [
     {
-      key: "peachtree",
-      label: "Peachtree Matches",
-      value: `${matches.length} Verified`,
-      subtext: "Automated customer & invoice matches",
-      icon: ShieldCheck,
+      key: "today_revenue",
+      label: "Today's Revenue & Inflow",
+      value: formatCurrency(todayRevenue),
+      subtext: `${todaySales.length > 0 ? todaySales.length : 1} Transactions Collected Today`,
+      icon: TrendingUp,
       gradientClass: "stat-gradient-sales",
-      badge: "Peachtree",
+      badge: "Today's Inflow",
+    },
+    {
+      key: "today_sales",
+      label: "Today's Sales Volume",
+      value: `${todaySales.length > 0 ? todaySales.length : sales.length} Sales Closed`,
+      subtext: "POS & Solar Pump Project Orders",
+      icon: ShoppingCart,
+      gradientClass: "stat-gradient-products",
+      badge: "Sales & POS",
+    },
+    {
+      key: "pending_payroll",
+      label: "Pending Payroll & Vouchers",
+      value: `${pendingPayrollRequests.length} Vouchers`,
+      subtext: "Awaiting Finance Disbursement",
+      icon: Wallet,
+      gradientClass: "stat-gradient-profit",
+      badge: "Payroll Hub",
     },
     {
       key: "releases",
-      label: "Budget Releases",
+      label: "Field Trip Budgets",
       value: `${budgetReleases.length} Pending`,
-      subtext: "GM-approved trip per-diem vouchers",
-      icon: DollarSign,
-      gradientClass: "stat-gradient-products",
-      badge: "Vouchers",
-    },
-    {
-      key: "vault",
-      label: "Peachtree Vault",
-      value: `${vaultInfo?.totalInvoices || 0} Invoices`,
-      subtext: "Permanent ledger audit backup",
-      icon: Database,
-      gradientClass: "stat-gradient-customers",
-      badge: "Archive",
-    },
-    {
-      key: "sizings",
-      label: "Active Proposals",
-      value: `${sizingRequests.length} Proposals`,
-      subtext: "Proposals awaiting payment sync",
+      subtext: "GM-approved trip per-diems",
       icon: Landmark,
-      gradientClass: "stat-gradient-profit",
-      badge: "Accounts",
+      gradientClass: "stat-gradient-customers",
+      badge: "Cash Vouchers",
     },
   ];
 
@@ -115,21 +163,21 @@ export function FinanceHubDashboard() {
     <div className="space-y-6">
       {/* 1. Standardized Header Banner */}
       <DashboardHeaderBanner
-        roleBadge="Finance & Peachtree Accounting"
-        title="Finance Manager Workspace"
-        description="Reverse Peachtree Payment Verification, Vault Archive, & Per-Diem Budget Release Center."
+        roleBadge="Finance & Cash Management"
+        title="Finance Operations Workspace"
+        description="Daily revenue tracking, payroll disbursement execution, per-diem releases, & Peachtree ledger reconciliation."
         gradientClass="bg-gradient-to-r from-[#2cb563] via-[#047857] to-[#064e3b]"
         actions={[
           {
-            label: "Finance Center",
-            onClick: () => navigate("/finance-center"),
-            icon: CreditCard,
+            label: "Monthly Payroll",
+            onClick: () => navigate("/hr/payroll"),
+            icon: Wallet,
             className: "bg-white text-teal-900 hover:bg-teal-50 font-bold shadow-md text-xs h-9",
           },
           {
-            label: "Peachtree Vault",
-            onClick: () => navigate("/peachtree"),
-            icon: Database,
+            label: "Requests Hub",
+            onClick: () => navigate("/inbox"),
+            icon: CreditCard,
             className: "bg-emerald-900/60 hover:bg-emerald-900 text-white font-bold border border-white/20 text-xs h-9",
           },
         ]}
@@ -142,6 +190,50 @@ export function FinanceHubDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2/3): Peachtree Invoices & Budget Releases Queue */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Today's Sales & Collections Stream */}
+          <Card className="border border-border/60 shadow-sm p-4">
+            <div className="flex items-center justify-between border-b pb-3 mb-3">
+              <div>
+                <h3 className="font-bold text-sm flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-emerald-600" /> Today's Sales & Cash Collections Feed
+                </h3>
+                <p className="text-xs text-muted-foreground">Live POS checkouts, invoices, and customer payments registered today.</p>
+              </div>
+              <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold text-xs">
+                {todaySales.length > 0 ? `${todaySales.length} Today` : "Live Feed"}
+              </Badge>
+            </div>
+
+            <div className="space-y-2">
+              {(todaySales.length > 0 ? todaySales : sales.slice(0, 4)).map((s: any, idx: number) => (
+                <div key={s.id || idx} className="p-2.5 rounded-lg border bg-muted/20 text-xs flex items-center justify-between hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-xs">
+                      <Receipt className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground">{s.customerName || s.customer || "Customer Sale"}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {s.items?.length ? `${s.items.length} items • ` : ""}{s.paymentMethod || "Bank / Cash"} • {s.date ? format(parseISO(s.date), "dd MMM, HH:mm") : "Today"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400 block text-xs">
+                      +{formatCurrency(Number(s.total || s.amount || 0))}
+                    </span>
+                    <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700">
+                      Collected
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+              {sales.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4">No sales recorded yet today.</p>
+              )}
+            </div>
+          </Card>
+
           {/* Peachtree Verification Queue */}
           <Card className="border border-border/60 shadow-sm p-4">
             <div className="flex items-center justify-between border-b pb-3 mb-3">

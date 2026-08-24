@@ -5,7 +5,7 @@ async function main() {
   const models = [
     "user", "organization", "company", "role", "permission", "userRole", "rolePermission", 
     "userCompany", "refreshToken", "auditLog", "product", "posSale", "fieldWorkJob", 
-    "customer", "serviceTicket", "vendor", "account", "invoice", "bill", "payment", 
+    "customer", "vendor", "account", "invoice", "bill", "payment", 
     "expense", "financeJournalEntry", "hrDepartment", "hrWorker", "hrSetting", 
     "attendanceLog", "inventoryRequest", "financeCenterRecord", "peachtreeImport", 
     "syncDevice", "syncMutation", "syncConflict", "pumpProduct", "pumpCategory", 

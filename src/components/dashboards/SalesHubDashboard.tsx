@@ -81,16 +81,22 @@ export function SalesHubDashboard() {
         gradientClass="bg-gradient-to-r from-[#f5a600] via-[#d97706] to-[#b45309]"
         actions={[
           {
-            label: "Direct Retail POS",
-            onClick: () => navigate("/pos?mode=general"),
-            icon: ShoppingCart,
+            label: "AI Pump Sizing & Quotes",
+            onClick: () => navigate("/fieldwork/sizing"),
+            icon: FileText,
             className: "bg-white text-blue-900 hover:bg-blue-50 font-bold shadow-md text-xs h-9",
           },
           {
-            label: "Pump Package POS",
-            onClick: () => navigate("/pos?mode=sizing"),
-            icon: Zap,
-            className: "bg-indigo-900/60 hover:bg-indigo-900 text-white font-bold border border-white/20 text-xs h-9",
+            label: "Direct Retail POS",
+            onClick: () => navigate("/pos?mode=general"),
+            icon: ShoppingCart,
+            className: "bg-amber-900/60 hover:bg-amber-900 text-white font-bold border border-white/20 text-xs h-9",
+          },
+          {
+            label: "Customer Dossiers",
+            onClick: () => navigate("/customers"),
+            icon: Users,
+            className: "bg-amber-900/40 hover:bg-amber-900 text-white font-medium border border-white/10 text-xs h-9",
           },
         ]}
       />
@@ -208,18 +214,69 @@ export function SalesHubDashboard() {
                 className="pl-8 h-8 text-xs"
               />
             </div>
-            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-              {filteredCustomers.slice(0, 5).map((c: any) => (
-                <div key={c.id} className="p-2 rounded border bg-muted/20 text-xs flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-foreground">{c.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{c.phone} · {c.location || "N/A"}</p>
+            <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+              {filteredCustomers.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2 text-center">No customers found</p>
+              ) : (
+                filteredCustomers.slice(0, 5).map((c: any) => (
+                  <div key={c.id} className="p-2 rounded border bg-muted/20 text-xs flex items-center justify-between hover:bg-muted/40 transition-colors">
+                    <div>
+                      <p className="font-semibold text-foreground">{c.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{c.phone} · {c.location || "N/A"}</p>
+                    </div>
+                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-primary" onClick={() => navigate(`/customers/${c.id}`)} title="Open Dossier">
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
-                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => navigate("/pos")}>
-                    <Eye className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
+                ))
+              )}
+            </div>
+          </Card>
+
+          {/* Sizing Proposals & TM Workflow Pipeline */}
+          <Card className="p-4 border border-border/60 shadow-sm bg-gradient-to-br from-amber-50/30 dark:from-amber-950/10 via-card to-card">
+            <div className="flex items-center justify-between border-b pb-2 mb-3">
+              <div>
+                <h3 className="font-bold text-xs flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-amber-600" /> Sizing Proposals Pipeline
+                </h3>
+                <p className="text-[11px] text-muted-foreground">Technical TM approval pipeline</p>
+              </div>
+              <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={() => navigate("/fieldwork/sizing")}>
+                New Sizing <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
+            <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+              {sizingRequests.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2 text-center">No proposals created yet</p>
+              ) : (
+                sizingRequests.slice(0, 5).map((prop: any) => (
+                  <div key={prop.id} className="p-2 rounded border bg-card text-xs flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold">{prop.clientName || prop.customerName || "Solar Client"}</p>
+                      <p className="text-[10px] text-muted-foreground">{prop.selectedPumpModel || "Pump Sizing"}</p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`text-[9px] font-bold uppercase ${
+                        prop.status === "PENDING_TM"
+                          ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300"
+                          : prop.status === "CHECKED"
+                          ? "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300"
+                          : prop.status === "GM_APPROVED" || prop.status === "PAID"
+                          ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300"
+                          : "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-300"
+                      }`}
+                    >
+                      {prop.status === "PENDING_TM"
+                        ? "Awaiting TM Check"
+                        : prop.status === "CHECKED"
+                        ? "Checked by TM"
+                        : prop.status || "Draft"}
+                    </Badge>
+                  </div>
+                ))
+              )}
             </div>
           </Card>
 

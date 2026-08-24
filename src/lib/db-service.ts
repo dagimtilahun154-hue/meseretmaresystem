@@ -157,8 +157,28 @@ export const fieldWorkDB = {
   },
 };
 
+export const DEFAULT_DEPARTMENTS = [
+  { id: "dept-field", name: "Field Operations", description: "Site surveys, on-site drilling, pump installation, and testing" },
+  { id: "dept-finance", name: "Finance & Administration", description: "Financial planning, administration, and corporate governance" },
+  { id: "dept-accounting", name: "Accounting", description: "Bookkeeping, invoices, tax compliance, and payroll accounting" },
+  { id: "dept-mgmt", name: "General Management", description: "Executive leadership and departmental oversight" },
+  { id: "dept-inventory", name: "Inventory & Warehouse", description: "Stock management, parts storage, and replenishment" },
+  { id: "dept-logistics", name: "Logistics & Transport", description: "Vehicle fleet, material transit, and site deliveries" },
+  { id: "dept-marketing", name: "Marketing & Grants", description: "Marketing campaigns, brand strategy, donor relations, and grant proposals" },
+  { id: "dept-sales", name: "Sales & Commercial", description: "Storefront retail, customer intake, package quotations, and commercial pipeline" },
+  { id: "dept-tech", name: "Technical & Engineering", description: "Solar pump sizing, engineering design, electrical systems, and technical QA" },
+];
+
 export const hrDB = {
-  getDepartments: async () => apiFetch("/hr/departments"),
+  getDepartments: async () => {
+    try {
+      const data = await apiFetch("/hr/departments");
+      if (Array.isArray(data) && data.length > 0) return data;
+      return DEFAULT_DEPARTMENTS;
+    } catch {
+      return DEFAULT_DEPARTMENTS;
+    }
+  },
   saveDepartment: async (dept: any) => {
     const res = await apiFetch("/hr/departments", { method: "POST", body: JSON.stringify(dept) });
     return !!res?.success;
@@ -167,7 +187,14 @@ export const hrDB = {
     const res = await apiFetch(`/hr/departments/${id}`, { method: "DELETE" });
     return !!res?.success;
   },
-  getWorkers: async () => apiFetch("/hr/workers"),
+  getWorkers: async () => {
+    try {
+      const data = await apiFetch("/hr/workers");
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
+  },
   saveWorker: async (worker: any) => {
     const res = await apiFetch("/hr/workers", { method: "POST", body: JSON.stringify(worker) });
     return !!res?.success;
@@ -298,6 +325,11 @@ export const hierarchyRequestsDB = {
     apiFetch(`/hierarchy/requests/${id}/action`, {
       method: "POST",
       body: JSON.stringify({ action, comment })
+    }),
+  updateDetails: async (id: string, details: any, comment?: string) =>
+    apiFetch(`/hierarchy/requests/${id}/details`, {
+      method: "PATCH",
+      body: JSON.stringify({ details, comment })
     })
 };
 

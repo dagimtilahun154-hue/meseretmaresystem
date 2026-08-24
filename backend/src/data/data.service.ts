@@ -1088,7 +1088,25 @@ export class DataService {
     return { success: true };
   }
 
-  departments() {
+  async departments() {
+    const defaultDepts = [
+      { id: "dept-field", name: "Field Operations", description: "Site surveys, on-site drilling, pump installation, and testing" },
+      { id: "dept-finance", name: "Finance & Administration", description: "Financial planning, administration, and corporate governance" },
+      { id: "dept-accounting", name: "Accounting", description: "Bookkeeping, invoices, tax compliance, and payroll accounting" },
+      { id: "dept-mgmt", name: "General Management", description: "Executive leadership and departmental oversight" },
+      { id: "dept-inventory", name: "Inventory & Warehouse", description: "Stock management, parts storage, and replenishment" },
+      { id: "dept-logistics", name: "Logistics & Transport", description: "Vehicle fleet, material transit, and site deliveries" },
+      { id: "dept-marketing", name: "Marketing & Grants", description: "Marketing campaigns, brand strategy, donor relations, and grant proposals" },
+      { id: "dept-sales", name: "Sales & Commercial", description: "Storefront retail, customer intake, package quotations, and commercial pipeline" },
+      { id: "dept-tech", name: "Technical & Engineering", description: "Solar pump sizing, engineering design, electrical systems, and technical QA" },
+    ];
+    for (const d of defaultDepts) {
+      await this.prisma.hrDepartment.upsert({
+        where: { id: d.id },
+        update: { name: d.name, description: d.description },
+        create: d,
+      }).catch(() => null);
+    }
     return this.prisma.hrDepartment.findMany({ orderBy: { name: "asc" } });
   }
 
@@ -1103,19 +1121,57 @@ export class DataService {
 
   async workers() {
     const workers = await this.prisma.hrWorker.findMany({ orderBy: { fullName: "asc" } });
-    return workers.map((worker) => ({
-      ...worker,
-      worker_code: worker.workerCode,
-      full_name: worker.fullName,
-      department_id: worker.departmentId,
-      departmentName: worker.departmentName,
-      photo_url: worker.photoUrl,
-      fingerprint_id: worker.fingerprintId,
-    }));
+    return workers.map((worker) => {
+      let extra: any = {};
+      try {
+        if (worker.fingerprintId && worker.fingerprintId.startsWith("{")) {
+          extra = JSON.parse(worker.fingerprintId);
+        }
+      } catch {
+        // ignore
+      }
+      return {
+        ...worker,
+        ...extra,
+        id: worker.id,
+        worker_code: worker.workerCode,
+        full_name: worker.fullName,
+        department_id: worker.departmentId,
+        departmentName: worker.departmentName,
+        photo_url: worker.photoUrl,
+        fingerprint_id: typeof extra.fingerprintId !== "undefined" ? extra.fingerprintId : worker.fingerprintId,
+        status: worker.status || "Active",
+      };
+    });
   }
 
   async saveWorker(worker: any) {
     const department = worker.department_id ? await this.prisma.hrDepartment.findUnique({ where: { id: worker.department_id } }) : null;
+    const deptName = department?.name || worker.departmentName || worker.department || "General";
+
+    // Encode rich fields safely
+    const extraDetails = {
+      nationalId: worker.national_id || worker.nationalId || "",
+      tin: worker.tin || "",
+      gender: worker.gender || "",
+      dateOfBirth: worker.date_of_birth || worker.dateOfBirth || "",
+      emergencyContactName: worker.emergency_contact_name || worker.emergencyContactName || "",
+      emergencyContactPhone: worker.emergency_contact_phone || worker.emergencyContactPhone || "",
+      addressRegion: worker.address_region || worker.addressRegion || "",
+      addressZone: worker.address_zone || worker.addressZone || "",
+      addressWoreda: worker.address_woreda || worker.addressWoreda || "",
+      addressKebele: worker.address_kebele || worker.addressKebele || "",
+      houseNo: worker.house_no || worker.houseNo || "",
+      employmentType: worker.employment_type || worker.employmentType || "Permanent",
+      dateOfJoining: worker.date_of_joining || worker.dateOfJoining || "",
+      baseSalary: Number(worker.base_salary || worker.baseSalary || 0),
+      bankName: worker.bank_name || worker.bankName || "",
+      bankAccountNo: worker.bank_account_no || worker.bankAccountNo || "",
+      email: worker.email || "",
+    };
+
+    const fingerprintPayload = JSON.stringify(extraDetails);
+
     await this.prisma.hrWorker.upsert({
       where: { id: worker.id },
       update: {
@@ -1124,9 +1180,9 @@ export class DataService {
         phone: worker.phone,
         position: worker.position,
         departmentId: worker.department_id || worker.departmentId,
-        departmentName: department?.name,
+        departmentName: deptName,
         photoUrl: worker.photo_url || worker.photoUrl,
-        fingerprintId: worker.fingerprint_id || worker.fingerprintId,
+        fingerprintId: fingerprintPayload,
         status: worker.status || "Active",
       },
       create: {
@@ -1136,9 +1192,9 @@ export class DataService {
         phone: worker.phone,
         position: worker.position,
         departmentId: worker.department_id || worker.departmentId,
-        departmentName: department?.name,
+        departmentName: deptName,
         photoUrl: worker.photo_url || worker.photoUrl,
-        fingerprintId: worker.fingerprint_id || worker.fingerprintId,
+        fingerprintId: fingerprintPayload,
         status: worker.status || "Active",
       },
     });
@@ -1575,13 +1631,24 @@ export class DataService {
 
   async getHierarchyRequests(userId: string) {
     await this.updateUserPresence(userId);
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { roles: { include: { role: true } } }
+    });
+    const roles = user?.roles?.map(r => r.role.name) || [];
+    const isPowerUser = roles.includes("admin") || roles.includes("finance") || roles.includes("manager") || user?.department === "Finance";
+
+    const whereClause = isPowerUser
+      ? {}
+      : {
+          OR: [
+            { createdById: userId },
+            { assignedToId: userId }
+          ]
+        };
+
     const requests = await this.prisma.hierarchyRequest.findMany({
-      where: {
-        OR: [
-          { createdById: userId },
-          { assignedToId: userId }
-        ]
-      },
+      where: whereClause,
       include: {
         createdBy: {
           select: { id: true, username: true, displayName: true, department: true }
@@ -1598,7 +1665,16 @@ export class DataService {
       },
       orderBy: { updatedAt: "desc" }
     });
-    return requests.map(toPlain);
+    return requests.map((r) => {
+      const plain = toPlain(r);
+      let details: any = null;
+      if (plain.description && plain.description.startsWith("{")) {
+        try {
+          details = JSON.parse(plain.description);
+        } catch {}
+      }
+      return { ...plain, details: details || (plain as any).details || null };
+    });
   }
 
   async createHierarchyRequest(createdById: string, data: any) {
@@ -1606,16 +1682,29 @@ export class DataService {
       where: { id: createdById }
     });
 
-    let assignedToId = creator.reportsToId;
-    if (!assignedToId) {
-      assignedToId = createdById;
+    let assignedToId = data.assignedToId || creator.reportsToId;
+    if (!assignedToId || data.type === "INDIVIDUAL_PAYROLL" || data.type === "PAYROLL_DISBURSEMENT") {
+      const financeUser = await this.prisma.user.findFirst({
+        where: {
+          OR: [
+            { roles: { some: { role: { name: "finance" } } } },
+            { department: "Finance" },
+            { roles: { some: { role: { name: "admin" } } } },
+          ]
+        }
+      });
+      if (financeUser) {
+        assignedToId = financeUser.id;
+      } else {
+        assignedToId = creator.reportsToId || createdById;
+      }
     }
 
     const request = await this.prisma.hierarchyRequest.create({
       data: {
         id: data.id || `REQ-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
         title: data.title,
-        description: data.description,
+        description: data.details ? JSON.stringify({ ...data.details, text: data.description }) : data.description,
         amount: data.amount ? Number(data.amount) : null,
         type: data.type || "GENERAL",
         status: "PENDING",
@@ -1630,7 +1719,7 @@ export class DataService {
         requestId: request.id,
         userId: createdById,
         action: "SUBMIT",
-        comment: data.comment || "Request submitted",
+        comment: data.comment || "Request submitted to Finance",
       }
     });
 
@@ -1656,8 +1745,13 @@ export class DataService {
       nextStatus = "REJECTED";
       nextAssigneeId = request.createdById;
     } else if (action === "APPROVE") {
+      // Direct payment approval for payroll (no GM involved)
+      if (request.type === "INDIVIDUAL_PAYROLL" || request.type === "PAYROLL_DISBURSEMENT") {
+        nextStatus = "APPROVED";
+        nextAssigneeId = request.createdById;
+      }
       // 1. Non-manager, non-finance (e.g., tech_manager) approves -> route to GM for approval first
-      if (request.assignedToId === user.id && !roles.includes("manager") && !roles.includes("finance")) {
+      else if (request.assignedToId === user.id && !roles.includes("manager") && !roles.includes("finance")) {
         const gm = await this.prisma.user.findFirst({
           where: { roles: { some: { role: { name: "manager" } } } }
         });
@@ -1791,6 +1885,49 @@ export class DataService {
     }
 
     return updated;
+  }
+
+  async updateHierarchyRequestDetails(userId: string, requestId: string, details: any, comment?: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId }
+    });
+
+    const request = await this.prisma.hierarchyRequest.findUniqueOrThrow({
+      where: { id: requestId }
+    });
+
+    let currentDetails: any = {};
+    if (request.description && request.description.startsWith("{")) {
+      try {
+        currentDetails = JSON.parse(request.description);
+      } catch {}
+    }
+
+    const mergedDetails = { ...currentDetails, ...details };
+    const allPaid = Array.isArray(mergedDetails.employees) && mergedDetails.employees.length > 0 && mergedDetails.employees.every((e: any) => e.paid);
+    const nextStatus = allPaid ? "APPROVED" : (mergedDetails.status || request.status);
+
+    const updated = await this.prisma.hierarchyRequest.update({
+      where: { id: requestId },
+      data: {
+        description: JSON.stringify(mergedDetails),
+        status: nextStatus,
+      }
+    });
+
+    if (comment) {
+      await this.prisma.requestAuditLog.create({
+        data: {
+          requestId,
+          userId,
+          action: allPaid ? "APPROVE" : "UPDATE",
+          comment,
+          createdAt: new Date(),
+        }
+      });
+    }
+
+    return { ...toPlain(updated), details: mergedDetails };
   }
 
   async updateUserPresence(userId: string) {

@@ -34,12 +34,16 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-3">
       <div className="w-full max-w-md">
-        <div className="text-center mb-4 relative z-10">
-          <img
-            src="/uploads/logo3.jpg"
-            alt="Meseret Mare Solar Management System"
-            className="w-64 h-auto mx-auto object-contain rounded-lg"
-          />
+        <div className="text-center mb-5 relative z-10 flex flex-col items-center">
+          <div className="bg-white p-3 rounded-2xl shadow-lg border border-border/40 inline-flex items-center justify-center mb-2">
+            <img
+              src="/uploads/Untitled_design__4_-removebg-preview.png"
+              alt="Meseret Mare Solar & Fasil Zelalem"
+              className="w-20 h-20 object-contain"
+            />
+          </div>
+          <h1 className="text-xl font-bold font-heading text-foreground tracking-tight">MESERET MARE SOLAR</h1>
+          <p className="text-xs text-muted-foreground">Enterprise Water Sizing, Sales & Operations System</p>
         </div>
 
         <Card className="relative z-20">
