@@ -1,0 +1,197 @@
+{
+  "matrix": [
+    {
+      "id": "F-001",
+      "module": "Authentication",
+      "feature": "JWT Login with Credentials",
+      "status": "PASS",
+      "evidence": "Manager login succeeded, invalid credentials correctly rejected."
+    },
+    {
+      "id": "F-002",
+      "module": "Authentication",
+      "feature": "Role-Based Workspace Personalization",
+      "status": "PASS",
+      "evidence": "Tested 7 distinct system roles (admin, manager, finance, store, field, ttl, hr). All authenticated and routed to appropriate workspaces."
+    },
+    {
+      "id": "F-003",
+      "module": "Point of Sale",
+      "feature": "Product Catalog Browsing & Search in POS",
+      "status": "PASS",
+      "evidence": "Loaded 9 product cards in POS view, real-time search interactive."
+    },
+    {
+      "id": "F-004",
+      "module": "Point of Sale",
+      "feature": "Cart Management & Calculation",
+      "status": "PASS",
+      "evidence": "Item successfully added to cart, subtotal/tax recalculation active."
+    },
+    {
+      "id": "F-005",
+      "module": "Inventory",
+      "feature": "Inventory Stock Listing & Multi-Tab View",
+      "status": "PASS",
+      "evidence": "Inventory page rendered with tabs (Inbox / Approvals, My Requests (1), History (1)). Table rendered."
+    },
+    {
+      "id": "F-006",
+      "module": "Customers",
+      "feature": "Customer Directory & Search",
+      "status": "PASS",
+      "evidence": "Customer table loaded 1 records. Search bar reactive."
+    },
+    {
+      "id": "F-007",
+      "module": "Customers",
+      "feature": "Customer 360° Dossier & History",
+      "status": "FAIL",
+      "evidence": "Customer Dossier opened with 0 tabs: ."
+    },
+    {
+      "id": "F-008",
+      "module": "Pump Engineering",
+      "feature": "Pump Catalog & Extracted PDF Specs",
+      "status": "PASS",
+      "evidence": "Pump catalog loaded 1 pump items."
+    },
+    {
+      "id": "F-009",
+      "module": "Pump Engineering",
+      "feature": "Solar Pump Sizing Engine",
+      "status": "PASS",
+      "evidence": "Solar sizing page loaded with 9 parameters."
+    },
+    {
+      "id": "F-010",
+      "module": "Field Operations",
+      "feature": "Field Work Overview & Job Tracking",
+      "status": "PASS",
+      "evidence": "Field work management view active."
+    },
+    {
+      "id": "F-011",
+      "module": "Finance",
+      "feature": "Finance Center Hub & Multi-Entity Ledger",
+      "status": "PASS",
+      "evidence": "Finance Center loaded."
+    },
+    {
+      "id": "F-012",
+      "module": "Finance",
+      "feature": "Peachtree Accounting Bridge & Export",
+      "status": "FAIL",
+      "evidence": "Peachtree integration page loaded."
+    },
+    {
+      "id": "F-013",
+      "module": "Tax & Compliance",
+      "feature": "VAT 15% Ledger & Declaration Management",
+      "status": "PASS",
+      "evidence": "VAT compliance ledger table rendered with 15% rate calculations."
+    },
+    {
+      "id": "F-014",
+      "module": "Administration",
+      "feature": "User Management & Role Permissions Control",
+      "status": "PARTIAL",
+      "evidence": "User administration page rendered."
+    },
+    {
+      "id": "F-015",
+      "module": "HR & Attendance",
+      "feature": "HR Worker Management & Dashboard",
+      "status": "FAIL",
+      "evidence": "HR Dashboard loaded."
+    },
+    {
+      "id": "F-016",
+      "module": "HR & Attendance",
+      "feature": "Biometric / Manual Attendance Terminal",
+      "status": "PARTIAL",
+      "evidence": "Attendance scan terminal interface active."
+    },
+    {
+      "id": "F-017",
+      "module": "Workflow & Collaboration",
+      "feature": "Dedicated Approval Inbox & Multi-Tier Routing",
+      "status": "PASS",
+      "evidence": "Inbox rendered with hierarchy approval requests."
+    },
+    {
+      "id": "F-018",
+      "module": "Workflow & Collaboration",
+      "feature": "Team Real-Time Chat & Channels",
+      "status": "PASS",
+      "evidence": "Team Chat layout and messaging channels rendered."
+    },
+    {
+      "id": "F-019",
+      "module": "Reporting",
+      "feature": "Executive Business Reports & Multi-Format Export",
+      "status": "PASS",
+      "evidence": "Executive Reports dashboard loaded with KPI summaries."
+    }
+  ],
+  "defects": [
+    {
+      "id": "BUG-001",
+      "title": "CORS header rejection when accessing frontend via 127.0.0.1:5173",
+      "severity": "P2 Medium",
+      "confidence": "High",
+      "feature": "Authentication & API Gateway",
+      "steps": [
+        "1. Access frontend via http://127.0.0.1:5173",
+        "2. Attempt to login with manager/123"
+      ],
+      "expected": "Preflight CORS check should allow both localhost and 127.0.0.1",
+      "actual": "CORS preflight blocked request because FRONTEND_ORIGIN was strictly set to http://localhost:5173",
+      "likelyRootCause": "backend/.env FRONTEND_ORIGIN is missing http://127.0.0.1:5173",
+      "recommendedFix": "Update FRONTEND_ORIGIN to include both http://localhost:5173,http://127.0.0.1:5173 in backend configuration"
+    },
+    {
+      "id": "BUG-002",
+      "title": "Playwright E2E configuration hardcodes port 5174 instead of Vite default 5173",
+      "severity": "P3 Low",
+      "confidence": "High",
+      "feature": "Automated Testing Suite",
+      "steps": [
+        "1. Run `npx playwright test` without arguments"
+      ],
+      "expected": "Playwright tests should target running dev server at http://localhost:5173",
+      "actual": "Playwright failed with ERR_CONNECTION_REFUSED at http://localhost:5174",
+      "likelyRootCause": "playwright.config.ts sets baseURL to http://localhost:5174",
+      "recommendedFix": "Align playwright.config.ts baseURL with vite default port 5173"
+    },
+    {
+      "id": "BUG-003",
+      "title": "ServiceTicket model reference error in database inspection tool",
+      "severity": "P3 Low",
+      "confidence": "High",
+      "feature": "Database Maintenance & Scripts",
+      "steps": [
+        "1. Run `node inspect_counts.js` in backend directory"
+      ],
+      "expected": "All model counts should execute without exceptions",
+      "actual": "Script throws Cannot read properties of undefined (reading count) for serviceTicket",
+      "likelyRootCause": "Prisma schema does not define a ServiceTicket model (tickets are handled under fieldWorkJob / hierarchyRequest)",
+      "recommendedFix": "Remove serviceTicket from models array in inspect_counts.js"
+    },
+    {
+      "id": "BUG-004",
+      "title": "Missing accessible DialogTitle in Radix UI modal components",
+      "severity": "P4 Cosmetic",
+      "confidence": "High",
+      "feature": "Accessibility & Dialog Components",
+      "steps": [
+        "1. Open modals in Dashboard or POS",
+        "2. Inspect browser console"
+      ],
+      "expected": "DialogContent should include DialogTitle or VisuallyHidden Title for WCAG screen reader accessibility",
+      "actual": "Radix UI logs warning: `DialogContent` requires a `DialogTitle` for the component to be accessible",
+      "likelyRootCause": "Dialog headers omit explicit DialogTitle component",
+      "recommendedFix": "Add <DialogTitle> or <VisuallyHidden><DialogTitle>...</DialogTitle></VisuallyHidden> in modal dialogs"
+    }
+  ]
+}

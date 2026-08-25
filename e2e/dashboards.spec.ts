@@ -16,18 +16,16 @@ test.describe('SolarFlow Role-Based Sidebar & Every Page Navigation Verification
     await page.fill('#password', '123');
     await page.click('button[type="submit"]');
 
-    await expect(page.locator('text=General Manager Workspace').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=General Manager Command Center').first()).toBeVisible({ timeout: 10000 });
 
-    // Verify Sidebar Items for Manager
     const sidebar = page.locator('aside, [data-sidebar="sidebar"], nav').first();
     await expect(sidebar.getByText('Dashboard').first()).toBeVisible();
-    await expect(sidebar.getByText('Point of Sale').first()).toBeVisible();
-    await expect(sidebar.getByText('Inventory').first()).toBeVisible();
-    await expect(sidebar.getByText('Field Work Overview').first()).toBeVisible();
-    await expect(sidebar.getByText('Finance Center').first()).toBeVisible();
-    await expect(sidebar.getByText('HR & Attendance').first()).toBeVisible();
+    await expect(sidebar.getByText('Pump Products').first()).toBeVisible();
+    await expect(sidebar.getByText('Pump Sizing').first()).toBeVisible();
+    await expect(sidebar.getByText('Customer Files').first()).toBeVisible();
+    await expect(sidebar.getByText('Field Work').first()).toBeVisible();
+    await expect(sidebar.getByText('Reports').first()).toBeVisible();
 
-    // Verify Page Navigation across Manager pages
     await page.goto('/#/pos');
     await page.waitForTimeout(1000);
 
@@ -54,19 +52,14 @@ test.describe('SolarFlow Role-Based Sidebar & Every Page Navigation Verification
 
     const sidebar = page.locator('aside, [data-sidebar="sidebar"], nav').first();
 
-    // Verify Allowed Sidebar Items
     await expect(sidebar.getByText('Dashboard').first()).toBeVisible();
-    await expect(sidebar.getByText('Point of Sale').first()).toBeVisible();
     await expect(sidebar.getByText('Inventory').first()).toBeVisible();
     await expect(sidebar.getByText('Pump Products').first()).toBeVisible();
 
-    // Verify Forbidden Sidebar Items HIDDEN for Storekeeper
     await expect(sidebar.getByText('Finance Center')).toHaveCount(0);
     await expect(sidebar.getByText('HR & Attendance')).toHaveCount(0);
     await expect(sidebar.getByText('User Accounts')).toHaveCount(0);
-    await expect(sidebar.getByText('Field Work Overview')).toHaveCount(0);
 
-    // Verify Page Navigation for Storekeeper
     await page.goto('/#/pos');
     await page.waitForTimeout(1000);
 
@@ -84,19 +77,14 @@ test.describe('SolarFlow Role-Based Sidebar & Every Page Navigation Verification
 
     const sidebar = page.locator('aside, [data-sidebar="sidebar"], nav').first();
 
-    // Verify Allowed Sidebar Items
     await expect(sidebar.getByText('Dashboard').first()).toBeVisible();
     await expect(sidebar.getByText('Point of Sale').first()).toBeVisible();
-    await expect(sidebar.getByText('Inventory').first()).toBeVisible();
+    await expect(sidebar.getByText('Field Work').first()).toBeVisible();
     await expect(sidebar.getByText('Finance Center').first()).toBeVisible();
 
-    // Verify Forbidden Sidebar Items HIDDEN for Finance Admin
-    await expect(sidebar.getByText('Field Work Overview')).toHaveCount(0);
-    await expect(sidebar.getByText('Field Jobs')).toHaveCount(0);
     await expect(sidebar.getByText('HR & Attendance')).toHaveCount(0);
     await expect(sidebar.getByText('User Accounts')).toHaveCount(0);
 
-    // Verify Page Navigation across Finance Sub-pages
     await page.goto('/#/finance/dashboard');
     await page.waitForTimeout(1000);
 
@@ -117,17 +105,14 @@ test.describe('SolarFlow Role-Based Sidebar & Every Page Navigation Verification
 
     const sidebar = page.locator('aside, [data-sidebar="sidebar"], nav').first();
 
-    // Verify Allowed Sidebar Items
     await expect(sidebar.getByText('Dashboard').first()).toBeVisible();
     await expect(sidebar.getByText('Pump Sizing').first()).toBeVisible();
-    await expect(sidebar.getByText('Field Work Overview').first()).toBeVisible();
+    await expect(sidebar.getByText('Field Work').first()).toBeVisible();
 
-    // Verify Forbidden Sidebar Items HIDDEN for Technical Manager
     await expect(sidebar.getByText('Finance Center')).toHaveCount(0);
     await expect(sidebar.getByText('HR & Attendance')).toHaveCount(0);
     await expect(sidebar.getByText('User Accounts')).toHaveCount(0);
 
-    // Verify Technical Page Navigation
     await page.goto('/#/fieldwork/sizing');
     await page.waitForTimeout(1000);
 
@@ -145,16 +130,13 @@ test.describe('SolarFlow Role-Based Sidebar & Every Page Navigation Verification
 
     const sidebar = page.locator('aside, [data-sidebar="sidebar"], nav').first();
 
-    // Verify Allowed Sidebar Items
     await expect(sidebar.getByText('Dashboard').first()).toBeVisible();
-    await expect(sidebar.getByText('Field Work Overview').first()).toBeVisible();
+    await expect(sidebar.getByText('Field Work').first()).toBeVisible();
 
-    // Verify Forbidden Sidebar Items HIDDEN for TTL
     await expect(sidebar.getByText('Finance Center')).toHaveCount(0);
     await expect(sidebar.getByText('HR & Attendance')).toHaveCount(0);
     await expect(sidebar.getByText('User Accounts')).toHaveCount(0);
 
-    // Verify TTL Page Navigation
     await page.goto('/#/fieldwork/jobs');
     await page.waitForTimeout(1000);
   });

@@ -1,0 +1,251 @@
+{
+  "rolesTested": [
+    {
+      "username": "manager",
+      "authenticated": true,
+      "sidebarTextPreview": "MENU Dashboard Alerts & Activity 4 Requests Team Chat Pump Products Pump Sizing Customer Files Field",
+      "leaks": []
+    },
+    {
+      "username": "admin",
+      "authenticated": true,
+      "sidebarTextPreview": "MENU Dashboard Alerts & Activity Requests Team Chat Pump Products Pump Sizing Research Customer File",
+      "leaks": []
+    },
+    {
+      "username": "store",
+      "authenticated": true,
+      "sidebarTextPreview": "MENU Dashboard Alerts & Activity Requests Team Chat Pump Products Inventory  Store Keeper  Store Kee",
+      "leaks": []
+    },
+    {
+      "username": "finance",
+      "authenticated": true,
+      "sidebarTextPreview": "MENU Dashboard Alerts & Activity 1 Requests Team Chat Customer Files Point of Sale Field Work Financ",
+      "leaks": []
+    },
+    {
+      "username": "field",
+      "authenticated": true,
+      "sidebarTextPreview": "MENU Dashboard Alerts & Activity 2 Requests Team Chat Pump Products Pump Sizing Research Customer Fi",
+      "leaks": []
+    },
+    {
+      "username": "ttl",
+      "authenticated": true,
+      "sidebarTextPreview": "MENU Dashboard Alerts & Activity 1 Requests Team Chat Pump Products Pump Sizing Customer Files Field",
+      "leaks": []
+    },
+    {
+      "username": "hr",
+      "authenticated": true,
+      "sidebarTextPreview": "MENU Dashboard Alerts & Activity Requests Team Chat HR & Attendance  HR Officer  HR Manager / HR Off",
+      "leaks": []
+    }
+  ],
+  "pagesTested": [
+    {
+      "name": "Dashboard Overview",
+      "path": "/#/",
+      "status": "PASS",
+      "details": {
+        "statsCount": 0,
+        "chartsCount": 0
+      }
+    },
+    {
+      "name": "Dedicated Inbox & Approvals",
+      "path": "/#/inbox",
+      "status": "PASS",
+      "details": {
+        "filters": [],
+        "count": 2
+      }
+    },
+    {
+      "name": "Team Chat",
+      "path": "/#/chat",
+      "status": "PASS",
+      "details": {
+        "channels": [],
+        "hasInput": false
+      }
+    },
+    {
+      "name": "Alerts Page",
+      "path": "/#/alerts",
+      "status": "PASS",
+      "details": {
+        "alertCount": 2
+      }
+    },
+    {
+      "name": "Customer Master Directory",
+      "path": "/#/customers",
+      "status": "PASS",
+      "details": {
+        "rows": 1,
+        "hasSearch": true,
+        "hasAdd": false
+      }
+    },
+    {
+      "name": "Customer 360 Dossier",
+      "path": "/#/customers/1",
+      "status": "PASS",
+      "details": {
+        "tabs": []
+      }
+    },
+    {
+      "name": "Point of Sale (POS)",
+      "path": "/#/pos",
+      "status": "PASS",
+      "details": {
+        "productCount": 9,
+        "categories": [
+          "All Channels",
+          "View All"
+        ]
+      }
+    },
+    {
+      "name": "Inventory Management",
+      "path": "/#/inventory",
+      "status": "PASS",
+      "details": {
+        "tabs": [
+          "Inbox / Approvals",
+          "My Requests (1)",
+          "History (1)"
+        ],
+        "rows": 0
+      }
+    },
+    {
+      "name": "Reports & Analytics",
+      "path": "/#/reports",
+      "status": "PASS",
+      "details": {
+        "exportButtons": [],
+        "charts": 0
+      }
+    },
+    {
+      "name": "VAT & Tax Compliance",
+      "path": "/#/vat",
+      "status": "PASS",
+      "details": {
+        "summaryCards": 0,
+        "tables": 1
+      }
+    },
+    {
+      "name": "Pump Products Catalog",
+      "path": "/#/pumps",
+      "status": "PASS",
+      "details": {
+        "pumpCount": 1,
+        "hasSearch": false
+      }
+    },
+    {
+      "name": "Field Work Overview & Jobs",
+      "path": "/#/fieldwork",
+      "status": "PASS",
+      "details": {
+        "subNav": []
+      }
+    },
+    {
+      "name": "Field Work Sizing Calculator",
+      "path": "/#/fieldwork/sizing",
+      "status": "PASS",
+      "details": {
+        "inputCount": 7,
+        "hasCalcBtn": true
+      }
+    },
+    {
+      "name": "Finance Center Hub",
+      "path": "/#/finance",
+      "status": "PASS",
+      "details": {
+        "tabs": []
+      }
+    },
+    {
+      "name": "Peachtree Accounting Integration",
+      "path": "/#/peachtree",
+      "status": "PASS",
+      "details": {
+        "hasImport": false,
+        "rows": 0
+      }
+    },
+    {
+      "name": "User Accounts & Access Control",
+      "path": "/#/users",
+      "status": "PASS",
+      "details": {
+        "userCount": 0,
+        "hasAddBtn": false
+      }
+    },
+    {
+      "name": "HR & Biometric Dashboard",
+      "path": "/#/hr/dashboard",
+      "status": "PASS",
+      "details": {
+        "cardCount": 0
+      }
+    },
+    {
+      "name": "HR Attendance Terminal",
+      "path": "/#/hr/scan",
+      "status": "PASS",
+      "details": {
+        "buttons": [
+          "Logout",
+          "Toggle Sidebar",
+          "Search commands & pages...\nCtrl + K",
+          "Approvals",
+          "Pump Sizing",
+          "Reports",
+          "Full Reports",
+          "All Channels",
+          "Submit Daily EOD Report",
+          "Inbox",
+          "Submit Request",
+          "Inbox / Approvals",
+          "My Requests (1)",
+          "History (1)",
+          "View All"
+        ]
+      }
+    }
+  ],
+  "workflowsTested": [
+    {
+      "name": "POS Cart",
+      "status": "PASS"
+    },
+    {
+      "name": "Solar Pump Sizing",
+      "status": "PARTIAL",
+      "reason": "Calculate button not found"
+    },
+    {
+      "name": "User Management Form",
+      "status": "PARTIAL"
+    }
+  ],
+  "defects": [],
+  "consoleErrors": [
+    {
+      "url": "http://localhost:5173/#/",
+      "text": "`DialogContent` requires a `DialogTitle` for the component to be accessible for screen reader users.\n\nIf you want to hide the `DialogTitle`, you can wrap it with our VisuallyHidden component.\n\nFor more information, see https://radix-ui.com/primitives/docs/components/dialog"
+    }
+  ],
+  "networkErrors": []
+}
