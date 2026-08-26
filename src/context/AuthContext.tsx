@@ -118,7 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCurrentUser(user);
       sessionStorage.setItem("solar_auth_uid", user.id);
       return true;
-    } catch {
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || (err?.message === "Network Error" ? "Network Error: Could not connect to backend server." : (err?.message || "Invalid credentials"));
+      toast.error(msg);
       return false;
     }
   };

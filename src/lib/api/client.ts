@@ -1,6 +1,10 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api/v1";
+const DEFAULT_API_URL = import.meta.env.PROD
+  ? "https://meseretmaresystem.onrender.com/api/v1"
+  : "http://localhost:4000/api/v1";
+
+export const API_URL = import.meta.env.VITE_API_URL || DEFAULT_API_URL;
 
 const ACCESS_TOKEN_KEY = "solar_access_token";
 const REFRESH_TOKEN_KEY = "solar_refresh_token";

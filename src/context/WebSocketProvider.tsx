@@ -42,7 +42,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const socketUrl = "http://localhost:4000";
+    const rawApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://meseretmaresystem.onrender.com/api/v1" : "http://localhost:4000/api/v1");
+    const socketUrl = rawApiUrl.replace(/\/api\/v1\/?$/, "");
     const socketInstance = io(socketUrl, {
       query: { userId: currentUser.id },
       transports: ["polling", "websocket"],

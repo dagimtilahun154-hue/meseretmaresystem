@@ -59,7 +59,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { CardHeader, CardTitle } from "@/components/ui/card";
 import PumpSizingPage from "./PumpSizingPage";
 
-const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:4000/api/v1").replace("/api/v1", "");
+const API_BASE = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://meseretmaresystem.onrender.com/api/v1" : "http://localhost:4000/api/v1")).replace("/api/v1", "");
 const getFullImgUrl = (url: string) => {
   if (!url) return "";
   return url.startsWith("/uploads/") ? `${API_BASE}${url}` : url;

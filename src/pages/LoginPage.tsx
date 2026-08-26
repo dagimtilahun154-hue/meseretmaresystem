@@ -23,8 +23,6 @@ export default function LoginPage() {
       if (await login(username, password)) {
         await refreshStoreData();
         toast.success("Welcome back!");
-      } else {
-        toast.error("Invalid username or password");
       }
     } finally {
       setLoading(false);
