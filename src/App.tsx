@@ -259,9 +259,9 @@ function AuthenticatedApp() {
         {/* HR & Workforce Routes */}
         <Route path="/hr" element={<Navigate to="/hr/workers" replace />} />
         <Route path="/hr/dashboard" element={<Navigate to="/hr/workers" replace />} />
-        <Route path="/hr/workers" element={<ProtectedRoute roles={["admin", "hr", "manager", "finance"]}><Workers /></ProtectedRoute>} />
-        <Route path="/hr/workers/:id" element={<ProtectedRoute roles={["admin", "hr", "manager", "finance"]}><EmployeeProfilePage /></ProtectedRoute>} />
-        <Route path="/hr/payroll" element={<ProtectedRoute roles={["admin", "hr", "manager", "finance"]}><Payroll /></ProtectedRoute>} />
+        <Route path="/hr/workers" element={<ProtectedRoute roles={["admin", "hr"]}><Workers /></ProtectedRoute>} />
+        <Route path="/hr/workers/:id" element={<ProtectedRoute roles={["admin", "hr"]}><EmployeeProfilePage /></ProtectedRoute>} />
+        <Route path="/hr/payroll" element={<ProtectedRoute roles={["admin", "hr"]}><Payroll /></ProtectedRoute>} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>

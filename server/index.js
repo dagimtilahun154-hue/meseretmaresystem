@@ -4,7 +4,12 @@ const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => callback(null, true),
+  credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-company-id', 'x-request-id', 'Accept', 'Origin', 'X-Requested-With']
+}));
 app.use(express.json());
 
 // Database Configuration

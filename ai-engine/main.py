@@ -18,7 +18,7 @@ app = FastAPI(title="SolarFlow Pump Sizing AI Engine")
 # Setup CORS to allow requests from the React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this in production
+    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

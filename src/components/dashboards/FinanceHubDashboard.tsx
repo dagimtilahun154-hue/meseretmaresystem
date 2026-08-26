@@ -170,7 +170,7 @@ export function FinanceHubDashboard() {
         actions={[
           {
             label: "Monthly Payroll",
-            onClick: () => navigate("/hr/payroll"),
+            onClick: () => navigate("/finance/payroll"),
             icon: Wallet,
             className: "bg-white text-teal-900 hover:bg-teal-50 font-bold shadow-md text-xs h-9",
           },

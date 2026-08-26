@@ -92,30 +92,12 @@ const navItems: NavItem[] = [
     url: "/finance",
     icon: DollarSign,
     roles: ["admin", "finance"],
-    subItems: [
-      { title: "Dashboard", url: "/finance/dashboard", icon: LayoutDashboard, roles: ["admin", "finance"] },
-      { title: "Cash Flow", url: "/finance/cashflow", icon: TrendingUp, roles: ["admin", "finance"] },
-      { title: "Bank", url: "/finance/bank", icon: Building, roles: ["admin", "finance"] },
-      { title: "Loans", url: "/finance/loans", icon: Landmark, roles: ["admin", "finance"] },
-      { title: "Reconciliation", url: "/finance/bank-reconciliation", icon: FileText, roles: ["admin", "finance"] },
-      { title: "Building Rent", url: "/finance/building-rent", icon: Building, roles: ["admin", "finance"] },
-      { title: "Sizing Proposals", url: "/finance/sizing-proposals", icon: Droplets, roles: ["admin", "finance"] },
-      { title: "Inventory Requests", url: "/finance/inventory", icon: Package, roles: ["admin", "finance"] },
-      { title: "Budget", url: "/finance/budget", icon: BarChart3, roles: ["admin", "finance"] },
-      { title: "Payroll", url: "/finance/payroll", icon: Users, roles: ["admin", "finance"] },
-      { title: "VAT", url: "/finance/vat", icon: Receipt, roles: ["admin", "finance"] },
-      { title: "Petty Cash", url: "/finance/petty-cash", icon: Wallet, roles: ["admin", "finance"] },
-      { title: "Peachtree Bridge", url: "/finance/peachtree", icon: FileUp, roles: ["admin", "finance"] },
-      { title: "Financials", url: "/finance/financials", icon: BarChart3, roles: ["admin", "finance"] },
-      { title: "Legacy Reports", url: "/finance/reports", icon: FileText, roles: ["admin", "finance"] },
-    ],
   },
-  { title: "VAT History", url: "/vat", icon: Receipt, roles: ["admin", "finance"] },
   { title: "Reports", url: "/reports", icon: BarChart3, roles: ["admin", "manager", "finance"] },
 
   // Phase 6: Administration & Workforce
-  { title: "Workforce Registry", url: "/hr/workers", icon: Users, roles: ["admin", "hr", "manager", "finance"] },
-  { title: "Monthly Payroll", url: "/hr/payroll", icon: DollarSign, roles: ["admin", "hr", "manager", "finance"] },
+  { title: "Workforce Registry", url: "/hr/workers", icon: Users, roles: ["admin", "hr"] },
+  { title: "Monthly Payroll", url: "/hr/payroll", icon: DollarSign, roles: ["admin", "hr"] },
   { title: "User Accounts", url: "/users", icon: Users, roles: ["admin"] },
 ];
 
@@ -232,188 +214,84 @@ export function AppSidebar() {
 
           <SidebarGroupContent>
             <SidebarMenu className={cn("transition-all duration-200 space-y-1", collapsed ? "px-2 py-2" : "p-0")}>
-              {visibleItems.map((item) => {
-                const hasSubItems = item.subItems && item.subItems.length > 0;
-                const isFinance = item.title.includes("Finance") || item.url.startsWith("/finance");
-                const isFieldwork = item.title.includes("Field") || item.url.startsWith("/fieldwork");
-                const isOpen = isFinance ? financeOpen : isFieldwork ? fieldworkOpen : false;
-
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    {hasSubItems ? (
-                      <div className="flex flex-col gap-1 w-full">
-                        <SidebarMenuButton
-                          isActive={location.pathname.startsWith(item.url)}
-                          tooltip={item.title}
-                          className={cn(
-                            "relative overflow-visible w-full text-white/80 hover:bg-white/10 hover:text-white data-[active=true]:bg-transparent data-[active=true]:text-primary-foreground transition-all duration-200 isolate",
-                            collapsed 
-                              ? "rounded-xl justify-center group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-2.5" 
-                              : "rounded-l-xl rounded-r-none hover:rounded-l-xl hover:rounded-r-none"
-                          )}
-                          onClick={() => {
-                            if (isFinance) setFinanceOpen(!financeOpen);
-                            if (isFieldwork) setFieldworkOpen(!fieldworkOpen);
-                          }}
-                        >
-                          {location.pathname.startsWith(item.url) && (
-                            <motion.div
-                              layoutId="activeSidebarPill"
-                              className={cn(
-                                "absolute inset-0 bg-white -z-10",
-                                collapsed
-                                  ? "rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.25)] border border-white/15"
-                                  : "rounded-l-xl rounded-r-none border-l-4 border-secondary drop-shadow-[-6px_0_12px_rgba(0,0,0,0.25)] " +
-                                    "before:content-[''] before:absolute before:right-0 before:bottom-full before:w-4 before:h-4 before:bg-[radial-gradient(circle_at_top_left,transparent_16px,#ffffff_16px)] before:pointer-events-none " +
-                                    "after:content-[''] after:absolute after:right-0 after:top-full after:w-4 after:h-4 after:bg-[radial-gradient(circle_at_bottom_left,transparent_16px,#ffffff_16px)] after:pointer-events-none"
-                              )}
-                              transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                            />
-                          )}
-                          <div className={cn("relative z-10 flex items-center w-full cursor-pointer", collapsed ? "justify-center" : "")}>
-                            <item.icon className={cn(
-                              "shrink-0 transition-all duration-200",
-                              collapsed ? "h-5 w-5" : "h-4 w-4",
-                              location.pathname.startsWith(item.url) ? "text-[#0b1324]" : "text-white/80 group-hover:text-secondary"
-                            )} />
-                            <motion.span
-                              animate={{
-                                opacity: collapsed ? 0 : 1,
-                                width: collapsed ? 0 : "auto",
-                                marginLeft: collapsed ? 0 : 8,
-                              }}
-                              transition={{ duration: 0.15 }}
-                              className={cn(
-                                "text-sm font-bold whitespace-nowrap overflow-hidden transition-colors duration-200",
-                                location.pathname.startsWith(item.url) ? "text-[#0b1324]" : "text-white/80"
-                              )}
-                            >
-                              {item.title}
-                            </motion.span>
-                            {!collapsed && item.title === "Finance Center" && sizingPayCount > 0 && (
-                              <Badge variant="destructive" className="ml-auto mr-1.5 rounded-full px-1.5 py-0 text-[10px] h-5 min-w-5 flex items-center justify-center bg-amber-500 hover:bg-amber-600 text-white font-bold animate-pulse">
-                                {sizingPayCount}
-                              </Badge>
-                            )}
-                            {!collapsed && (
-                              <ChevronDown
-                                className={`ml-auto h-4 w-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""} ${location.pathname.startsWith(item.url) ? "text-[#0b1324]" : "text-white/60"}`}
-                              />
-                            )}
-                          </div>
-                        </SidebarMenuButton>
-
-                        <AnimatePresence initial={false}>
-                          {!collapsed && isOpen && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.2, ease: "easeInOut" }}
-                              className="ml-3 mt-1 flex flex-col gap-1 border-l border-white/10 pl-3 overflow-hidden"
-                            >
-                              {item.subItems?.filter((sub) => !sub.roles || hasAccess(sub.roles)).map((sub) => (
-                                <SidebarMenuButton
-                                  key={sub.title}
-                                  isActive={location.pathname === sub.url}
-                                  size="sm"
-                                  className="h-auto p-0 hover:bg-transparent"
-                                >
-                                  <NavLink
-                                    to={sub.url}
-                                    className="flex w-full items-center rounded-lg px-2 py-2 text-white/65 transition-all hover:bg-white/8 hover:text-white"
-                                    activeClassName="bg-white/10 text-primary font-semibold border-l-2 border-secondary/50"
-                                  >
-                                    <sub.icon className="mr-2 h-3.5 w-3.5 shrink-0" />
-                                    <span className="truncate text-[11px] uppercase tracking-wide">
-                                      {sub.title}
-                                    </span>
-                                    {sub.title === "Sizing Proposals" && sizingPayCount > 0 && (
-                                      <Badge variant="destructive" className="ml-auto rounded-full px-1.5 py-0 text-[9px] h-4 min-w-4 flex items-center justify-center bg-amber-500 hover:bg-amber-600 text-white font-bold">
-                                        {sizingPayCount}
-                                      </Badge>
-                                    )}
-                                  </NavLink>
-                                </SidebarMenuButton>
-                              ))}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    ) : (
-                      <SidebarMenuButton
-                        asChild
-                        isActive={checkActive(item.url)}
-                        tooltip={item.title}
-                        className={cn(
-                          "relative overflow-visible w-full text-white/80 hover:bg-white/10 hover:text-white data-[active=true]:bg-transparent data-[active=true]:text-primary-foreground transition-all duration-200 isolate",
-                          collapsed 
-                            ? "rounded-xl justify-center group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-2.5" 
-                            : "rounded-l-xl rounded-r-none hover:rounded-l-xl hover:rounded-r-none"
-                        )}
-                      >
-                        <NavLink
-                          to={item.url}
-                          end={item.url === "/"}
-                          className="flex items-center relative w-full h-full isolate"
-                          activeClassName=""
-                        >
-                          {checkActive(item.url) && (
-                            <motion.div
-                              layoutId="activeSidebarPill"
-                              className={cn(
-                                "absolute inset-0 bg-white -z-10",
-                                collapsed
-                                  ? "rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.25)] border border-white/15"
-                                  : "rounded-l-xl rounded-r-none border-l-4 border-secondary drop-shadow-[-6px_0_12px_rgba(0,0,0,0.25)] " +
-                                    "before:content-[''] before:absolute before:right-0 before:bottom-full before:w-4 before:h-4 before:bg-[radial-gradient(circle_at_top_left,transparent_16px,#ffffff_16px)] before:pointer-events-none " +
-                                    "after:content-[''] after:absolute after:right-0 after:top-full after:w-4 after:h-4 after:bg-[radial-gradient(circle_at_bottom_left,transparent_16px,#ffffff_16px)] after:pointer-events-none"
-                              )}
-                              transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                            />
-                          )}
-                          <div className={cn("relative z-10 flex items-center w-full", collapsed ? "justify-center" : "")}>
-                            <item.icon className={cn(
-                              "shrink-0 transition-all duration-200",
-                              collapsed ? "h-5 w-5" : "h-4 w-4",
-                              checkActive(item.url) ? "text-[#0b1324]" : "text-white/80 group-hover:text-secondary"
-                            )} />
-                            <motion.span
-                              animate={{
-                                opacity: collapsed ? 0 : 1,
-                                width: collapsed ? 0 : "auto",
-                                marginLeft: collapsed ? 0 : 8,
-                              }}
-                              transition={{ duration: 0.15 }}
-                              className={cn(
-                                "text-sm font-bold whitespace-nowrap overflow-hidden transition-colors duration-200",
-                                checkActive(item.url) ? "text-[#0b1324]" : "text-white/80"
-                              )}
-                            >
-                              {item.title}
-                            </motion.span>
-                            {!collapsed && item.title === "Alerts & Activity" && counts.notifications > 0 && (
-                              <Badge variant="destructive" className="ml-auto rounded-full px-1.5 py-0 text-[10px] h-5 min-w-5 flex items-center justify-center">
-                                {counts.notifications}
-                              </Badge>
-                            )}
-                            {!collapsed && item.title === "Requests" && counts.tasks > 0 && (
-                              <Badge variant="destructive" className="ml-auto rounded-full px-1.5 py-0 text-[10px] h-5 min-w-5 flex items-center justify-center">
-                                {counts.tasks}
-                              </Badge>
-                            )}
-                            {!collapsed && item.title === "Team Chat" && counts.chat > 0 && (
-                              <Badge variant="destructive" className="ml-auto rounded-full px-1.5 py-0 text-[10px] h-5 min-w-5 flex items-center justify-center">
-                                {counts.chat}
-                              </Badge>
-                            )}
-                          </div>
-                        </NavLink>
-                      </SidebarMenuButton>
+              {visibleItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={checkActive(item.url)}
+                    tooltip={item.title}
+                    className={cn(
+                      "relative overflow-visible w-full text-white/80 hover:bg-white/10 hover:text-white data-[active=true]:bg-transparent data-[active=true]:text-primary-foreground transition-all duration-200 isolate",
+                      collapsed 
+                        ? "rounded-xl justify-center group-data-[collapsible=icon]:!size-10 group-data-[collapsible=icon]:!p-2.5" 
+                        : "rounded-l-xl rounded-r-none hover:rounded-l-xl hover:rounded-r-none"
                     )}
-                  </SidebarMenuItem>
-                );
-              })}
+                  >
+                    <NavLink
+                      to={item.url}
+                      end={item.url === "/"}
+                      className="flex items-center relative w-full h-full isolate"
+                      activeClassName=""
+                    >
+                      {checkActive(item.url) && (
+                        <motion.div
+                          layoutId="activeSidebarPill"
+                          className={cn(
+                            "absolute inset-0 bg-white -z-10",
+                            collapsed
+                              ? "rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.25)] border border-white/15"
+                              : "rounded-l-xl rounded-r-none border-l-4 border-secondary drop-shadow-[-6px_0_12px_rgba(0,0,0,0.25)] " +
+                                "before:content-[''] before:absolute before:right-0 before:bottom-full before:w-4 before:h-4 before:bg-[radial-gradient(circle_at_top_left,transparent_16px,#ffffff_16px)] before:pointer-events-none " +
+                                "after:content-[''] after:absolute after:right-0 after:top-full after:w-4 after:h-4 after:bg-[radial-gradient(circle_at_bottom_left,transparent_16px,#ffffff_16px)] after:pointer-events-none"
+                          )}
+                          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                        />
+                      )}
+                      <div className={cn("relative z-10 flex items-center w-full", collapsed ? "justify-center" : "")}>
+                        <item.icon className={cn(
+                          "shrink-0 transition-all duration-200",
+                          collapsed ? "h-5 w-5" : "h-4 w-4",
+                          checkActive(item.url) ? "text-[#0b1324]" : "text-white/80 group-hover:text-secondary"
+                        )} />
+                        <motion.span
+                          animate={{
+                            opacity: collapsed ? 0 : 1,
+                            width: collapsed ? 0 : "auto",
+                            marginLeft: collapsed ? 0 : 8,
+                          }}
+                          transition={{ duration: 0.15 }}
+                          className={cn(
+                            "text-sm font-bold whitespace-nowrap overflow-hidden transition-colors duration-200",
+                            checkActive(item.url) ? "text-[#0b1324]" : "text-white/80"
+                          )}
+                        >
+                          {item.title}
+                        </motion.span>
+                        {!collapsed && item.title === "Finance Center" && sizingPayCount > 0 && (
+                          <Badge variant="destructive" className="ml-auto rounded-full px-1.5 py-0 text-[10px] h-5 min-w-5 flex items-center justify-center bg-amber-500 hover:bg-amber-600 text-white font-bold animate-pulse">
+                            {sizingPayCount}
+                          </Badge>
+                        )}
+                        {!collapsed && item.title === "Alerts & Activity" && counts.notifications > 0 && (
+                          <Badge variant="destructive" className="ml-auto rounded-full px-1.5 py-0 text-[10px] h-5 min-w-5 flex items-center justify-center">
+                            {counts.notifications}
+                          </Badge>
+                        )}
+                        {!collapsed && item.title === "Requests" && counts.tasks > 0 && (
+                          <Badge variant="destructive" className="ml-auto rounded-full px-1.5 py-0 text-[10px] h-5 min-w-5 flex items-center justify-center">
+                            {counts.tasks}
+                          </Badge>
+                        )}
+                        {!collapsed && item.title === "Team Chat" && counts.chat > 0 && (
+                          <Badge variant="destructive" className="ml-auto rounded-full px-1.5 py-0 text-[10px] h-5 min-w-5 flex items-center justify-center">
+                            {counts.chat}
+                          </Badge>
+                        )}
+                      </div>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
 
             {showFinanceEntitySwitch && (

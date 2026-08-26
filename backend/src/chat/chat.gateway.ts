@@ -12,7 +12,10 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: (origin: string, callback: (err: Error | null, allow?: boolean) => void) => {
+      callback(null, true);
+    },
+    credentials: true,
   },
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
