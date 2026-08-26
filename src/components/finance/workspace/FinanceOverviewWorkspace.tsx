@@ -225,146 +225,75 @@ export function FinanceOverviewWorkspace({
         </Card>
       </div>
 
-      {/* Entity-Aware Action & KPI Strip */}
-      {selectedEntity === "FZ" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          <Card className="shadow-xs border-primary/20 bg-primary/5">
-            <CardContent className="p-3.5 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-primary/80">Commercial Collections</p>
-                <p className="text-xl font-black text-primary font-mono mt-0.5">
-                  {formatCurrency(cfIncome)}
-                </p>
-                <span className="text-[10px] text-muted-foreground">Total FZ Inflow</span>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center text-primary">
-                <DollarSign className="h-5 w-5" />
-              </div>
-            </CardContent>
-          </Card>
+      {/* Meseret Mare Solar Primary Action & KPI Strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <Card className="shadow-xs border-primary/20 bg-primary/5">
+          <CardContent className="p-3.5 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-primary/80">Recognized Sales</p>
+              <p className="text-xl font-black text-primary font-mono mt-0.5">
+                {formatCurrency(dashboardAnalytics?.stats?.totalSales || 0)}
+              </p>
+              <span className="text-[10px] text-muted-foreground">{dashboardAnalytics?.stats?.uniqueCustomers || 0} active clients</span>
+            </div>
+            <div className="h-10 w-10 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center text-primary">
+              <DollarSign className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card
-            className="shadow-xs border-blue-500/20 bg-blue-500/5 cursor-pointer hover:bg-blue-500/10 transition-all"
-            onClick={() => navigate("/finance/building-rent")}
-          >
-            <CardContent className="p-3.5 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Building Rent Collected</p>
-                <p className="text-xl font-black text-blue-600 font-mono mt-0.5">{formatCurrency(totalRentCollected)}</p>
-                <span className="text-[10px] text-blue-600/80 font-medium">Floor Lease Schedules</span>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-blue-500/15 border border-blue-500/25 flex items-center justify-center text-blue-600">
-                <Building className="h-5 w-5" />
-              </div>
-            </CardContent>
-          </Card>
+        <Card
+          className="shadow-xs border-amber-500/20 bg-amber-500/5 cursor-pointer hover:bg-amber-500/10 transition-all"
+          onClick={() => navigate("/finance/inventory")}
+        >
+          <CardContent className="p-3.5 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600">Stock Requisitions</p>
+              <p className="text-xl font-black text-amber-600 font-mono mt-0.5">{pendingInvCount}</p>
+              <span className="text-[10px] text-amber-600/80 font-medium">Pending price review</span>
+            </div>
+            <div className="h-10 w-10 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-600">
+              <Package className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card
-            className="shadow-xs border-amber-500/20 bg-amber-500/5 cursor-pointer hover:bg-amber-500/10 transition-all"
-            onClick={() => navigate("/finance/loans")}
-          >
-            <CardContent className="p-3.5 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600">Loan Facilities</p>
-                <p className="text-xl font-black text-amber-600 font-mono mt-0.5">{formatCurrency(totalLoans)}</p>
-                <span className="text-[10px] text-amber-600/80 font-medium">CBE / Awash Facilities</span>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-600">
-                <Landmark className="h-5 w-5" />
-              </div>
-            </CardContent>
-          </Card>
+        <Card
+          className="shadow-xs border-blue-500/20 bg-blue-500/5 cursor-pointer hover:bg-blue-500/10 transition-all"
+          onClick={() => navigate("/finance/sizing-proposals")}
+        >
+          <CardContent className="p-3.5 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Pump Proposals</p>
+              <p className="text-xl font-black text-blue-600 font-mono mt-0.5">{pendingSizingCount}</p>
+              <span className="text-[10px] text-blue-600/80 font-medium">Awaiting deposit slip</span>
+            </div>
+            <div className="h-10 w-10 rounded-xl bg-blue-500/15 border border-blue-500/25 flex items-center justify-center text-blue-600">
+              <Droplets className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card
-            className="shadow-xs border-border/70 cursor-pointer hover:bg-muted/40 transition-all"
-            onClick={() => navigate("/finance/petty-cash")}
-          >
-            <CardContent className="p-3.5 flex items-center justify-between">
-              <div className="min-w-0 pr-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Office Cash & Safe</p>
-                <p className="text-xl font-black font-mono mt-0.5 text-foreground">
-                  {formatCurrency(cashBalance)}
-                </p>
-                <span className="text-[10px] text-muted-foreground truncate block">
-                  Petty Cash Vouchers
-                </span>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-muted border flex items-center justify-center text-muted-foreground shrink-0">
-                <Wallet className="h-5 w-5" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          <Card className="shadow-xs border-primary/20 bg-primary/5">
-            <CardContent className="p-3.5 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-primary/80">Recognized Sales</p>
-                <p className="text-xl font-black text-primary font-mono mt-0.5">
-                  {formatCurrency(dashboardAnalytics?.stats?.totalSales || 0)}
-                </p>
-                <span className="text-[10px] text-muted-foreground">{dashboardAnalytics?.stats?.uniqueCustomers || 0} active clients</span>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center text-primary">
-                <DollarSign className="h-5 w-5" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className="shadow-xs border-amber-500/20 bg-amber-500/5 cursor-pointer hover:bg-amber-500/10 transition-all"
-            onClick={() => navigate("/finance/inventory")}
-          >
-            <CardContent className="p-3.5 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600">Stock Requisitions</p>
-                <p className="text-xl font-black text-amber-600 font-mono mt-0.5">{pendingInvCount}</p>
-                <span className="text-[10px] text-amber-600/80 font-medium">Pending price review</span>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-600">
-                <Package className="h-5 w-5" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className="shadow-xs border-blue-500/20 bg-blue-500/5 cursor-pointer hover:bg-blue-500/10 transition-all"
-            onClick={() => navigate("/finance/sizing-proposals")}
-          >
-            <CardContent className="p-3.5 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Pump Proposals</p>
-                <p className="text-xl font-black text-blue-600 font-mono mt-0.5">{pendingSizingCount}</p>
-                <span className="text-[10px] text-blue-600/80 font-medium">Awaiting deposit slip</span>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-blue-500/15 border border-blue-500/25 flex items-center justify-center text-blue-600">
-                <Droplets className="h-5 w-5" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className="shadow-xs border-border/70 cursor-pointer hover:bg-muted/40 transition-all"
-            onClick={() => navigate("/finance/peachtree")}
-          >
-            <CardContent className="p-3.5 flex items-center justify-between">
-              <div className="min-w-0 pr-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Peachtree Bridge</p>
-                <p className="text-sm font-bold truncate mt-0.5 text-foreground">
-                  {dashboardAnalytics?.peachtree?.lastFileName || "Synced Ledger"}
-                </p>
-                <span className="text-[10px] text-muted-foreground truncate block">
-                  {dashboardAnalytics?.peachtree?.lastSyncAt ? new Date(dashboardAnalytics.peachtree.lastSyncAt).toLocaleDateString() : "Ready for import"}
-                </span>
-              </div>
-              <div className="h-10 w-10 rounded-xl bg-muted border flex items-center justify-center text-muted-foreground shrink-0">
-                <FileUp className="h-5 w-5" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+        <Card
+          className="shadow-xs border-border/70 cursor-pointer hover:bg-muted/40 transition-all"
+          onClick={() => navigate("/finance/petty-cash")}
+        >
+          <CardContent className="p-3.5 flex items-center justify-between">
+            <div className="min-w-0 pr-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Office Cash & Safe</p>
+              <p className="text-xl font-black font-mono mt-0.5 text-foreground">
+                {formatCurrency(cashBalance)}
+              </p>
+              <span className="text-[10px] text-muted-foreground truncate block">
+                Petty Cash Vouchers
+              </span>
+            </div>
+            <div className="h-10 w-10 rounded-xl bg-muted border flex items-center justify-center text-muted-foreground shrink-0">
+              <Wallet className="h-5 w-5" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Main Charts Row: 14-Day Cash Flow Trend & Bank Liquidity Distribution */}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.65fr_1fr]">

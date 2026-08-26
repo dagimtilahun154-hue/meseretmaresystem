@@ -49,6 +49,7 @@ import { PayrollModule } from "@/components/finance/compliance/PayrollModule";
 import { FinancialStatementsModule } from "@/components/finance/statements/FinancialStatementsModule";
 import PeachtreePage from "@/pages/PeachtreePage";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { ShieldCheck } from "lucide-react";
 
 const FINANCE_SECTIONS = new Set([
   "dashboard",
@@ -145,6 +146,7 @@ export default function FinanceCenterPage() {
   const activeSection = section && FINANCE_SECTIONS.has(section) ? section : "dashboard";
   const { hasAccess, currentUser } = useAuth();
   const canApprove = hasAccess(["finance"]);
+  const canViewFullFinancials = hasAccess(["admin", "manager", "finance"]);
   const { sales, financePayments, financeEntity, setFinanceEntity, refreshStoreData } = useStore() as any;
 
   const [bankReconciliations, setBankReconciliations] = useState<BankReconciliationRecord[]>([]);
@@ -161,8 +163,8 @@ export default function FinanceCenterPage() {
   const [dashboardAnalytics, setDashboardAnalytics] = useState<any>(null);
   const [selectedBankView, setSelectedBankView] = useState<string | null>(null);
 
-  const selectedEntity = (financeEntity as "FZ" | "MM") || "FZ";
-  const selectedEntityName = selectedEntity === "FZ" ? "Fasil Zelalem" : "Meseret Mare";
+  const selectedEntity = "MM";
+  const selectedEntityName = "Meseret Mare Solar";
 
   const loadFinanceCenterData = async () => {
     try {
@@ -861,14 +863,37 @@ export default function FinanceCenterPage() {
         />
       )}
 
+      {/* Role-based Protection for Financial Statements, Balance Sheet, and Peachtree Mirror */}
       {activeSection === "financials" && (
-        <FinancialStatementsModule
-          journalEntries={journalEntries}
-        />
+        canViewFullFinancials ? (
+          <FinancialStatementsModule journalEntries={journalEntries} />
+        ) : (
+          <div className="py-16 text-center space-y-3 max-w-md mx-auto">
+            <div className="p-3 bg-rose-500/10 text-rose-600 rounded-2xl w-fit mx-auto">
+              <ShieldCheck className="h-8 w-8 text-rose-500" />
+            </div>
+            <h3 className="font-bold text-base text-foreground">Financial Statements Restricted</h3>
+            <p className="text-xs text-muted-foreground">
+              Balance sheet, Income Statements (P&L), and Chart of Accounts are strictly restricted to General Manager and Finance Admin roles.
+            </p>
+          </div>
+        )
       )}
 
       {activeSection === "peachtree" && (
-        <PeachtreePage />
+        canViewFullFinancials ? (
+          <PeachtreePage />
+        ) : (
+          <div className="py-16 text-center space-y-3 max-w-md mx-auto">
+            <div className="p-3 bg-rose-500/10 text-rose-600 rounded-2xl w-fit mx-auto">
+              <ShieldCheck className="h-8 w-8 text-rose-500" />
+            </div>
+            <h3 className="font-bold text-base text-foreground">Peachtree Mirror Restricted</h3>
+            <p className="text-xs text-muted-foreground">
+              Official Peachtree 2010 database and ledger synchronization is accessible exclusively to the General Manager and Accounting personnel.
+            </p>
+          </div>
+        )
       )}
 
       {activeSection === "reports" && (

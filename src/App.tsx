@@ -63,7 +63,7 @@ function AuthenticatedApp() {
   useEffect(() => {
     if (isAuthenticated && currentUser) {
       const userRoles = currentUser.roles || [currentUser.role];
-      const isFinanceOrAdmin = userRoles.includes("admin") || userRoles.includes("finance");
+      const isFinanceOrAdmin = userRoles.includes("admin") || userRoles.includes("finance") || userRoles.includes("manager");
       initFinanceStore(isFinanceOrAdmin);
     }
   }, [isAuthenticated, currentUser]);
@@ -224,7 +224,7 @@ function AuthenticatedApp() {
         <Route
           path="/finance"
           element={
-            <ProtectedRoute roles={["admin", "finance"]}>
+            <ProtectedRoute roles={["admin", "manager", "finance"]}>
               <FinanceCenterPage />
             </ProtectedRoute>
           }
@@ -232,7 +232,7 @@ function AuthenticatedApp() {
         <Route
           path="/finance/:section"
           element={
-            <ProtectedRoute roles={["admin", "finance"]}>
+            <ProtectedRoute roles={["admin", "manager", "finance"]}>
               <FinanceCenterPage />
             </ProtectedRoute>
           }
@@ -241,7 +241,7 @@ function AuthenticatedApp() {
         <Route
           path="/peachtree"
           element={
-            <ProtectedRoute roles={["admin", "finance"]}>
+            <ProtectedRoute roles={["admin", "manager", "finance"]}>
               <PeachtreePage />
             </ProtectedRoute>
           }

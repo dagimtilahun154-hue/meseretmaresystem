@@ -30,7 +30,7 @@ export const WORKSPACE_GROUPS = [
     id: "treasury",
     label: "Treasury & Cash",
     icon: Wallet,
-    entities: ["FZ", "MM"],
+    entities: ["MM"],
     sections: [
       { id: "dashboard", label: "Overview", icon: LayoutDashboard, path: "/finance/dashboard" },
       { id: "cashflow", label: "Cash Flow", icon: TrendingUp, path: "/finance/cashflow" },
@@ -44,7 +44,7 @@ export const WORKSPACE_GROUPS = [
     label: "Sales & Proposals",
     icon: Droplets,
     badgeKey: "sizing",
-    entities: ["MM"], // Exclusively for Meseret Mare Solar Pump Projects
+    entities: ["MM"],
     sections: [
       { id: "sizing-proposals", label: "Pump Sizing Proposals", icon: Droplets, path: "/finance/sizing-proposals" },
     ],
@@ -54,7 +54,7 @@ export const WORKSPACE_GROUPS = [
     label: "Operations",
     icon: Package,
     badgeKey: "inventory",
-    entities: ["MM"], // Store / Inventory Requisitions for Solar Goods
+    entities: ["MM"],
     sections: [
       { id: "inventory", label: "Inventory Requests", icon: Package, path: "/finance/inventory" },
     ],
@@ -63,7 +63,7 @@ export const WORKSPACE_GROUPS = [
     id: "commitments",
     label: "Commitments & Debt",
     icon: Landmark,
-    entities: ["FZ", "MM"],
+    entities: ["MM"],
     sections: [
       { id: "building-rent", label: "Building Rent", icon: Building, path: "/finance/building-rent" },
       { id: "loans", label: "Loans & Credit", icon: Landmark, path: "/finance/loans" },
@@ -74,31 +74,28 @@ export const WORKSPACE_GROUPS = [
     id: "compliance",
     label: "Compliance & Ledger",
     icon: Receipt,
-    entities: ["FZ", "MM"],
+    entities: ["MM"],
     sections: [
+      { id: "peachtree", label: "Finance Summary & Reports", icon: FileUp, path: "/finance/peachtree" },
       { id: "vat", label: "VAT & Taxes", icon: Receipt, path: "/finance/vat" },
       { id: "payroll", label: "Payroll", icon: Users, path: "/finance/payroll" },
       { id: "financials", label: "Financial Statements", icon: PieChart, path: "/finance/financials" },
-      { id: "peachtree", label: "Peachtree Bridge", icon: FileUp, path: "/finance/peachtree" },
-      { id: "reports", label: "Legacy Reports", icon: FileText, path: "/finance/reports" },
+      { id: "reports", label: "Executive Analytics", icon: FileText, path: "/finance/reports" },
     ],
   },
 ];
 
 export function FinanceWorkspaceNav({
   activeSection,
-  selectedEntity,
-  selectedEntityName,
+  selectedEntity = "MM",
+  selectedEntityName = "Meseret Mare Solar",
   onEntityChange,
   pendingSizingCount = 0,
   pendingInvCount = 0,
 }: FinanceNavProps) {
   const navigate = useNavigate();
 
-  // Filter groups applicable to current entity
-  const visibleGroups = WORKSPACE_GROUPS.filter(
-    (group) => !group.entities || group.entities.includes(selectedEntity)
-  );
+  const visibleGroups = WORKSPACE_GROUPS;
 
   const getActiveGroup = () => {
     return (
@@ -112,7 +109,7 @@ export function FinanceWorkspaceNav({
 
   return (
     <div className="space-y-3">
-      {/* Top Bar with Title, Entity Switcher & Domain Module Group Selector */}
+      {/* Top Bar with Title & Company Identity */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-card/60 backdrop-blur-md border rounded-2xl p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-xl bg-gradient-to-tr from-primary/20 via-primary/10 to-primary/5 border border-primary/20 flex items-center justify-center shadow-inner">
@@ -122,56 +119,16 @@ export function FinanceWorkspaceNav({
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-black tracking-tight font-heading">Finance Center</h1>
               
-              {/* Interactive Company Entity Switcher */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-6 px-2.5 text-xs font-bold gap-1.5 border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 rounded-full cursor-pointer transition-all"
-                  >
-                    <Building2 className="h-3 w-3" />
-                    <span>{selectedEntity} · {selectedEntityName}</span>
-                    <ChevronDown className="h-3 w-3 opacity-60" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-64 p-1.5 shadow-xl rounded-xl">
-                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Select Trading Entity Ledger
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="flex flex-col items-start p-2.5 rounded-lg cursor-pointer"
-                    onClick={() => onEntityChange?.("MM")}
-                  >
-                    <div className="flex items-center justify-between w-full font-bold text-xs">
-                      <span>MM · Meseret Mare Solar</span>
-                      {selectedEntity === "MM" && <Check className="h-4 w-4 text-primary" />}
-                    </div>
-                    <span className="text-[11px] text-muted-foreground mt-0.5">
-                      Solar pump projects, sizing proposals, store inventory & POS sales
-                    </span>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    className="flex flex-col items-start p-2.5 rounded-lg cursor-pointer mt-1"
-                    onClick={() => onEntityChange?.("FZ")}
-                  >
-                    <div className="flex items-center justify-between w-full font-bold text-xs">
-                      <span>FZ · Fasil Zelalem Trading</span>
-                      {selectedEntity === "FZ" && <Check className="h-4 w-4 text-primary" />}
-                    </div>
-                    <span className="text-[11px] text-muted-foreground mt-0.5">
-                      Building rent leasing, bank loans, cash in safe, treasury & taxes
-                    </span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Badge
+                variant="outline"
+                className="h-6 px-2.5 text-xs font-bold gap-1.5 border-primary/40 bg-primary/10 text-primary rounded-full"
+              >
+                <Building2 className="h-3 w-3" />
+                <span>Meseret Mare Solar (MM)</span>
+              </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {selectedEntity === "FZ"
-                ? "Commercial Trading & Property · Building Rent, Loan Facilities, Petty Cash & Taxes"
-                : "Solarflow Commercial ERP · Solar Pump Sizing, Technical Dispatches, POS & Treasury"}
+              Solarflow Commercial ERP · Solar Pump Sizing, Technical Dispatches, POS & Treasury
             </p>
           </div>
         </div>

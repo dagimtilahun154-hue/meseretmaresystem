@@ -88,10 +88,10 @@ const navItems: NavItem[] = [
 
   // Phase 5: Financial Control & Analytics
   {
-    title: "Finance Center",
+    title: "Finance & Reports",
     url: "/finance",
     icon: DollarSign,
-    roles: ["admin", "finance"],
+    roles: ["admin", "manager", "finance"],
   },
   { title: "Reports", url: "/reports", icon: BarChart3, roles: ["admin", "manager", "finance"] },
 
@@ -133,7 +133,7 @@ export function AppSidebar() {
   const [sizingPayCount, setSizingPayCount] = useState<number>(0);
   const { counts } = useWebSocket();
   const showFinanceEntitySwitch =
-    !collapsed && location.pathname.startsWith("/finance") && hasAccess(["admin", "finance"]);
+    !collapsed && location.pathname.startsWith("/finance") && hasAccess(["admin", "manager", "finance"]);
 
   useEffect(() => {
     if (!currentUser || !hasAccess(["finance", "admin"])) return;
@@ -293,34 +293,6 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
-
-            {showFinanceEntitySwitch && (
-              <div className="mx-2 mt-3 rounded-xl border border-white/10 bg-white/5 p-2">
-                <p className="px-1 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">
-                  Company
-                </p>
-                <div className="grid grid-cols-2 gap-1">
-                  {allowedFinanceEntities.map((company) => (
-                    <button
-                      key={company.code}
-                      type="button"
-                      onClick={() => setFinanceEntity(company.code)}
-                      className={`rounded-lg px-2 py-2 text-xs font-bold transition-colors ${
-                        financeEntity === company.code
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-white/60 hover:bg-white/10 hover:text-white"
-                      }`}
-                    >
-                      {company.code}
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-2 px-1 text-[10px] leading-4 text-white/45">
-                  {allowedFinanceEntities.find((company) => company.code === financeEntity)?.name ||
-                    (financeEntity === "FZ" ? "Fasil Zelalem" : "Meseret Mare")}
-                </p>
-              </div>
-            )}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

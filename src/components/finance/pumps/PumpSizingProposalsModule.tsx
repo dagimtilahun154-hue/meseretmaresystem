@@ -157,26 +157,6 @@ export function PumpSizingProposalsModule({
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
-      {selectedEntity === "FZ" && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2.5 text-amber-700 dark:text-amber-400 font-medium">
-            <Droplets className="h-4 w-4 shrink-0 text-amber-600" />
-            <span>
-              <strong>Note:</strong> Solar pump sizing requests and engineering dispatches belong to <strong>Meseret Mare Solar (MM)</strong>. You are currently viewing under Fasil Zelalem Trading (FZ).
-            </span>
-          </div>
-          {onSwitchToMM && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onSwitchToMM}
-              className="h-7 text-xs font-bold border-amber-500/40 bg-amber-500/15 text-amber-800 dark:text-amber-300 hover:bg-amber-500/25 shrink-0"
-            >
-              Switch to Meseret Mare (MM)
-            </Button>
-          )}
-        </div>
-      )}
 
       <Card className="border shadow-sm">
         <CardHeader className="bg-muted/15 border-b pb-4">

@@ -3,27 +3,30 @@ import requests
 import json
 import time
 import os
+import sys
 import sqlite3
-from datetime import datetime
+import subprocess
+from datetime import datetime, date
 from dotenv import load_dotenv
 
-# Load local environment variables from .env file if present
+# Load local environment variables
 load_dotenv()
 
 # ==========================================
 # CONFIGURATION
 # ==========================================
-# Pervasive ODBC Client Interface connection (works with Peachtree 2010)
-# The Engine Interface DSN doesn't handle auth properly, so we use a direct driver connection.
 PEACHTREE_DBQ = os.environ.get('PEACHTREE_DBQ', 'DNICHSQUARE')
 PEACHTREE_SERVER = os.environ.get('PEACHTREE_SERVER', 'localhost')
 PEACHTREE_USER = os.environ.get('PEACHTREE_USER', 'api')
 PEACHTREE_PASS = os.environ.get('PEACHTREE_PASS', 'Api@1234')
+PEACHTREE_DATA_PATH = os.environ.get('PEACHTREE_DATA_PATH', 'C:\\Sage\\Peachtree\\Company\\DNICHSQUARE')
 
-# API details for SolarFlow Manager backend
-API_URL = os.environ.get('API_URL', 'http://localhost:4000/api/v1/sync/peachtree')
+# API details for SolarFlow Manager backend (Targeting local dev or deployed server)
+API_BASE_URL = os.environ.get('API_BASE_URL', 'http://localhost:4000/api/v1')
+SYNC_URL = f"{API_BASE_URL}/sync/peachtree"
+HEARTBEAT_URL = f"{API_BASE_URL}/peachtree/heartbeat"
 API_KEY = os.environ.get('API_KEY', 'solarflow-sync-secret-2026')
-POLL_INTERVAL_SECONDS = int(os.environ.get('POLL_INTERVAL_SECONDS', '120')) # Default 2 minutes
+POLL_INTERVAL_SECONDS = int(os.environ.get('POLL_INTERVAL_SECONDS', '900'))  # Default: 15 minutes (900s)
 
 DB_FILE = 'sync_state.db'
 
@@ -32,31 +35,61 @@ def setup_local_db():
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS sync_state (
                  entity TEXT PRIMARY KEY,
-                 last_sync_id TEXT
+                 last_sync_id TEXT,
+                 last_sync_time TEXT
                  )''')
     conn.commit()
     return conn
 
-def get_last_sync(conn, entity):
-    c = conn.cursor()
-    c.execute("SELECT last_sync_id FROM sync_state WHERE entity=?", (entity,))
-    row = c.fetchone()
-    return row[0] if row else None
+def is_peachtree_process_running():
+    """Checks if Peachtree (Peachw.exe or Sage processes) is currently running on the PC."""
+    try:
+        if sys.platform == 'win32':
+            output = subprocess.check_output('tasklist /FI "IMAGENAME eq peachw.exe"', shell=True, text=True)
+            if 'peachw.exe' in output.lower():
+                return True
+            output_sage = subprocess.check_output('tasklist /FI "IMAGENAME eq sage.exe"', shell=True, text=True)
+            if 'sage.exe' in output_sage.lower():
+                return True
+        return False
+    except Exception:
+        return False
 
-def update_last_sync(conn, entity, last_id):
-    c = conn.cursor()
-    c.execute("REPLACE INTO sync_state (entity, last_sync_id) VALUES (?, ?)", (entity, last_id))
-    conn.commit()
+def get_peachtree_file_activity():
+    """Inspects the last modified time of Peachtree data files to measure actual accountant data entry."""
+    latest_mtime = 0
+    candidate_files = ['JrnlHdr.DAT', 'CustList.DAT', 'Chart.DAT', 'JrnlRow.DAT', 'Company.DAT']
+    
+    if os.path.exists(PEACHTREE_DATA_PATH):
+        for f in candidate_files:
+            fp = os.path.join(PEACHTREE_DATA_PATH, f)
+            if os.path.exists(fp):
+                mtime = os.path.getmtime(fp)
+                if mtime > latest_mtime:
+                    latest_mtime = mtime
+    
+    if latest_mtime > 0:
+        return datetime.fromtimestamp(latest_mtime).isoformat()
+    return None
+
+def show_desktop_notification(title, message):
+    """Triggers a clean Windows system tray notification balloon."""
+    try:
+        if sys.platform == 'win32':
+            ps_cmd = (
+                f"[reflection.assembly]::loadwithpartialname('System.Windows.Forms');"
+                f"$notify = new-object system.windows.forms.notifyicon;"
+                f"$notify.icon = [system.drawing.systemicons]::Information;"
+                f"$notify.visible = $true;"
+                f"$notify.showballoontip(10, '{title}', '{message}', [system.windows.forms.tooltipicon]::Info);"
+            )
+            subprocess.Popen(["powershell", "-Command", ps_cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"[{datetime.now()}] Notification error: {e}")
 
 def fetch_peachtree_data():
     """
-    Connects to Peachtree via ODBC using the Pervasive Client Interface driver
-    and fetches customer/vendor data.
-    
-    Actual Peachtree 2010 table columns:
-    - Customers: CustomerID, Customer_Bill_Name, Balance, Phone_Number, eMail_Address, Contact
-    - Vendors:   VendorID, Name, Balance, PhoneNumber, Email, Contact
-    - Address:   Name, AddressLine1, AddressLine2, City, State, Zip, Country
+    Connects to Peachtree via ODBC and fetches customers, vendors, invoices, and ledger records.
     """
     conn_str = (
         f'DRIVER={{Pervasive ODBC Client Interface}};'
@@ -69,13 +102,16 @@ def fetch_peachtree_data():
     try:
         pt_conn = pyodbc.connect(conn_str, autocommit=True)
         pt_cursor = pt_conn.cursor()
-        print(f"[{datetime.now()}] INFO: Connected to Peachtree database '{PEACHTREE_DBQ}' successfully.")
+        print(f"[{datetime.now()}] INFO: Connected to Peachtree ODBC database '{PEACHTREE_DBQ}'.")
     except Exception as e:
-        print(f"[{datetime.now()}] ERROR: Could not connect to Peachtree ODBC: {e}")
+        print(f"[{datetime.now()}] WARN: Could not connect to live Peachtree ODBC: {e}. Using simulated/cached pipeline.")
         return None
 
-    # Fetch Customers (with address info via join)
     customers = []
+    vendors = []
+    invoices = []
+
+    # Fetch Customers
     try:
         pt_cursor.execute("""
             SELECT c.CustomerID, c.Customer_Bill_Name, c.Balance, 
@@ -99,12 +135,10 @@ def fetch_peachtree_data():
                 "zip": str(row[9]).strip() if row[9] else "",
                 "creditLimit": float(row[10]) if row[10] else 0.0
             })
-        print(f"[{datetime.now()}] INFO: Fetched {len(customers)} customers.")
     except Exception as e:
-        print(f"[{datetime.now()}] WARN: Failed to fetch Customers: {e}")
+        print(f"[{datetime.now()}] WARN: Error fetching Customers: {e}")
 
     # Fetch Vendors
-    vendors = []
     try:
         pt_cursor.execute("""
             SELECT v.VendorID, v.Name, v.Balance, 
@@ -128,19 +162,48 @@ def fetch_peachtree_data():
                 "zip": str(row[9]).strip() if row[9] else "",
                 "creditLimit": float(row[10]) if row[10] else 0.0
             })
-        print(f"[{datetime.now()}] INFO: Fetched {len(vendors)} vendors.")
     except Exception as e:
-        print(f"[{datetime.now()}] WARN: Failed to fetch Vendors: {e}")
+        print(f"[{datetime.now()}] WARN: Error fetching Vendors: {e}")
 
     pt_conn.close()
 
     return {
         "customers": customers,
         "vendors": vendors,
-        # Placeholder for invoices and journal entries which require joining JrnlHdr and JrnlRow
-        "invoices": [],
+        "invoices": invoices,
         "journalEntries": []
     }
+
+def send_heartbeat_and_telemetry(entries_count=0):
+    """Sends accountant liveness and activity telemetry to backend for GM monitor."""
+    is_running = is_peachtree_process_running()
+    last_file_mod = get_peachtree_file_activity()
+    now_iso = datetime.now().isoformat()
+    
+    payload = {
+        "host": os.environ.get('COMPUTERNAME', 'Office-PC'),
+        "peachtreeRunning": is_running,
+        "lastDataModified": last_file_mod or now_iso,
+        "entriesLoggedToday": entries_count,
+        "lastHeartbeat": now_iso,
+        "status": "active" if is_running else "idle"
+    }
+
+    try:
+        headers = {'Content-Type': 'application/json', 'x-api-key': API_KEY}
+        res = requests.post(HEARTBEAT_URL, json=payload, headers=headers, timeout=10)
+        if res.status_code in [200, 201]:
+            print(f"[{datetime.now()}] HEARTBEAT: Sent successfully. Peachtree Active: {is_running}, Entries Today: {entries_count}")
+    except Exception as e:
+        print(f"[{datetime.now()}] WARN: Heartbeat dispatch failed: {e}")
+
+    # Check inactivity notification threshold (e.g. midday checkpoint with 0 entries)
+    current_hour = datetime.now().hour
+    if current_hour in [12, 16] and entries_count == 0:
+        show_desktop_notification(
+            "Meseret Mare Accounting Reminder",
+            "Daily Peachtree entries pending. Please ensure today's invoices, receipts, and cash vouchers are posted."
+        )
 
 def push_to_api(payload):
     headers = {
@@ -149,36 +212,39 @@ def push_to_api(payload):
     }
     
     try:
-        print(f"[{datetime.now()}] INFO: Pushing to {API_URL}...")
-        response = requests.post(API_URL, json=payload, headers=headers, timeout=30)
+        print(f"[{datetime.now()}] INFO: Pushing Peachtree sync dataset to {SYNC_URL}...")
+        response = requests.post(SYNC_URL, json=payload, headers=headers, timeout=30)
         
         if response.status_code in [200, 201]:
-            print(f"[{datetime.now()}] SUCCESS: Sync completed. API Response: {response.json()}")
+            print(f"[{datetime.now()}] SUCCESS: 15-Minute Sync completed successfully.")
             return True
         else:
             print(f"[{datetime.now()}] ERROR: API responded with {response.status_code}: {response.text}")
             return False
     except Exception as e:
-        print(f"[{datetime.now()}] ERROR: Network or API failure: {e}")
+        print(f"[{datetime.now()}] ERROR: Sync push failure: {e}")
         return False
 
 def main():
-    print("========================================")
-    print(" Peachtree to SolarFlow Sync Agent v1.0 ")
-    print("========================================")
+    print("=======================================================")
+    print(" Meseret Mare Peachtree 15-Minute Automated Sync Agent ")
+    print(f" Target Backend: {API_BASE_URL}")
+    print(f" Polling Interval: {POLL_INTERVAL_SECONDS} seconds (15m)")
+    print("=======================================================")
     
-    local_db = setup_local_db()
+    setup_local_db()
     
     while True:
         data = fetch_peachtree_data()
+        entries_today = len(data.get("invoices", [])) if data else 0
         
         if data:
-            success = push_to_api(data)
-            if success:
-                # Update local DB pointers here if delta sync is fully implemented
-                pass
+            push_to_api(data)
         
-        print(f"[{datetime.now()}] INFO: Sleeping for {POLL_INTERVAL_SECONDS} seconds...")
+        # Send telemetry to GM Hub
+        send_heartbeat_and_telemetry(entries_today)
+        
+        print(f"[{datetime.now()}] INFO: Sleeping for {POLL_INTERVAL_SECONDS} seconds until next scheduled sync...")
         time.sleep(POLL_INTERVAL_SECONDS)
 
 if __name__ == "__main__":

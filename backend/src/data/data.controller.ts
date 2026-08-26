@@ -39,46 +39,46 @@ export class DataController {
   @Post("vendors") saveVendor(@Body() body: any) { return this.data.saveVendor(body); }
   @Delete("vendors/:id") deleteVendor(@Param("id") id: string) { return this.data.deleteVendor(id); }
   @Get("accounts")
-  @Roles('finance')
+  @Roles('finance', 'manager', 'admin')
   accounts() { return this.data.accounts(); }
   @Post("accounts")
-  @Roles('finance')
+  @Roles('finance', 'manager', 'admin')
   saveAccount(@Body() body: any) { return this.data.saveAccount(body); }
   @Delete("accounts/:id")
-  @Roles('finance')
+  @Roles('finance', 'manager', 'admin')
   deleteAccount(@Param("id") id: string) { return this.data.deleteAccount(id); }
   @Get("invoices")
-  @Roles('finance')
+  @Roles('finance', 'manager', 'admin')
   invoices() { return this.data.invoices(); }
   @Post("invoices")
-  @Roles('finance')
+  @Roles('finance', 'manager', 'admin')
   saveInvoice(@Body() body: any) { return this.data.saveInvoice(body); }
   @Get("bills")
-  @Roles('finance')
+  @Roles('finance', 'manager', 'admin')
   bills() { return this.data.bills(); }
   @Post("bills")
-  @Roles('finance')
+  @Roles('finance', 'manager', 'admin')
   saveBill(@Body() body: any) { return this.data.saveBill(body); }
   @Get("payments")
-  @Roles('finance')
+  @Roles('finance', 'manager', 'admin')
   payments() { return this.data.payments(); }
   @Post("payments")
-  @Roles('finance')
+  @Roles('finance', 'manager', 'admin')
   savePayment(@Body() body: any) { return this.data.savePayment(body); }
   @Get("expenses")
-  @Roles('finance')
+  @Roles('finance', 'manager', 'admin')
   expenses() { return this.data.expenses(); }
   @Post("expenses")
-  @Roles('finance')
+  @Roles('finance', 'manager', 'admin')
   saveExpense(@Body() body: any) { return this.data.saveExpense(body); }
   @Delete("expenses/:id")
-  @Roles('finance')
+  @Roles('finance', 'manager', 'admin')
   deleteExpense(@Param("id") id: string) { return this.data.deleteExpense(id); }
   @Get("journal")
-  @Roles('finance')
+  @Roles('finance', 'manager', 'admin')
   journal() { return this.data.journal(); }
   @Post("journal")
-  @Roles('finance')
+  @Roles('finance', 'manager', 'admin')
   saveJournal(@Body() body: any) { return this.data.saveJournal(body); }
 
   @Get("hr/departments") departments() { return this.data.departments(); }

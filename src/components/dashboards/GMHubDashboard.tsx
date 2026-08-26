@@ -18,6 +18,7 @@ import { SalesTrendChartWidget } from "./widgets/SalesTrendChartWidget";
 import { RecentTransactionsWidget } from "./widgets/RecentTransactionsWidget";
 import { EodActivityWidget } from "./widgets/EodActivityWidget";
 import { QuickAlertsTasksWidget } from "./widgets/QuickAlertsTasksWidget";
+import { PeachtreeWorkMonitorWidget } from "./widgets/PeachtreeWorkMonitorWidget";
 
 export interface GMHubDashboardProps {
   stats?: any;
@@ -191,13 +192,19 @@ export function GMHubDashboard(props: GMHubDashboardProps) {
             className: "bg-white text-emerald-950 hover:bg-emerald-50 font-bold shadow-md text-xs h-8 sm:h-9",
           },
           {
+            label: "Finance & Reports",
+            onClick: () => navigate("/finance/peachtree"),
+            icon: DollarSign,
+            className: "bg-emerald-950/70 hover:bg-emerald-950 text-white font-bold border border-white/20 text-xs h-8 sm:h-9",
+          },
+          {
             label: "Pump Sizing",
             onClick: () => navigate("/fieldwork/sizing"),
             icon: Droplets,
             className: "bg-emerald-950/70 hover:bg-emerald-950 text-white font-bold border border-white/20 text-xs h-8 sm:h-9",
           },
           {
-            label: "Reports",
+            label: "Analytics",
             onClick: () => navigate("/reports"),
             icon: BarChart3,
             className: "bg-emerald-950/70 hover:bg-emerald-950 text-white font-bold border border-white/20 text-xs h-8 sm:h-9",
@@ -273,6 +280,9 @@ export function GMHubDashboard(props: GMHubDashboardProps) {
 
         {/* Right Column (40% Desktop / 100% Mobile): Approvals, Alerts & Field Operations */}
         <div className="lg:col-span-5 space-y-5">
+          {/* Real-time Accounting Activity & Workstation Surveillance */}
+          <PeachtreeWorkMonitorWidget />
+
           {/* Executive Approvals Hub */}
           <Card className="p-3.5 sm:p-4 space-y-3 border-emerald-500/30 bg-card shadow-sm">
             <div className="flex items-center justify-between border-b pb-2">

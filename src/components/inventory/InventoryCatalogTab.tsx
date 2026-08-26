@@ -213,8 +213,7 @@ export const InventoryCatalogTab: React.FC<InventoryCatalogTabProps> = ({
                   <TableHead className="text-xs font-bold text-muted-foreground py-3">Category</TableHead>
                   <TableHead className="text-xs font-bold text-muted-foreground py-3 text-center">Shelf / Bin</TableHead>
                   <TableHead className="text-xs font-bold text-muted-foreground py-3 text-center">In Stock</TableHead>
-                  <TableHead className="text-xs font-bold text-muted-foreground py-3 text-right">Cost (ETB)</TableHead>
-                  <TableHead className="text-xs font-bold text-muted-foreground py-3 text-right">Sell Price (ETB)</TableHead>
+                  <TableHead className="text-xs font-bold text-muted-foreground py-3 text-right">Catalog Price (ETB)</TableHead>
                   <TableHead className="text-xs font-bold text-muted-foreground py-3 text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -288,12 +287,7 @@ export const InventoryCatalogTab: React.FC<InventoryCatalogTabProps> = ({
                         </div>
                       </TableCell>
 
-                      {/* Cost */}
-                      <TableCell className="py-3 text-right font-mono text-xs text-muted-foreground">
-                        {formatCurrency(p.costPrice || 0)}
-                      </TableCell>
-
-                      {/* Sell Price */}
+                      {/* Catalog Price */}
                       <TableCell className="py-3 text-right font-mono text-xs font-bold text-foreground">
                         {formatCurrency(p.sellPrice || 0)}
                       </TableCell>

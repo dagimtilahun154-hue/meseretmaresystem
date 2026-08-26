@@ -44,30 +44,32 @@ export const InventoryDashboardTab: React.FC<InventoryDashboardTabProps> = ({
   };
 
   // 1. Signature Stat Cards matching Dashboard styling
+  const totalPhysicalUnits = Object.values(categoryCounts).reduce((sum: number, c: any) => sum + (c.qty || 0), 0);
+
   const statCards: StatCardItem[] = [
     {
-      key: "valuation",
-      label: "Total Stock Valuation",
-      value: formatCurrency(data?.totalStockValue || 0),
-      subtext: `${data?.totalProducts || 0} registered SKUs`,
-      icon: DollarSign,
-      gradientClass: "stat-gradient-sales",
-      badge: "Valuation",
+      key: "totalUnits",
+      label: "Total Units in Stock",
+      value: `${totalPhysicalUnits} Units`,
+      subtext: `${data?.totalProducts || 0} active catalog SKUs`,
+      icon: Package,
+      gradientClass: "stat-gradient-products",
+      badge: "Stock Level",
     },
     {
       key: "products",
-      label: "Available Inventory",
-      value: `${data?.totalProducts || 0} SKUs`,
-      subtext: "Across warehouse & bins",
-      icon: Package,
-      gradientClass: "stat-gradient-products",
+      label: "Active Catalog SKUs",
+      value: `${data?.totalProducts || 0} Items`,
+      subtext: "Across warehouse racks & bins",
+      icon: Layers,
+      gradientClass: "stat-gradient-sales",
       badge: "Catalog",
     },
     {
       key: "releases",
       label: "Pending Field Releases",
       value: `${data?.pendingReleasesCount || 0} Jobs`,
-      subtext: "Awaiting storekeeper release",
+      subtext: "Awaiting storekeeper dispatch",
       icon: Truck,
       gradientClass: "stat-gradient-customers",
       badge: "Dispatch",
@@ -88,13 +90,13 @@ export const InventoryDashboardTab: React.FC<InventoryDashboardTabProps> = ({
       {/* 1. Signature Stat Cards Grid */}
       <StatCardGrid cards={statCards} gridColsClass="grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" />
 
-      {/* 2. Warehouse Stock Valuation by 4 Categories */}
+      {/* 2. Warehouse Stock Balance by 4 Categories */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Layers className="h-4 w-4 text-primary" /> Warehouse Inventory by Category
           </h3>
-          <span className="text-xs text-muted-foreground font-medium">Real-time stock balance & valuation</span>
+          <span className="text-xs text-muted-foreground font-medium">Physical stock balance & unit counts</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -113,11 +115,13 @@ export const InventoryDashboardTab: React.FC<InventoryDashboardTabProps> = ({
             </div>
             <div className="font-bold text-sm text-foreground">Solar Water Pumps</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              <strong className="text-foreground text-sm font-extrabold">{categoryCounts.PUMP?.qty || 0}</strong> units in stock
+              <strong className="text-foreground text-sm font-extrabold">{categoryCounts.PUMP?.qty || 0}</strong> units in warehouse
             </div>
             <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between text-xs">
-              <span className="text-muted-foreground font-medium">Valuation:</span>
-              <span className="font-mono font-bold text-sky-700 dark:text-sky-300">{formatCurrency(categoryCounts.PUMP?.value || 0)}</span>
+              <span className="text-muted-foreground font-medium">Stock Status:</span>
+              <span className="font-mono font-bold text-sky-700 dark:text-sky-300">
+                {categoryCounts.PUMP?.qty > 0 ? "In Stock" : "Out of Stock"}
+              </span>
             </div>
           </Card>
 
@@ -139,8 +143,10 @@ export const InventoryDashboardTab: React.FC<InventoryDashboardTabProps> = ({
               <strong className="text-foreground text-sm font-extrabold">{categoryCounts.PUMP_EQUIPMENT?.qty || 0}</strong> controllers/panels
             </div>
             <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between text-xs">
-              <span className="text-muted-foreground font-medium">Valuation:</span>
-              <span className="font-mono font-bold text-amber-700 dark:text-amber-300">{formatCurrency(categoryCounts.PUMP_EQUIPMENT?.value || 0)}</span>
+              <span className="text-muted-foreground font-medium">Stock Status:</span>
+              <span className="font-mono font-bold text-amber-700 dark:text-amber-300">
+                {categoryCounts.PUMP_EQUIPMENT?.qty > 0 ? "In Stock" : "Out of Stock"}
+              </span>
             </div>
           </Card>
 
@@ -159,11 +165,13 @@ export const InventoryDashboardTab: React.FC<InventoryDashboardTabProps> = ({
             </div>
             <div className="font-bold text-sm text-foreground">Company Tools</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              <strong className="text-foreground text-sm font-extrabold">{categoryCounts.COMPANY_TOOL?.qty || 0}</strong> available in warehouse
+              <strong className="text-foreground text-sm font-extrabold">{categoryCounts.COMPANY_TOOL?.qty || 0}</strong> assigned/available
             </div>
             <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between text-xs">
-              <span className="text-muted-foreground font-medium">Valuation:</span>
-              <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300">{formatCurrency(categoryCounts.COMPANY_TOOL?.value || 0)}</span>
+              <span className="text-muted-foreground font-medium">Stock Status:</span>
+              <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300">
+                {categoryCounts.COMPANY_TOOL?.qty > 0 ? "Operational" : "Empty"}
+              </span>
             </div>
           </Card>
 
@@ -185,8 +193,10 @@ export const InventoryDashboardTab: React.FC<InventoryDashboardTabProps> = ({
               <strong className="text-foreground text-sm font-extrabold">{categoryCounts.WORK_TOOL?.qty || 0}</strong> cables/pipes/fittings
             </div>
             <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between text-xs">
-              <span className="text-muted-foreground font-medium">Valuation:</span>
-              <span className="font-mono font-bold text-purple-700 dark:text-purple-300">{formatCurrency(categoryCounts.WORK_TOOL?.value || 0)}</span>
+              <span className="text-muted-foreground font-medium">Stock Status:</span>
+              <span className="font-mono font-bold text-purple-700 dark:text-purple-300">
+                {categoryCounts.WORK_TOOL?.qty > 0 ? "Available" : "Reorder"}
+              </span>
             </div>
           </Card>
         </div>

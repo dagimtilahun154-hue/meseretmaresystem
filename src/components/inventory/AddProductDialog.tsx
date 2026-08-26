@@ -295,33 +295,23 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({
           </div>
 
           {/* Pricing & Shelf Location */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-foreground">Cost Price (ETB)</Label>
-              <Input
-                type="number"
-                min="0"
-                value={costPrice}
-                onChange={(e) => setCostPrice(parseFloat(e.target.value) || 0)}
-                className="bg-card border-border text-foreground font-mono"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-foreground">Sell Price (ETB)</Label>
+              <Label className="text-xs font-semibold text-foreground">Catalog Sell Price (ETB)</Label>
               <Input
                 type="number"
                 min="0"
                 value={sellPrice}
                 onChange={(e) => setSellPrice(parseFloat(e.target.value) || 0)}
                 className="bg-card border-border text-foreground font-mono"
+                placeholder="Optional sales catalog price"
               />
             </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-foreground">Shelf / Bin Location</Label>
               <Input
-                placeholder="e.g. A-12, Bin 4"
+                placeholder="e.g. Rack A-12, Bin 4"
                 value={shelfLocation}
                 onChange={(e) => setShelfLocation(e.target.value)}
                 className="bg-card border-border text-foreground"

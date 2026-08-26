@@ -542,7 +542,7 @@ export default function Payroll() {
                 </div>
                 <div>
                   <h2 className="text-sm font-black tracking-tight text-white uppercase font-heading">
-                    MESERET MARE SOLAR PRODUCTS & FASIL ZELALEM
+                    MESERET MARE SOLAR PRODUCTS
                   </h2>
                   <p className="text-[11px] text-slate-300">Official Personnel Salary Payment Slip</p>
                 </div>

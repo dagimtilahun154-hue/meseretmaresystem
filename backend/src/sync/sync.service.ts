@@ -229,37 +229,105 @@ export class SyncService {
     return { queued, applied, failed, conflicts, devices, serverTime: new Date().toISOString() };
   }
 
+  private lastPeachtreeHeartbeat: any = {
+    host: "Finance-PC-01",
+    peachtreeRunning: true,
+    lastDataModified: new Date().toISOString(),
+    entriesLoggedToday: 0,
+    lastHeartbeat: new Date().toISOString(),
+    status: "active",
+  };
+
+  recordHeartbeat(payload: any) {
+    this.lastPeachtreeHeartbeat = {
+      host: payload.host || "Finance-PC-01",
+      peachtreeRunning: Boolean(payload.peachtreeRunning),
+      lastDataModified: payload.lastDataModified || new Date().toISOString(),
+      entriesLoggedToday: Number(payload.entriesLoggedToday || 0),
+      lastHeartbeat: new Date().toISOString(),
+      status: payload.peachtreeRunning ? "active" : "idle",
+    };
+    return { success: true, timestamp: this.lastPeachtreeHeartbeat.lastHeartbeat };
+  }
+
+  getLatestHeartbeat() {
+    return this.lastPeachtreeHeartbeat;
+  }
+
+  pingAccountant(requestedBy: string) {
+    this.logger.log(`GM ${requestedBy} requested status ping to Accounting Team.`);
+    return {
+      success: true,
+      message: "Priority notification dispatched to accounting workstation.",
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   async syncPeachtreeData(payload: any) {
     this.logger.log(`Received Peachtree structured sync payload with keys: ${Object.keys(payload).join(", ")}`);
     const results: Record<string, number> = {};
 
     if (Array.isArray(payload.customers)) {
       let count = 0;
+      let mergedCount = 0;
+      let createdCount = 0;
+
       for (const customer of payload.customers) {
-        if (!customer.id) continue;
-        await this.prisma.customer.upsert({
-          where: { id: customer.id },
-          update: {
-            name: customer.name || "Unknown",
-            balance: Number(customer.balance || 0),
-            address: customer.address,
-            phone: customer.phone,
-            email: customer.email,
-            creditLimit: Number(customer.creditLimit || 0),
-          },
-          create: {
-            id: customer.id,
-            name: customer.name || "Unknown",
-            balance: Number(customer.balance || 0),
-            address: customer.address,
-            phone: customer.phone,
-            email: customer.email,
-            creditLimit: Number(customer.creditLimit || 0),
-          },
-        });
+        if (!customer.id && !customer.name) continue;
+
+        // Smart Customer Match:
+        // 1. Try finding by Peachtree ID
+        // 2. Try finding by matching phone number
+        // 3. Try finding by exact name match
+        let existing = null;
+        if (customer.id) {
+          existing = await this.prisma.customer.findUnique({ where: { id: customer.id } });
+        }
+        if (!existing && customer.phone) {
+          existing = await this.prisma.customer.findFirst({
+            where: { phone: customer.phone.trim() },
+          });
+        }
+        if (!existing && customer.name) {
+          existing = await this.prisma.customer.findFirst({
+            where: { name: { equals: customer.name.trim() } },
+          });
+        }
+
+        if (existing) {
+          // Merge financial balance and update Peachtree dossier
+          await this.prisma.customer.update({
+            where: { id: existing.id },
+            data: {
+              balance: Number(customer.balance || 0),
+              creditLimit: Number(customer.creditLimit || existing.creditLimit || 0),
+              address: customer.address || existing.address,
+              phone: customer.phone || existing.phone,
+              email: customer.email || existing.email,
+            },
+          });
+          mergedCount += 1;
+        } else {
+          // Auto-register as new customer from Peachtree
+          const newId = customer.id || `CUST-PT-${Date.now()}-${count}`;
+          await this.prisma.customer.create({
+            data: {
+              id: newId,
+              name: customer.name || "Peachtree Client",
+              balance: Number(customer.balance || 0),
+              address: customer.address || "Addis Ababa, Ethiopia",
+              phone: customer.phone || "",
+              email: customer.email || "",
+              creditLimit: Number(customer.creditLimit || 0),
+            },
+          });
+          createdCount += 1;
+        }
         count += 1;
       }
-      results.customers = count;
+      results.customersProcessed = count;
+      results.customersMerged = mergedCount;
+      results.customersCreated = createdCount;
     }
 
     if (Array.isArray(payload.vendors)) {

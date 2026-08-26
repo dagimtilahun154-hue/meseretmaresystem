@@ -36,7 +36,7 @@ export default function LoginPage() {
           <div className="bg-white p-3 rounded-2xl shadow-lg border border-border/40 inline-flex items-center justify-center mb-2">
             <img
               src="/uploads/Untitled_design__4_-removebg-preview.png"
-              alt="Meseret Mare Solar & Fasil Zelalem"
+              alt="Meseret Mare Solar"
               className="w-20 h-20 object-contain"
             />
           </div>

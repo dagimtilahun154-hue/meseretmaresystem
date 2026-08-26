@@ -55,9 +55,9 @@ const FINANCE_ENTITY_KEY = "financeEntity";
 
 const getSavedFinanceEntity = (): FinanceEntity => {
   try {
-    return localStorage.getItem(FINANCE_ENTITY_KEY) === "MM" ? "MM" : "FZ";
+    return "MM";
   } catch {
-    return "FZ";
+    return "MM";
   }
 };
 

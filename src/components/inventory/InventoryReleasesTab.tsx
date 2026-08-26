@@ -239,7 +239,7 @@ export const InventoryReleasesTab: React.FC<InventoryReleasesTabProps> = ({
         </head>
         <body>
           <h1>Meseret Mare Equipment Release & Handover Sheet</h1>
-          <p style="font-size: 11px; color: #64748b; margin-top: 0;">MESERET MARE ERP / FASIL ZELALEM TRADING</p>
+          <p style="font-size: 11px; color: #64748b; margin-top: 0;">MESERET MARE SOLAR PRODUCTS & FIELD OPERATIONS</p>
 
           <div class="header-box">
             <div class="grid">

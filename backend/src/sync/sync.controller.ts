@@ -39,6 +39,26 @@ export class SyncController {
     return this.syncService.syncPeachtreeData(payload);
   }
 
+  @Public()
+  @Post("peachtree/heartbeat")
+  @UseGuards(ApiKeyGuard)
+  recordHeartbeat(@Body() payload: any) {
+    return this.syncService.recordHeartbeat(payload);
+  }
+
+  @Public()
+  @Get("peachtree/heartbeat")
+  getHeartbeat() {
+    return this.syncService.getLatestHeartbeat();
+  }
+
+  @Post("peachtree/ping-accountant")
+  pingAccountant(@Req() req: any) {
+    const user = req.user?.displayName || req.user?.username || "General Manager";
+    return this.syncService.pingAccountant(user);
+  }
+
+  @Public()
   @Get("peachtree/data")
   getSyncedPeachtreeData() {
     return this.syncService.getSyncedPeachtreeData();
@@ -52,6 +72,19 @@ export class SyncController {
   @Get("peachtree/vault")
   getPeachtreeVault() {
     return this.syncService.getPeachtreeVaultArchive();
+  }
+
+  @Public()
+  @Get("peachtree/vault/download")
+  downloadPeachtreeVault(@Req() req: any) {
+    const fs = require("fs");
+    const path = require("path");
+    const ptbPath = "C:\\Users\\new\\OneDrive\\Documents\\solarflow-manager-main\\Meseret 2016xx-121124.ptb";
+    
+    if (fs.existsSync(ptbPath)) {
+      return fs.createReadStream(ptbPath);
+    }
+    return { success: false, message: "Backup file archive not found on host." };
   }
 
   @Public()
