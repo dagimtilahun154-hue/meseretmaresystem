@@ -82,11 +82,23 @@ export function CustomerDossierPage() {
     );
   }
 
+  if (!loading && (!data || !data.customer)) {
+    return (
+      <div className="container mx-auto p-8 text-center space-y-4">
+        <p className="text-sm text-muted-foreground font-medium">Customer dossier not found or could not be loaded.</p>
+        <Button onClick={() => navigate("/customers")} variant="outline" className="gap-2">
+          <ArrowLeft className="h-4 w-4" /> Back to Customers Registry
+        </Button>
+      </div>
+    );
+  }
+
   const customer = data?.customer || {};
   const sizings = data?.sizingHistory || [];
   const sales = data?.salesInvoices || [];
   const peachtree = data?.peachtreeRecords || [];
   const fieldWorks = data?.fieldWorkOperations || [];
+  const fieldCashRequests = data?.fieldCashRequests || [];
   const notes = data?.notes || [];
 
   const completedFieldWork = fieldWorks.find((fw: any) => fw.status === "completed" || fw.completedDate || fw.status === "done");
@@ -105,6 +117,7 @@ export function CustomerDossierPage() {
   const totalPaid = sales.filter((s: any) => s.status === "PAID" || s.status === "COMPLETED")
     .reduce((acc: number, s: any) => acc + (s.totalAmount || s.amount || 0), 0) + peachtreeBilled;
   const outstandingBalance = Math.max(0, totalLifetimeSpend - totalPaid);
+  const totalFieldCashRequested = fieldCashRequests.reduce((acc: number, r: any) => acc + (Number(r.amount) || 0), 0);
 
   const scrollToSection = (sectionId: string) => {
     const el = document.getElementById(sectionId);
@@ -114,7 +127,7 @@ export function CustomerDossierPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8 space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 space-y-6 animate-in fade-in duration-300">
       {/* Top Bar Navigation & Print Action */}
       <div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
         <Button variant="ghost" onClick={() => navigate("/customers")} className="gap-2 font-semibold">
@@ -134,13 +147,16 @@ export function CustomerDossierPage() {
         </div>
         <div className="flex items-center gap-1 overflow-x-auto">
           <Button variant="ghost" size="sm" onClick={() => scrollToSection("sec-profile")} className="h-7 text-xs font-semibold gap-1">
-            <Users className="h-3 w-3 text-primary" /> Client Profile
+            <Users className="h-3 w-3 text-primary" /> Profile
           </Button>
           <Button variant="ghost" size="sm" onClick={() => scrollToSection("sec-sizing")} className="h-7 text-xs font-semibold gap-1">
             <Droplets className="h-3 w-3 text-sky-500" /> Sizing ({sizings.length})
           </Button>
           <Button variant="ghost" size="sm" onClick={() => scrollToSection("sec-invoices")} className="h-7 text-xs font-semibold gap-1">
             <Receipt className="h-3 w-3 text-emerald-500" /> Invoices ({peachtree.length + sales.length})
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => scrollToSection("sec-fieldwork")} className="h-7 text-xs font-semibold gap-1 text-amber-700 dark:text-amber-300">
+            <Zap className="h-3 w-3 text-amber-500" /> Fieldwork & Cash ({fieldWorks.length + fieldCashRequests.length})
           </Button>
           <Button variant="ghost" size="sm" onClick={() => scrollToSection("sec-assessment")} className="h-7 text-xs font-semibold gap-1">
             <ClipboardCheck className="h-3 w-3 text-indigo-500" /> Field Survey
@@ -149,7 +165,7 @@ export function CustomerDossierPage() {
             <Camera className="h-3 w-3 text-purple-500" /> Media & Photos
           </Button>
           <Button variant="ghost" size="sm" onClick={() => scrollToSection("sec-notes")} className="h-7 text-xs font-semibold gap-1">
-            <MessageSquare className="h-3 w-3 text-blue-500" /> Audit Notes ({notes.length})
+            <MessageSquare className="h-3 w-3 text-blue-500" /> Notes ({notes.length})
           </Button>
           <Button variant="ghost" size="sm" onClick={() => scrollToSection("sec-warranty")} className="h-7 text-xs font-semibold gap-1">
             <ShieldCheck className="h-3 w-3 text-emerald-600" /> Warranty
@@ -492,14 +508,96 @@ export function CustomerDossierPage() {
         </div>
 
         {/* ========================================================================= */}
-        {/* SECTION 4: SITE SURVEY & COMPREHENSIVE FIELD ASSESSMENT */}
+        {/* SECTION 4: FIELDWORK OPERATIONS & ON-SITE EMERGENCY CASH LEDGER */}
+        {/* ========================================================================= */}
+        <div id="sec-fieldwork" className="space-y-4 print:break-inside-avoid">
+          <div className="flex items-center justify-between border-b pb-2">
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-500" />
+              <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-foreground">
+                Section 4: Fieldwork Operations & On-Site Cash Ledger
+              </h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 text-xs font-bold font-mono">
+                {fieldCashRequests.length} Cash Request(s) • Total: {formatCurrency(totalFieldCashRequested)}
+              </Badge>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Fieldwork Jobs List */}
+            <Card className="p-4 border shadow-sm space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 border-b pb-2">
+                <Wrench className="h-3.5 w-3.5 text-primary" /> Active & Completed Field Work Projects ({fieldWorks.length})
+              </h4>
+              {fieldWorks.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic py-4 text-center">No field work installation jobs registered yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {fieldWorks.map((fw: any, fIdx: number) => (
+                    <div key={fw.id || fIdx} className="rounded-lg border bg-muted/10 p-3 text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-foreground">{fw.title || fw.pumpModel || "Fieldwork Job"}</span>
+                        <Badge className="text-[9px] uppercase font-bold bg-primary/10 text-primary border-primary/20">
+                          {fw.status || "IN-PROGRESS"}
+                        </Badge>
+                      </div>
+                      <p className="text-muted-foreground text-[11px]">
+                        <strong>Assigned TTL:</strong> {fw.assignedTo || "Technical Team Leader"} • <strong>Location:</strong> {fw.location || "Site"}
+                      </p>
+                      <div className="flex items-center justify-between pt-1 text-[10px] text-muted-foreground font-mono">
+                        <span>Duration: {fw.startDate || "Start"} → {fw.endDate || "End"}</span>
+                        <span className="font-bold text-foreground">{fw.workers?.length || 0} Crew Members</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {/* On-Site Extra Cash Requisitions */}
+            <Card className="p-4 border shadow-sm space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 flex items-center gap-1.5 border-b pb-2">
+                <Zap className="h-3.5 w-3.5 text-amber-600" /> On-Site Emergency Cash & Expense Trail ({fieldCashRequests.length})
+              </h4>
+              {fieldCashRequests.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic py-4 text-center">No emergency extra cash requested during on-site execution.</p>
+              ) : (
+                <div className="space-y-2">
+                  {fieldCashRequests.map((cr: any, cIdx: number) => {
+                    const desc = typeof cr.description === "string" && cr.description.startsWith("{") ? JSON.parse(cr.description) : { text: cr.description };
+                    return (
+                      <div key={cr.id || cIdx} className="rounded-lg border bg-amber-500/5 border-amber-500/20 p-3 text-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-foreground">{cr.title || desc.category || "Field Cash"}</span>
+                          <span className="font-black font-mono text-amber-600">
+                            {formatCurrency(Number(cr.amount || 0))}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground text-[11px]">{desc.reason || desc.text || cr.description}</p>
+                        <div className="flex items-center justify-between pt-1 text-[10px] text-muted-foreground">
+                          <span>Status: <strong className="uppercase text-amber-700 dark:text-amber-400">{cr.status || "PENDING"}</strong></span>
+                          <span>{cr.createdAt ? new Date(cr.createdAt).toLocaleDateString() : "Recent"}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* SECTION 5: SITE SURVEY & COMPREHENSIVE FIELD ASSESSMENT */}
         {/* ========================================================================= */}
         <div id="sec-assessment" className="space-y-4 print:break-inside-avoid">
           <div className="flex items-center justify-between border-b pb-2">
             <div className="flex items-center gap-2">
               <ClipboardCheck className="h-5 w-5 text-indigo-500" />
               <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-foreground">
-                Section 4: Field Survey & Comprehensive Site Assessment
+                Section 5: Field Survey & Comprehensive Site Assessment
               </h3>
             </div>
             <Badge variant="outline" className="text-xs font-bold">
@@ -546,14 +644,14 @@ export function CustomerDossierPage() {
         </div>
 
         {/* ========================================================================= */}
-        {/* SECTION 5: SITE MEDIA & INSTALLATION PHOTOS */}
+        {/* SECTION 6: SITE MEDIA & INSTALLATION PHOTOS */}
         {/* ========================================================================= */}
         <div id="sec-media" className="space-y-4 print:break-inside-avoid">
           <div className="flex items-center justify-between border-b pb-2">
             <div className="flex items-center gap-2">
               <Camera className="h-5 w-5 text-purple-500" />
               <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-foreground">
-                Section 5: Site Media & Completion Verification Photos
+                Section 6: Site Media & Completion Verification Photos
               </h3>
             </div>
             <Badge variant="outline" className="text-xs font-bold">
@@ -604,14 +702,14 @@ export function CustomerDossierPage() {
         </div>
 
         {/* ========================================================================= */}
-        {/* SECTION 6: PERMANENT AUDIT LOGS & DOSSIER NOTES */}
+        {/* SECTION 7: PERMANENT AUDIT LOGS & DOSSIER NOTES */}
         {/* ========================================================================= */}
         <div id="sec-notes" className="space-y-4 print:break-inside-avoid">
           <div className="flex items-center justify-between border-b pb-2">
             <div className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-blue-500" />
               <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-foreground">
-                Section 6: Permanent Dossier Notes & Multi-Role Audit Logs
+                Section 7: Permanent Dossier Notes & Multi-Role Audit Logs
               </h3>
             </div>
             <Badge variant="outline" className="text-xs font-bold font-mono">
@@ -652,14 +750,14 @@ export function CustomerDossierPage() {
         </div>
 
         {/* ========================================================================= */}
-        {/* SECTION 7: OFFICIAL SYSTEM WARRANTY CERTIFICATE */}
+        {/* SECTION 8: OFFICIAL SYSTEM WARRANTY CERTIFICATE */}
         {/* ========================================================================= */}
         <div id="sec-warranty" className="space-y-4 print:break-inside-avoid">
           <div className="flex items-center justify-between border-b pb-2">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-emerald-600" />
               <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-foreground">
-                Section 7: Official System Warranty & Service Terms
+                Section 8: Official System Warranty & Service Terms
               </h3>
             </div>
             <Badge className="bg-emerald-600 text-white text-xs font-bold">

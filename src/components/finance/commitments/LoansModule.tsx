@@ -73,14 +73,14 @@ export function LoansModule({
     }
   };
 
-  const entityLoans = loans.filter((l) => l.entity === selectedEntity);
+  const entityLoans = loans.filter((l) => !l.entity || l.entity === "MM" || l.entity === selectedEntity);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex flex-wrap justify-between items-center gap-3">
         <div>
           <h2 className="text-lg font-bold font-heading">Loans, Credit Facilities & Amortization</h2>
-          <p className="text-xs text-muted-foreground">Manage active debt obligations, repayment schedules, and interest for {selectedEntity}</p>
+          <p className="text-xs text-muted-foreground">Manage active debt obligations, repayment schedules, and interest for Meseret Mare Solar</p>
         </div>
         <Button size="sm" onClick={() => setNewLoanDialog(true)}>
           <Plus className="h-4 w-4 mr-1" /> New Loan Facility

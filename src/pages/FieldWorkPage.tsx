@@ -51,7 +51,8 @@ import { apiClient } from "@/lib/api/client";
 import { ClientFileModal } from "@/components/ClientFileModal";
 import { FieldWork, FieldWorkEquipment, FieldWorker, ReturnForm, PlannedMaterialItem, MaterialSource } from "@/lib/fieldwork-data";
 import { FieldWorkMaterialPlanning } from "@/components/fieldwork/FieldWorkMaterialPlanning";
-import { hierarchyRequestsDB, pumpProductsDB } from "@/lib/db-service";
+import { hierarchyRequestsDB, pumpProductsDB, fieldWorkDB } from "@/lib/db-service";
+import { formatCurrency } from "@/lib/data";
 import { useParams } from "react-router-dom";
 import { WaterSource } from "@/lib/pump-sizing";
 import ApprovalsInbox from "@/components/ApprovalsInbox";
@@ -148,6 +149,49 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
   const [assigningTtlId, setAssigningTtlId] = useState<Record<string, string>>({});
   const [planningFwId, setPlanningFwId] = useState<string | null>(null);
   const [checklistChecked, setChecklistChecked] = useState<Record<string, Record<string, boolean>>>({});
+
+  // On-Site Field Cash Requisition Modal State
+  const [cashRequestModalOpen, setCashRequestModalOpen] = useState(false);
+  const [cashRequestJob, setCashRequestJob] = useState<any | null>(null);
+  const [cashAmount, setCashAmount] = useState("");
+  const [cashCategory, setCashCategory] = useState("Local Materials & Fittings");
+  const [cashReason, setCashReason] = useState("");
+  const [submittingCashReq, setSubmittingCashReq] = useState(false);
+
+  const handleOpenCashRequest = (job: any) => {
+    setCashRequestJob(job);
+    setCashAmount("");
+    setCashCategory("Local Materials & Fittings");
+    setCashReason("");
+    setCashRequestModalOpen(true);
+  };
+
+  const handleSubmitCashRequest = async () => {
+    if (!cashRequestJob || !cashAmount || parseFloat(cashAmount) <= 0) {
+      toast.error("Please enter a valid cash amount in ETB.");
+      return;
+    }
+    if (!cashReason.trim()) {
+      toast.error("Please specify the purpose / explanation for the cash request.");
+      return;
+    }
+
+    setSubmittingCashReq(true);
+    try {
+      await fieldWorkDB.requestCash(cashRequestJob.id, {
+        amount: parseFloat(cashAmount),
+        category: cashCategory,
+        reason: cashReason.trim(),
+      });
+      toast.success(`On-site cash request of ${formatCurrency(parseFloat(cashAmount))} ETB submitted to Finance & GM.`);
+      setCashRequestModalOpen(false);
+      if (refreshStoreData) await refreshStoreData();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to submit cash request");
+    } finally {
+      setSubmittingCashReq(false);
+    }
+  };
 
   const ttlCandidates = useMemo(() => {
     const list: { username: string; displayName: string }[] = [];
@@ -812,35 +856,45 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                             <span>Scheduled: {fw.startDate} → {fw.endDate}</span>
                           </p>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1.5 font-bold text-xs border-primary/40 text-primary hover:bg-primary/10"
-                          onClick={() => {
-                            const p = fw.payload || {};
-                            const clientFile = {
-                              clientName: p.clientName || fw.customerName || fw.location,
-                              address: p.address || fw.location,
-                              selectedPumpModel: p.selectedPumpModel || fw.pumpModel,
-                              waterSource: p.waterSource || '',
-                              dailyWaterNeed: p.dailyWaterNeed,
-                              pipeLength: p.pipeLength,
-                              verticalLift: p.verticalLift,
-                              totalPrice: p.totalPrice,
-                              preparedByName: p.preparedByName || '',
-                              checkedByName: p.checkedByName || '',
-                              status: fw.status,
-                              dataCollection: p.dataCollection || {},
-                              calculatedEquipment: p.equipment || [],
-                              latitude: p.latitude,
-                              longitude: p.longitude,
-                            };
-                            setFileModalProposal(clientFile);
-                            setFileModalOpen(true);
-                          }}
-                        >
-                          <Eye className="h-3.5 w-3.5 text-primary" /> 📄 View Full Client File & Site Form
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 font-bold text-xs border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 hover:bg-amber-500/20"
+                            onClick={() => handleOpenCashRequest(fw)}
+                          >
+                            <Zap className="h-3.5 w-3.5 text-amber-600" /> 💸 Request On-Site Cash
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 font-bold text-xs border-primary/40 text-primary hover:bg-primary/10"
+                            onClick={() => {
+                              const p = fw.payload || {};
+                              const clientFile = {
+                                clientName: p.clientName || fw.customerName || fw.location,
+                                address: p.address || fw.location,
+                                selectedPumpModel: p.selectedPumpModel || fw.pumpModel,
+                                waterSource: p.waterSource || '',
+                                dailyWaterNeed: p.dailyWaterNeed,
+                                pipeLength: p.pipeLength,
+                                verticalLift: p.verticalLift,
+                                totalPrice: p.totalPrice,
+                                preparedByName: p.preparedByName || '',
+                                checkedByName: p.checkedByName || '',
+                                status: fw.status,
+                                dataCollection: p.dataCollection || {},
+                                calculatedEquipment: p.equipment || [],
+                                latitude: p.latitude,
+                                longitude: p.longitude,
+                              };
+                              setFileModalProposal(clientFile);
+                              setFileModalOpen(true);
+                            }}
+                          >
+                            <Eye className="h-3.5 w-3.5 text-primary" /> 📄 View Full Client File & Site Form
+                          </Button>
+                        </div>
                       </div>
 
                       <div>
@@ -945,6 +999,64 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                           </div>
                         </div>
                       )}
+
+                      {/* ═══════════════ ON-SITE EMERGENCY CASH & FIELD EXPENSE REQUESTS ═══════════════ */}
+                      {(() => {
+                        const payload = fw.payload && typeof fw.payload === "object" ? (fw.payload as any) : {};
+                        const cashReqs = Array.isArray(payload.fieldCashRequests) ? payload.fieldCashRequests : [];
+                        return (
+                          <div className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 uppercase tracking-wider">
+                                <Zap className="h-4 w-4 text-amber-600" /> On-Site Emergency Cash & Expense Requests ({cashReqs.length})
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenCashRequest(fw)}
+                                className="h-7 text-xs font-bold border-amber-500/40 bg-amber-500/15 text-amber-900 dark:text-amber-200 hover:bg-amber-500/25"
+                              >
+                                + Request Extra Cash
+                              </Button>
+                            </div>
+
+                            {cashReqs.length === 0 ? (
+                              <p className="text-xs text-muted-foreground italic py-1">No emergency on-site cash requested for this project.</p>
+                            ) : (
+                              <div className="space-y-2 pt-1">
+                                {cashReqs.map((cr: any, idx: number) => (
+                                  <div key={cr.id || idx} className="rounded-lg border bg-card p-3 flex items-center justify-between text-xs gap-3 shadow-xs">
+                                    <div className="space-y-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold text-foreground">{cr.category || "Field Expense"}</span>
+                                        <Badge className={`text-[10px] uppercase font-bold ${
+                                          cr.status === "APPROVED" || cr.status === "PAID"
+                                            ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30"
+                                            : cr.status === "REJECTED"
+                                            ? "bg-rose-500/15 text-rose-700 border-rose-500/30"
+                                            : "bg-amber-500/15 text-amber-700 border-amber-500/30"
+                                        }`}>
+                                          {cr.status || "PENDING"}
+                                        </Badge>
+                                      </div>
+                                      <p className="text-muted-foreground">{cr.reason}</p>
+                                      <span className="text-[10px] text-muted-foreground block">
+                                        Requested by {cr.requestedBy || "TTL"} • {cr.requestedAt ? new Date(cr.requestedAt).toLocaleDateString() : "Recent"} • <strong className="text-foreground">Tracked on Customer Master File</strong>
+                                      </span>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                      <span className="text-base font-black font-mono text-amber-600 block">
+                                        {Number(cr.amount || 0).toLocaleString()} ETB
+                                      </span>
+                                      <span className="text-[10px] text-muted-foreground">Routed to Finance</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {/* ═══════════════ DAILY EOD PROGRESS REPORTS — FULL-PAGE SECTION ═══════════════ */}
                       <div className="mt-6 space-y-5">
@@ -1931,6 +2043,81 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
         onOpenChange={setFileModalOpen}
         proposal={fileModalProposal}
       />
+
+      {/* On-Site Field Cash Requisition Modal */}
+      <Dialog open={cashRequestModalOpen} onOpenChange={setCashRequestModalOpen}>
+        <DialogContent className="max-w-md bg-card border-border shadow-2xl rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+              <Zap className="h-4 w-4 text-amber-500" />
+              Request On-Site Field Cash / Expense
+            </DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              Direct field cash request for <strong>{cashRequestJob?.customerName || cashRequestJob?.location || "this site"}</strong>. This request is forwarded to Finance & GM and saved into the customer's permanent file.
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Amount Needed (ETB) *</Label>
+              <Input
+                type="number"
+                placeholder="e.g. 3500"
+                value={cashAmount}
+                onChange={(e) => setCashAmount(e.target.value)}
+                className="font-mono font-bold text-base"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Expense Category *</Label>
+              <Select value={cashCategory} onValueChange={setCashCategory}>
+                <SelectTrigger className="text-xs">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Local Materials & Fittings">Local Materials & Fittings</SelectItem>
+                  <SelectItem value="Local Welding / Fabrication">Local Welding / Fabrication</SelectItem>
+                  <SelectItem value="Trenching & Local Labor">Trenching & Local Labor</SelectItem>
+                  <SelectItem value="Emergency Transport & Logistics">Emergency Transport & Logistics</SelectItem>
+                  <SelectItem value="Extra Fuel & Generator Run">Extra Fuel & Generator Run</SelectItem>
+                  <SelectItem value="Miscellaneous Field Expense">Miscellaneous Field Expense</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Explanation / Site Reason *</Label>
+              <Textarea
+                placeholder="Describe why extra cash was required on-site (e.g. bought 3x 2-inch elbows locally, paid local welders for tower bracket)..."
+                value={cashReason}
+                onChange={(e) => setCashReason(e.target.value)}
+                rows={3}
+                className="text-xs"
+              />
+            </div>
+
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2.5 text-[11px] text-amber-800 dark:text-amber-300">
+              💡 <strong>Note:</strong> Technical staff do not manage accounting ledgers. Finance will review this request, issue the funds, and record the transaction in <strong>Peachtree</strong>.
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setCashRequestModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSubmitCashRequest}
+              disabled={submittingCashReq}
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold gap-1.5"
+            >
+              {submittingCashReq ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+              Submit to Finance & GM
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Printable Executive PDF Template for Fieldwork Page (Only visible on Print) */}
       <div className="hidden print:block">

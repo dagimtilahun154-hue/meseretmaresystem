@@ -72,7 +72,7 @@ export function BuildingRentModule({
     }
   };
 
-  const entityRents = buildingRents.filter((r) => r.entity === selectedEntity);
+  const entityRents = buildingRents.filter((r) => !r.entity || r.entity === "MM" || r.entity === selectedEntity);
   const rentsByMonth = entityRents.reduce((acc, rent) => {
     if (!acc[rent.month]) acc[rent.month] = [];
     acc[rent.month].push(rent);
@@ -86,7 +86,7 @@ export function BuildingRentModule({
       <div className="flex flex-wrap justify-between items-center gap-3">
         <div>
           <h2 className="text-lg font-bold font-heading">Building & Warehouse Rent Tracker</h2>
-          <p className="text-xs text-muted-foreground">Track rental collections per floor and branch facilities for {selectedEntity}</p>
+          <p className="text-xs text-muted-foreground">Track rental collections per floor and branch facilities for Meseret Mare Solar</p>
         </div>
         <div className="flex items-center gap-3">
           <Badge variant="outline" className="px-3 py-1 bg-primary/10 text-primary border-primary/30 text-xs font-bold">

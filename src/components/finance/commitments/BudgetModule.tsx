@@ -53,7 +53,7 @@ export function BudgetModule({
       <div className="flex flex-wrap justify-between items-center gap-3">
         <div>
           <h2 className="text-lg font-bold font-heading">Budget Allocations & Cost Ceilings</h2>
-          <p className="text-xs text-muted-foreground">Track daily, monthly, and annual expenditure budgets for {selectedEntity}</p>
+          <p className="text-xs text-muted-foreground">Track daily, monthly, and annual expenditure budgets for Meseret Mare Solar</p>
         </div>
         <Button size="sm" onClick={() => setBudgetDialog(true)}>
           <Plus className="h-4 w-4 mr-1" /> Add Budget Allocation

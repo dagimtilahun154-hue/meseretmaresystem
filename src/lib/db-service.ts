@@ -151,6 +151,9 @@ export const fieldWorkDB = {
     const res = await apiFetch(`/fieldwork/${id}`, { method: "PUT", body: JSON.stringify(job) });
     return !!res?.success;
   },
+  requestCash: async (jobId: string, data: { amount: number; category: string; reason: string; receiptUrl?: string }) => {
+    return apiFetch(`/fieldwork/${jobId}/cash-request`, { method: "POST", body: JSON.stringify(data) });
+  },
   delete: async (id: string): Promise<boolean> => {
     const res = await apiFetch(`/fieldwork/${id}`, { method: "DELETE" });
     return !!res?.success;
@@ -158,16 +161,31 @@ export const fieldWorkDB = {
 };
 
 export const DEFAULT_DEPARTMENTS = [
-  { id: "dept-field", name: "Field Operations", description: "Site surveys, on-site drilling, pump installation, and testing" },
-  { id: "dept-finance", name: "Finance & Administration", description: "Financial planning, administration, and corporate governance" },
-  { id: "dept-accounting", name: "Accounting", description: "Bookkeeping, invoices, tax compliance, and payroll accounting" },
-  { id: "dept-mgmt", name: "General Management", description: "Executive leadership and departmental oversight" },
-  { id: "dept-inventory", name: "Inventory & Warehouse", description: "Stock management, parts storage, and replenishment" },
-  { id: "dept-logistics", name: "Logistics & Transport", description: "Vehicle fleet, material transit, and site deliveries" },
-  { id: "dept-marketing", name: "Marketing & Grants", description: "Marketing campaigns, brand strategy, donor relations, and grant proposals" },
-  { id: "dept-sales", name: "Sales & Commercial", description: "Storefront retail, customer intake, package quotations, and commercial pipeline" },
-  { id: "dept-tech", name: "Technical & Engineering", description: "Solar pump sizing, engineering design, electrical systems, and technical QA" },
+  { id: "dept-field", name: "Field Operations", nameAmharic: "የመስክ ስራዎች ዘርፍ", description: "Site surveys, on-site drilling, pump installation, and testing" },
+  { id: "dept-finance", name: "Finance & Administration", nameAmharic: "የፋይናንስ እና አስተዳደር", description: "Financial planning, administration, and corporate governance" },
+  { id: "dept-accounting", name: "Accounting", nameAmharic: "የሂሳብ ክፍል", description: "Bookkeeping, invoices, tax compliance, and payroll accounting" },
+  { id: "dept-mgmt", name: "General Management", nameAmharic: "አጠቃላይ አመራር", description: "Executive leadership and departmental oversight" },
+  { id: "dept-inventory", name: "Inventory & Warehouse", nameAmharic: "የእቃ ግምጃ ቤት እና ክምችት", description: "Stock management, parts storage, and replenishment" },
+  { id: "dept-logistics", name: "Logistics & Transport", nameAmharic: "ሎጂስቲክስ እና ትራንስፖርት", description: "Vehicle fleet, material transit, and site deliveries" },
+  { id: "dept-marketing", name: "Marketing & Grants", nameAmharic: "ማርኬቲንግ እና ድጋፍ", description: "Marketing campaigns, brand strategy, donor relations, and grant proposals" },
+  { id: "dept-sales", name: "Sales & Commercial", nameAmharic: "ሽያጭ እና ንግድ", description: "Storefront retail, customer intake, package quotations, and commercial pipeline" },
+  { id: "dept-tech", name: "Technical & Engineering", nameAmharic: "የቴክኒክ እና ምህንድስና", description: "Solar pump sizing, engineering design, electrical systems, and technical QA" },
 ];
+
+export const getDepartmentBilingual = (deptName?: string) => {
+  if (!deptName) return { amharic: "አጠቃላይ", english: "General", combined: "General" };
+  const matched = DEFAULT_DEPARTMENTS.find(
+    (d) => d.name.toLowerCase() === deptName.toLowerCase() || d.nameAmharic.toLowerCase() === deptName.toLowerCase() || d.id === deptName
+  );
+  if (matched) {
+    return {
+      amharic: matched.nameAmharic,
+      english: matched.name,
+      combined: `${matched.nameAmharic} • ${matched.name}`,
+    };
+  }
+  return { amharic: deptName, english: deptName, combined: deptName };
+};
 
 export const hrDB = {
   getDepartments: async () => {
@@ -290,6 +308,7 @@ export const peachtreeDB = {
     }
   },
   getSyncedData: async () => apiFetch("/sync/peachtree/data"),
+  getVault: async () => apiFetch("/sync/peachtree/vault"),
 };
 
 export const analyticsDB = {

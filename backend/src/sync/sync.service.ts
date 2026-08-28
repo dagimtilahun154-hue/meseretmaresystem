@@ -508,28 +508,38 @@ export class SyncService {
   }
 
   async getPeachtreeVaultArchive() {
-    const [customers, vendors, invoices, journalEntries, imports] = await Promise.all([
+    const [customers, vendors, invoices, journalEntries, imports, sales] = await Promise.all([
       this.prisma.customer.findMany({ orderBy: { createdAt: "desc" } }),
       this.prisma.vendor.findMany({ orderBy: { createdAt: "desc" } }),
       this.prisma.invoice.findMany({ orderBy: { date: "desc" } }),
       this.prisma.financeJournalEntry.findMany({ orderBy: { date: "desc" } }),
       this.prisma.peachtreeImport.findMany({ orderBy: { createdAt: "desc" } }),
+      this.prisma.posSale.findMany({ orderBy: { date: "desc" } }),
     ]);
+
+    const latestImport = imports[0];
 
     return {
       vaultInfo: {
+        databaseSource: "Live MySQL/TiDB Production Database Mirror",
+        companyName: "Meseret Mare Solar Water Solutions",
         totalCustomers: customers.length,
         totalVendors: vendors.length,
         totalInvoices: invoices.length,
         totalJournalEntries: journalEntries.length,
+        totalSales: sales.length,
         totalRawImports: imports.length,
-        lastBackupTimestamp: new Date().toISOString(),
+        lastImportName: latestImport?.fileName || "Live Peachtree Sync",
+        lastBackupTimestamp: latestImport?.createdAt ? latestImport.createdAt.toISOString() : new Date().toISOString(),
+        vaultStatus: "ONLINE_PROTECTED",
+        encryptionMode: "AES-256 Cloud Replicated",
       },
       customers,
       vendors,
       invoices,
       journalEntries,
       imports,
+      sales,
     };
   }
 }

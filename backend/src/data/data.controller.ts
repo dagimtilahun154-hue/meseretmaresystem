@@ -130,6 +130,12 @@ export class DataController {
     return this.data.updateHierarchyRequestDetails(req.user.id, id, body.details, body.comment);
   }
 
+  @Post("fieldwork/:id/cash-request")
+  @Roles("fieldwork", "ttl", "manager", "admin", "finance")
+  createFieldCashRequest(@Req() req: any, @Param("id") id: string, @Body() body: any) {
+    return this.data.createFieldCashRequest(req.user.id, id, body);
+  }
+
   @Get("hierarchy/users-presence")
   getUsersPresence() {
     return this.data.getUsersPresence();

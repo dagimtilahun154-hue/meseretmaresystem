@@ -328,6 +328,9 @@ model PosSale {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  @@index([date])
+  @@index([customerName])
+  @@index([paymentMethod])
   @@map("pos_sales")
 }
 
@@ -351,6 +354,9 @@ model FieldWorkJob {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  @@index([status, scheduledDate])
+  @@index([assignedTo])
+  @@index([customerName])
   @@map("field_work_jobs")
 }
 
@@ -372,6 +378,10 @@ model Customer {
 
   notes       CustomerNote[]
 
+  @@index([name])
+  @@index([phone])
+  @@index([tin])
+  @@index([city])
   @@map("customers")
 }
 
@@ -387,6 +397,8 @@ model CustomerNote {
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([customerId])
+  @@index([userId])
   @@map("customer_notes")
 }
 
@@ -406,6 +418,9 @@ model Vendor {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([name])
+  @@index([phone])
+  @@index([tin])
   @@map("vendors")
 }
 
@@ -418,6 +433,7 @@ model Account {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  @@index([type])
   @@map("chart_accounts")
 }
 
@@ -435,6 +451,9 @@ model Invoice {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  @@index([customerId, date])
+  @@index([status])
+  @@index([date])
   @@map("invoices")
 }
 
@@ -449,6 +468,9 @@ model Bill {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  @@index([vendorId, date])
+  @@index([status])
+  @@index([date])
   @@map("bills")
 }
 
@@ -467,6 +489,10 @@ model Payment {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  @@index([entityId, date])
+  @@index([invoiceOrBillId])
+  @@index([type, date])
+  @@index([bankName])
   @@map("payments")
 }
 
@@ -480,6 +506,8 @@ model Expense {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([category, date])
+  @@index([date])
   @@map("expenses")
 }
 
@@ -494,6 +522,9 @@ model FinanceJournalEntry {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  @@index([date])
+  @@index([debitAccount])
+  @@index([creditAccount])
   @@map("finance_journal_entries")
 }
 

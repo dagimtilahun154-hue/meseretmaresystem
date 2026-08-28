@@ -111,15 +111,27 @@ type SyncedData = {
   journalEntries: JournalEntry[];
 };
 
-export default function PeachtreePage() {
+import { autoMergePeachtreeCustomerList } from "@/lib/customer-merge-service";
+
+interface PeachtreePageProps {
+  initialTab?: "customers" | "vendors" | "invoices" | "accounts" | "vault" | "reconciliation";
+}
+
+export default function PeachtreePage({ initialTab = "customers" }: PeachtreePageProps) {
   const { financeEntity, financePayments, refreshStoreData, sales } = useStore() as any;
   const [data, setData] = useState<SyncedData | null>(null);
+  const [vaultInfo, setVaultInfo] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+  const [currentTab, setCurrentTab] = useState(initialTab);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (initialTab) setCurrentTab(initialTab);
+  }, [initialTab]);
 
   const formatCurrency = (val: number | string) => {
     const num = typeof val === "string" ? parseFloat(val) : val;
@@ -161,16 +173,39 @@ export default function PeachtreePage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const response = await peachtreeDB.getSyncedData();
-      if (response && Array.isArray(response.customers) && response.customers.length > 0) {
-        setData(response);
-      } else {
-        setData({
-          customers: SAMPLE_CUSTOMERS,
-          vendors: SAMPLE_VENDORS,
-          invoices: SAMPLE_INVOICES,
-          journalEntries: [],
-        });
+      const [response, vaultRes] = await Promise.allSettled([
+        peachtreeDB.getSyncedData(),
+        peachtreeDB.getVault(),
+      ]);
+
+      let incomingCustomers = SAMPLE_CUSTOMERS;
+      let incomingVendors = SAMPLE_VENDORS;
+      let incomingInvoices = SAMPLE_INVOICES;
+      let incomingJournals: JournalEntry[] = [];
+
+      if (response.status === "fulfilled" && response.value && Array.isArray(response.value.customers) && response.value.customers.length > 0) {
+        incomingCustomers = response.value.customers;
+        incomingVendors = Array.isArray(response.value.vendors) ? response.value.vendors : SAMPLE_VENDORS;
+        incomingInvoices = Array.isArray(response.value.invoices) ? response.value.invoices : SAMPLE_INVOICES;
+        incomingJournals = Array.isArray(response.value.journalEntries) ? response.value.journalEntries : [];
+      }
+
+      // Auto-merge Peachtree customers into SolarFlow customer store
+      const localStoreCustomers = financeStore.getCustomers();
+      if (localStoreCustomers && localStoreCustomers.length > 0) {
+        const mergeResult = autoMergePeachtreeCustomerList(incomingCustomers, localStoreCustomers);
+        financeStore.setCustomers(mergeResult.mergedList);
+      }
+
+      setData({
+        customers: incomingCustomers,
+        vendors: incomingVendors,
+        invoices: incomingInvoices,
+        journalEntries: incomingJournals,
+      });
+
+      if (vaultRes.status === "fulfilled" && vaultRes.value?.vaultInfo) {
+        setVaultInfo(vaultRes.value.vaultInfo);
       }
     } catch {
       setData({
@@ -217,13 +252,13 @@ export default function PeachtreePage() {
   };
 
   const handleDownloadCloudBackup = () => {
-    toast.success("Downloading latest Peachtree Cloud Vault backup archive...", {
-      description: "Meseret 2016xx-121124.ptb (2.58 MB) verified & ready for restore.",
+    toast.success("Downloading live Peachtree Database Cloud Vault archive...", {
+      description: "Direct export of all synchronized database customers, vendors, invoices & ledger entries.",
     });
-    // Trigger download of the sample/latest backup
+    const API_BASE = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://meseretmaresystem.onrender.com/api/v1" : "http://localhost:4000/api/v1"));
     const link = document.createElement("a");
-    link.href = "/api/v1/sync/peachtree/vault/download";
-    link.setAttribute("download", "Meseret_Peachtree_CloudBackup_Latest.ptb");
+    link.href = `${API_BASE}/sync/peachtree/vault/download`;
+    link.setAttribute("download", `Meseret_Mare_Peachtree_Database_Vault_${new Date().toISOString().slice(0, 10)}.json`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -564,7 +599,7 @@ export default function PeachtreePage() {
       </div>
 
       {/* 5. Main Workspace Tabs */}
-      <Tabs defaultValue="customers" className="w-full">
+      <Tabs value={currentTab} onValueChange={(v: any) => setCurrentTab(v)} className="w-full">
         <TabsList className="grid w-full grid-cols-5 lg:w-[850px]">
           <TabsTrigger value="customers" className="flex gap-1.5 text-xs font-bold">
             <Users className="h-3.5 w-3.5" /> Debtors (AR)
@@ -776,28 +811,28 @@ export default function PeachtreePage() {
                 onClick={handleDownloadCloudBackup}
                 className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs h-9 px-4 flex items-center gap-2 shadow-sm"
               >
-                <Download className="h-4 w-4" /> Download Latest .PTB Backup
+                <Download className="h-4 w-4" /> Download Live Database Vault Export
               </Button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4">
               <div className="p-3 rounded-xl border border-border/60 bg-background/50">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Verified Backup File</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Verified Database Snapshot</span>
                 <span className="text-xs font-mono font-bold text-foreground mt-0.5 block truncate">
-                  Meseret 2016xx-121124.ptb
+                  {vaultInfo?.databaseSource || "Live MySQL/TiDB Database Mirror"}
                 </span>
                 <span className="text-[10px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> Integrity Check Passed (102 files)
+                  <CheckCircle2 className="h-3 w-3" /> Live Replicated ({vaultInfo?.totalCustomers || data?.customers?.length || 0} Customers • {vaultInfo?.totalInvoices || data?.invoices?.length || 0} Invoices)
                 </span>
               </div>
 
               <div className="p-3 rounded-xl border border-border/60 bg-background/50">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">Archive Size & Scope</span>
                 <span className="text-xs font-mono font-bold text-foreground mt-0.5 block">
-                  2.58 MB (Compressed)
+                  {vaultInfo?.totalVendors || data?.vendors?.length || 0} Vendors • {vaultInfo?.totalJournalEntries || 0} Journal Lines
                 </span>
                 <span className="text-[10px] text-muted-foreground mt-1 block">
-                  Full General Ledger, Journals & Debtors
+                  Last Sync: {vaultInfo?.lastBackupTimestamp ? new Date(vaultInfo.lastBackupTimestamp).toLocaleString() : "Real-Time"}
                 </span>
               </div>
 
@@ -807,7 +842,7 @@ export default function PeachtreePage() {
                   Instant (Under 60 seconds)
                 </span>
                 <span className="text-[10px] text-muted-foreground mt-1 block">
-                  Restore directly into any new PC installation
+                  Exportable JSON/SQL snapshot for instant disaster restore
                 </span>
               </div>
             </div>

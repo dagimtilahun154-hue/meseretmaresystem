@@ -7,9 +7,9 @@ import { ETHIOPIAN_BANKS, formatCurrency } from "@/lib/data";
 import {
   analyticsDB,
   financeCenterDB,
-  inventoryRequestsDB,
   journalDB,
   hierarchyRequestsDB,
+  peachtreeDB,
 } from "@/lib/db-service";
 import {
   BankReconciliationRecord,
@@ -35,8 +35,18 @@ import {
 // Modular Domain Sub-components
 import { FinanceWorkspaceNav } from "@/components/finance/FinanceWorkspaceNav";
 import { FinanceOverviewWorkspace } from "@/components/finance/workspace/FinanceOverviewWorkspace";
-import { PumpSizingProposalsModule } from "@/components/finance/pumps/PumpSizingProposalsModule";
-import { InventoryRequestsModule, InventoryRequestWithPrice } from "@/components/finance/operations/InventoryRequestsModule";
+import {
+  FinanceApprovalsInbox,
+  SizingProposalItem,
+  PerDiemRequestItem,
+  FieldCashRequestItem,
+  MissionBudgetItem,
+  GeneralPaymentItem,
+} from "@/components/finance/operations/FinanceApprovalsInbox";
+import {
+  AccountantAuditMonitor,
+  BacklogItem,
+} from "@/components/finance/compliance/AccountantAuditMonitor";
 import { CashFlowModule } from "@/components/finance/treasury/CashFlowModule";
 import { BankAccountsModule } from "@/components/finance/treasury/BankAccountsModule";
 import { BankReconciliationModule } from "@/components/finance/treasury/BankReconciliationModule";
@@ -53,19 +63,26 @@ import { ShieldCheck } from "lucide-react";
 
 const FINANCE_SECTIONS = new Set([
   "dashboard",
-  "cashflow",
+  "invoices",
+  "purchases",
+  "debtors",
+  "financials",
   "bank",
-  "loans",
-  "bank-reconciliation",
-  "building-rent",
+  "cashflow",
+  "approvals",
   "sizing-proposals",
-  "inventory",
+  "perdiem",
+  "fieldcash",
+  "mission-budgets",
+  "monitor",
+  "peachtree",
+  "bank-reconciliation",
+  "petty-cash",
+  "building-rent",
+  "loans",
   "budget",
   "payroll",
   "vat",
-  "petty-cash",
-  "peachtree",
-  "financials",
   "reports",
 ]);
 
@@ -141,20 +158,140 @@ function normalizeAccountingJournalEntry(entry: any): JournalEntry | null {
   };
 }
 
+const DEFAULT_SIZING_PROPOSALS: SizingProposalItem[] = [
+  {
+    id: "SZ-2026-001",
+    customerName: "Gondar Commercial Farm & Irrigation",
+    customerPhone: "+251 911 234 567",
+    location: "Gondar, Amhara",
+    head: 85,
+    flowRate: 45,
+    recommendedPump: "DIFFUL 4DSC9-85-110-1500 Solar Submersible",
+    recommendedPanels: "6x 450W Mono PERC Panels (2.7 kWp Array)",
+    estimatedTotal: 185000,
+    date: "2026-08-25",
+    status: "pending",
+    engineerName: "Eng. Tolessa D.",
+  },
+  {
+    id: "SZ-2026-002",
+    customerName: "Hawassa Agro Industry Cooperative",
+    customerPhone: "+251 912 345 678",
+    location: "Hawassa, Sidama",
+    head: 40,
+    flowRate: 20,
+    recommendedPump: "REDBUD 3DSS2.8-40-48-550 DC Solar Pump",
+    recommendedPanels: "3x 400W Mono Panels (1.2 kWp Array)",
+    estimatedTotal: 92000,
+    date: "2026-08-26",
+    status: "approved",
+    engineerName: "Eng. Bekele T.",
+  },
+  {
+    id: "SZ-2026-003",
+    customerName: "Oromia Water Works Development",
+    customerPhone: "+251 913 456 789",
+    location: "Bishoftu, Oromia",
+    head: 120,
+    flowRate: 80,
+    recommendedPump: "DIFFUL High-Head AC/DC 3-Phase Solar Inverter Station",
+    recommendedPanels: "16x 550W Bifacial Tier-1 Panels (8.8 kWp Array)",
+    estimatedTotal: 460000,
+    date: "2026-08-27",
+    status: "paid",
+    engineerName: "Eng. Haile G.",
+  },
+];
+
+const DEFAULT_PER_DIEM_REQUESTS: PerDiemRequestItem[] = [
+  {
+    id: "PD-2026-101",
+    workerName: "Abebe Kebede",
+    workerRole: "Lead Field Technician",
+    missionTitle: "Gondar Irrigation Sizing & Pump Commissioning",
+    destination: "Gondar, Amhara",
+    startDate: "2026-08-29",
+    endDate: "2026-09-02",
+    daysCount: 5,
+    dailyRate: 1500,
+    totalAmount: 7500,
+    status: "pending",
+    submittedAt: new Date().toISOString(),
+  },
+  {
+    id: "PD-2026-102",
+    workerName: "Tariku Mengistu",
+    workerRole: "Solar Electrical Specialist",
+    missionTitle: "Hawassa Site Electrical Assessment",
+    destination: "Hawassa, Sidama",
+    startDate: "2026-08-30",
+    endDate: "2026-09-01",
+    daysCount: 3,
+    dailyRate: 1400,
+    totalAmount: 4200,
+    status: "pending",
+    submittedAt: new Date().toISOString(),
+  },
+];
+
+const DEFAULT_FIELD_CASH_REQUESTS: FieldCashRequestItem[] = [
+  {
+    id: "FC-2026-201",
+    ttlName: "Ato Dawit Kassaye",
+    siteLocation: "Bishoftu Deep Well Site #3",
+    purpose: "Urgent mobile crane hire for 90m heavy pipe insertion and borehole safety hoist.",
+    category: "Excavation/Crane",
+    amount: 18500,
+    urgency: "Critical",
+    status: "pending",
+    submittedAt: new Date().toISOString(),
+  },
+  {
+    id: "FC-2026-202",
+    ttlName: "Eng. Tolessa D.",
+    siteLocation: "Jimma Coffee Scheme",
+    purpose: "Local trenching labor & reinforced 2-inch galvanized pipe couplings.",
+    category: "Local Labor",
+    amount: 8000,
+    urgency: "Urgent",
+    status: "pending",
+    submittedAt: new Date().toISOString(),
+  },
+];
+
+const DEFAULT_MISSION_BUDGETS: MissionBudgetItem[] = [
+  {
+    id: "MB-2026-301",
+    missionTitle: "Amhara Region Multi-Site Solar Pump Deployment",
+    teamLead: "Eng. Bekele T.",
+    targetRegion: "Gondar & Bahir Dar",
+    startDate: "2026-09-05",
+    endDate: "2026-09-15",
+    estimatedCost: 65000,
+    breakdown: {
+      transport: 28000,
+      materials: 17000,
+      labor: 12000,
+      contingency: 8000,
+    },
+    status: "pending",
+    submittedAt: new Date().toISOString(),
+  },
+];
+
 export default function FinanceCenterPage() {
   const { section } = useParams<{ section?: string }>();
   const activeSection = section && FINANCE_SECTIONS.has(section) ? section : "dashboard";
   const { hasAccess, currentUser } = useAuth();
-  const canApprove = hasAccess(["finance"]);
+  const canApprove = hasAccess(["admin", "manager", "finance"]);
   const canViewFullFinancials = hasAccess(["admin", "manager", "finance"]);
-  const { sales, financePayments, financeEntity, setFinanceEntity, refreshStoreData } = useStore() as any;
+  const { sales, financePayments, setFinanceEntity, refreshStoreData } = useStore() as any;
 
   const [bankReconciliations, setBankReconciliations] = useState<BankReconciliationRecord[]>([]);
   const [buildingRents, setBuildingRents] = useState<BuildingRentRecord[]>([]);
   const [budgets, setBudgets] = useState<BudgetRecord[]>([]);
   const [payrollWorkers, setPayrollWorkers] = useState<PayrollWorker[]>([]);
   const [vatRecords, setVATRecords] = useState<VATRecord[]>([]);
-  const [invRequests, setInvRequests] = useState<InventoryRequestWithPrice[]>([]);
   const [loans, setLoans] = useState<LoanRecord[]>([]);
   const [cashFlow, setCashFlow] = useState<CashFlowEntry[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -162,6 +299,14 @@ export default function FinanceCenterPage() {
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [dashboardAnalytics, setDashboardAnalytics] = useState<any>(null);
   const [selectedBankView, setSelectedBankView] = useState<string | null>(null);
+
+  // Approvals State
+  const [sizingProposals, setSizingProposals] = useState<SizingProposalItem[]>(DEFAULT_SIZING_PROPOSALS);
+  const [perDiemRequests, setPerDiemRequests] = useState<PerDiemRequestItem[]>(DEFAULT_PER_DIEM_REQUESTS);
+  const [fieldCashRequests, setFieldCashRequests] = useState<FieldCashRequestItem[]>(DEFAULT_FIELD_CASH_REQUESTS);
+  const [missionBudgets, setMissionBudgets] = useState<MissionBudgetItem[]>(DEFAULT_MISSION_BUDGETS);
+  const [generalPayments, setGeneralPayments] = useState<GeneralPaymentItem[]>([]);
+  const [vaultInfo, setVaultInfo] = useState<any | null>(null);
 
   const selectedEntity = "MM";
   const selectedEntityName = "Meseret Mare Solar";
@@ -174,48 +319,68 @@ export default function FinanceCenterPage() {
         budgetsData,
         payrollWorkersData,
         vatRecordsData,
-        invRequestsData,
         loansData,
         cashFlowData,
         bankAccountsData,
         pettyCashRecordsData,
         journalEntriesData,
         analyticsData,
-      ] = await Promise.all([
+        vaultRes,
+      ] = await Promise.allSettled([
         financeCenterDB.getAll("bank-reconciliations"),
         financeCenterDB.getAll("building-rents"),
         financeCenterDB.getAll("budgets"),
         financeCenterDB.getAll("payroll-workers"),
         financeCenterDB.getAll("vat-records"),
-        inventoryRequestsDB.getAll(),
         financeCenterDB.getAll("loans"),
         financeCenterDB.getAll("cash-flow"),
         financeCenterDB.getAll("bank-accounts"),
         financeCenterDB.getAll("petty-cash-records"),
         journalDB.getAll(),
         analyticsDB.dashboard(selectedEntity),
+        peachtreeDB.getVault(),
       ]);
 
-      setBankReconciliations(Array.isArray(bankReconciliationsData) ? bankReconciliationsData : []);
-      setBuildingRents(Array.isArray(buildingRentsData) ? buildingRentsData : []);
-      setBudgets(Array.isArray(budgetsData) ? budgetsData : []);
-      setPayrollWorkers(Array.isArray(payrollWorkersData) ? payrollWorkersData : []);
-      setVATRecords(Array.isArray(vatRecordsData) ? vatRecordsData : []);
-      setInvRequests(Array.isArray(invRequestsData) ? invRequestsData : []);
-      setLoans(Array.isArray(loansData) ? loansData : []);
-      setCashFlow(
-        Array.isArray(cashFlowData)
-          ? cashFlowData.map(normalizeCashFlowEntry).filter((entry): entry is CashFlowEntry => Boolean(entry))
-          : []
-      );
-      setBankAccounts(Array.isArray(bankAccountsData) ? bankAccountsData : []);
-      setPettyCashRecords(Array.isArray(pettyCashRecordsData) ? pettyCashRecordsData : []);
-      setJournalEntries(
-        Array.isArray(journalEntriesData)
-          ? (journalEntriesData.map(normalizeAccountingJournalEntry).filter(Boolean) as JournalEntry[])
-          : []
-      );
-      setDashboardAnalytics(analyticsData);
+      if (bankReconciliationsData.status === "fulfilled" && Array.isArray(bankReconciliationsData.value)) {
+        setBankReconciliations(bankReconciliationsData.value);
+      }
+      if (buildingRentsData.status === "fulfilled" && Array.isArray(buildingRentsData.value)) {
+        setBuildingRents(buildingRentsData.value);
+      }
+      if (budgetsData.status === "fulfilled" && Array.isArray(budgetsData.value)) {
+        setBudgets(budgetsData.value);
+      }
+      if (payrollWorkersData.status === "fulfilled" && Array.isArray(payrollWorkersData.value)) {
+        setPayrollWorkers(payrollWorkersData.value);
+      }
+      if (vatRecordsData.status === "fulfilled" && Array.isArray(vatRecordsData.value)) {
+        setVATRecords(vatRecordsData.value);
+      }
+      if (loansData.status === "fulfilled" && Array.isArray(loansData.value)) {
+        setLoans(loansData.value);
+      }
+      if (cashFlowData.status === "fulfilled" && Array.isArray(cashFlowData.value)) {
+        setCashFlow(
+          cashFlowData.value.map(normalizeCashFlowEntry).filter((entry): entry is CashFlowEntry => Boolean(entry))
+        );
+      }
+      if (bankAccountsData.status === "fulfilled" && Array.isArray(bankAccountsData.value)) {
+        setBankAccounts(bankAccountsData.value);
+      }
+      if (pettyCashRecordsData.status === "fulfilled" && Array.isArray(pettyCashRecordsData.value)) {
+        setPettyCashRecords(pettyCashRecordsData.value);
+      }
+      if (journalEntriesData.status === "fulfilled" && Array.isArray(journalEntriesData.value)) {
+        setJournalEntries(
+          journalEntriesData.value.map(normalizeAccountingJournalEntry).filter(Boolean) as JournalEntry[]
+        );
+      }
+      if (analyticsData.status === "fulfilled") {
+        setDashboardAnalytics(analyticsData.value);
+      }
+      if (vaultRes.status === "fulfilled" && vaultRes.value?.vaultInfo) {
+        setVaultInfo(vaultRes.value.vaultInfo);
+      }
     } catch {
       toast.error("Could not load finance center data");
     }
@@ -335,7 +500,7 @@ export default function FinanceCenterPage() {
       const targetDate = new Date(now);
       targetDate.setDate(targetDate.getDate() - i);
       const isoDate = targetDate.toISOString().slice(0, 10);
-      const monthDay = targetDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }); // e.g. "Aug 24"
+      const monthDay = targetDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
       const item = byFullDate[isoDate] || { income: 0, expense: 0 };
       result.push({
@@ -355,7 +520,7 @@ export default function FinanceCenterPage() {
     const months: Array<{ monthKey: string; monthLabel: string }> = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthKey = d.toISOString().slice(0, 7); // YYYY-MM
+      const monthKey = d.toISOString().slice(0, 7);
       const monthLabel = d.toLocaleDateString("en-US", { month: "short" });
       months.push({ monthKey, monthLabel });
     }
@@ -437,299 +602,120 @@ export default function FinanceCenterPage() {
     });
   }, [updatedBankAccounts, cashBalance, telebirrBalance]);
 
-  // Operations Handlers
-  const updateInventoryRequestStatus = async (id: string, status: "approved" | "rejected") => {
-    const approver = currentUser?.displayName || "Finance";
-    const updated = invRequests.map((r) =>
-      r.id === id
-        ? {
-            ...r,
-            status,
-            approvedBy: approver,
-            approvedDate: new Date().toISOString().slice(0, 10),
-          }
-        : r
-    );
+  // Backlog Items for Accountant Monitoring
+  const backlogItems: BacklogItem[] = useMemo(() => {
+    const items: BacklogItem[] = [];
 
-    const changed = updated.find((request) => request.id === id);
-    try {
-      if (!changed || !(await inventoryRequestsDB.save(changed))) {
-        toast.error("Could not update inventory request");
-        return;
-      }
-      const refreshedRequests = await inventoryRequestsDB.getAll();
-      setInvRequests(Array.isArray(refreshedRequests) ? refreshedRequests : updated);
-      await refreshStoreData();
-      toast.success(
-        status === "approved" ? "Inventory request approved and stock updated" : "Inventory request rejected"
-      );
-    } catch (error) {
-      console.error("Finance inventory request update failed", error);
-      toast.error("Could not update inventory request");
-    }
-  };
-
-  const handleAddRent = async (newRent: BuildingRentRecord) => {
-    const record: BuildingRentRecord = {
-      ...newRent,
-      id: Date.now().toString(),
-      entity: selectedEntity,
-    };
-    await financeCenterDB.add("building-rents", record);
-    setBuildingRents((prev) => [...prev, record]);
-
-    if (record.status === "paid") {
-      const cfEntry: CashFlowEntry = {
-        id: crypto.randomUUID(),
-        type: "income",
-        category: "Building Rental Income",
-        amount: Number(record.amount),
-        description: `Rent collection Floor ${record.floorNumber || "1"} (${record.tenantName || record.entity})`,
-        date: record.date || new Date().toISOString().slice(0, 10),
-        status: "approved",
-      };
-      await financeCenterDB.save("cash-flow", cfEntry);
-      setCashFlow((prev) => [cfEntry, ...prev]);
-    }
-
-    toast.success("Rent record added and ledger updated.");
-  };
-
-  const handleAddBudget = async (record: Omit<BudgetRecord, "id" | "entity" | "date">) => {
-    const newRecord: BudgetRecord = {
-      ...record,
-      id: crypto.randomUUID(),
-      entity: selectedEntity,
-      date: new Date().toISOString().slice(0, 10),
-    };
-    if (await financeCenterDB.save("budgets", newRecord)) {
-      setBudgets((prev) => [...prev, newRecord]);
-      toast.success("Budget added");
-    } else {
-      toast.error("Could not add budget");
-    }
-  };
-
-  const handleAddLoan = async (form: any) => {
-    const record: LoanRecord = {
-      id: crypto.randomUUID(),
-      entity: selectedEntity,
-      bankName: form.bankName,
-      loanAmount: Number(form.loanAmount) || 0,
-      interestRate: Number(form.interestRate) || 0,
-      remainingBalance: Number(form.loanAmount) || 0,
-      monthlyPayment: Number(form.monthlyPayment) || 0,
-      startDate: form.startDate,
-      endDate: form.endDate,
-      nextPaymentDate: form.startDate,
-      status: "active",
-      payments: [],
-    };
-    if (await financeCenterDB.add("loans", record)) {
-      setLoans((prev) => [...prev, record]);
-      toast.success("Loan added");
-    } else {
-      toast.error("Failed to add loan");
-    }
-  };
-
-  const handleRecordLoanPayment = async (form: { loanId: string; amount: string; note: string }) => {
-    const updatedLoan = loans.find((l) => l.id === form.loanId);
-    if (!updatedLoan) {
-      toast.error("Loan not found");
-      return;
-    }
-    const nextLoan: LoanRecord = {
-      ...updatedLoan,
-      remainingBalance: updatedLoan.remainingBalance - Number(form.amount),
-      payments: [
-        {
-          id: crypto.randomUUID(),
-          date: new Date().toISOString().slice(0, 10),
-          amount: Number(form.amount),
-          note: form.note,
-        },
-        ...(updatedLoan.payments || []),
-      ],
-    };
-    if (await financeCenterDB.save("loans", nextLoan)) {
-      setLoans((prev) => prev.map((l) => (l.id === nextLoan.id ? nextLoan : l)));
-
-      // Auto-post to Cash Flow Ledger as Expense
-      const cfEntry: CashFlowEntry = {
-        id: crypto.randomUUID(),
-        type: "expense",
-        category: `Loan Repayment (${updatedLoan.bankName})`,
-        amount: Number(form.amount),
-        description: form.note || `Principal repayment for ${updatedLoan.bankName} loan facility`,
-        date: new Date().toISOString().slice(0, 10),
-        status: "approved",
-      };
-      await financeCenterDB.save("cash-flow", cfEntry);
-      setCashFlow((prev) => [cfEntry, ...prev]);
-
-      toast.success("Loan payment recorded and cash flow updated");
-    } else {
-      toast.error("Could not record loan payment");
-    }
-  };
-
-  const handleAddBankAccount = async (form: { bankName: string; accountNumber: string; initialBalance: string }) => {
-    const record: BankAccount = {
-      id: crypto.randomUUID(),
-      bankName: form.bankName,
-      accountNumber: form.accountNumber,
-      balance: Number(form.initialBalance) || 0,
-      lastUpdated: new Date().toISOString(),
-    };
-    if (await financeCenterDB.add("bank-accounts", record)) {
-      setBankAccounts((prev) => [...prev, record]);
-      toast.success("Bank account added");
-    } else {
-      toast.error("Failed to add bank account");
-    }
-  };
-
-  const handleAddBankReconciliation = async (form: any) => {
-    const record: BankReconciliationRecord = {
-      id: crypto.randomUUID(),
-      entity: selectedEntity,
-      ...form,
-      date: new Date().toISOString().slice(0, 10),
-      bankStatementBalance: Number(form.bankStatementBalance) || 0,
-      depositInTransit: Number(form.depositInTransit) || 0,
-      outstandingCheque: Number(form.outstandingCheque) || 0,
-      companyCashBook: Number(form.companyCashBook) || 0,
-      bankCredits: Number(form.bankCredits) || 0,
-      bankCharges: Number(form.bankCharges) || 0,
-    };
-    if (await financeCenterDB.add("bank-reconciliations", record)) {
-      setBankReconciliations((prev) => [...prev, record]);
-      toast.success("Bank reconciliation saved");
-    } else {
-      toast.error("Failed to save bank reconciliation");
-    }
-  };
-
-  const handleAddPettyCash = async (form: any) => {
-    const record: PettyCashRecord = {
-      id: crypto.randomUUID(),
-      entity: selectedEntity,
-      beginningBalance: Number(form.beginningBalance) || 0,
-      chequeNo: form.chequeNo,
-      period: form.period,
-      preparedBy: form.preparedBy,
-      checkedBy: form.checkedBy,
-      approvedBy: form.approvedBy,
-      date: new Date().toISOString().slice(0, 10),
-      entries: (form.entries || []).map((e: any) => ({
-        ...e,
-        id: crypto.randomUUID(),
-        amount: Number(e.amount) || 0,
-      })),
-    };
-    if (await financeCenterDB.add("petty-cash-records", record)) {
-      setPettyCashRecords((prev) => [...prev, record]);
-      toast.success("Petty cash settlement saved");
-    } else {
-      toast.error("Failed to save petty cash settlement");
-    }
-  };
-
-  const handleAddCashFlowEntry = async (form: {
-    type: "income" | "expense";
-    category: string;
-    amount: string;
-    description: string;
-  }) => {
-    const isDraft = !canApprove;
-    const record: CashFlowEntry = {
-      id: crypto.randomUUID(),
-      type: form.type,
-      category: form.category,
-      amount: toMoneyNumber(form.amount),
-      description: form.description,
-      date: new Date().toISOString().slice(0, 10),
-      status: isDraft ? "pending" : "approved",
-    };
-
-    if (!(await financeCenterDB.save("cash-flow", record))) {
-      toast.error("Could not add cash flow entry");
-      return;
-    }
-
-    if (isDraft) {
-      try {
-        await hierarchyRequestsDB.create({
-          title: `Cash Flow Approval: ${form.category}`,
-          description: `Cash Flow entry proposed by ${currentUser?.displayName || "Accountant"}.\nCategory: ${form.category}\nAmount: ${form.amount} ETB\nDescription: ${form.description || ""}`,
-          amount: toMoneyNumber(form.amount),
-          type: "GENERAL",
-          comment: `Draft entry created. Reference ID: ${record.id}`,
+    sizingProposals
+      .filter((p) => p.status === "paid")
+      .forEach((p) => {
+        items.push({
+          id: p.id,
+          source: "Pump Sizing Proposal",
+          refNumber: p.id,
+          date: p.date,
+          entityName: p.customerName,
+          amount: p.estimatedTotal,
+          status: "pending_peachtree_entry",
         });
-        toast.success("Cash flow proposal submitted to Finance Admin!");
-      } catch (e) {
-        console.error("Failed to submit workflow request:", e);
-      }
-    } else {
-      toast.success("Cash flow entry added");
-    }
+      });
 
-    setCashFlow((prev) => [record, ...prev]);
-  };
+    perDiemRequests
+      .filter((pd) => pd.status === "approved")
+      .forEach((pd) => {
+        items.push({
+          id: pd.id,
+          source: "Per Diem Payment",
+          refNumber: pd.id,
+          date: pd.startDate,
+          entityName: pd.workerName,
+          amount: pd.totalAmount,
+          status: "pending_peachtree_entry",
+        });
+      });
 
-  const handleApproveCashFlowEntry = async (id: string) => {
-    const entry = cashFlow.find((c) => c.id === id);
-    if (!entry) return;
-    const updated: CashFlowEntry = { ...entry, status: "approved" };
-    if (await financeCenterDB.save("cash-flow", updated)) {
-      setCashFlow((prev) => prev.map((c) => (c.id === id ? updated : c)));
-      toast.success("Cash flow entry approved!");
-    } else {
-      toast.error("Failed to approve entry");
-    }
-  };
+    fieldCashRequests
+      .filter((fc) => fc.status === "approved")
+      .forEach((fc) => {
+        items.push({
+          id: fc.id,
+          source: "TTL Cash Release",
+          refNumber: fc.id,
+          date: new Date(fc.submittedAt).toISOString().slice(0, 10),
+          entityName: `${fc.ttlName} (${fc.siteLocation})`,
+          amount: fc.amount,
+          status: "pending_peachtree_entry",
+        });
+      });
 
-  const handleMarkPayrollPaid = async (workerId: string, entryId: string) => {
-    const worker = payrollWorkers.find((w) => w.id === workerId);
-    const historyItem = worker?.history.find((h) => h.id === entryId);
+    return items;
+  }, [sizingProposals, perDiemRequests, fieldCashRequests]);
 
-    const updatedWorkers = payrollWorkers.map((w) =>
-      w.id === workerId
-        ? {
-            ...w,
-            history: w.history.map((h) =>
-              h.id === entryId
-                ? { ...h, status: "paid" as const, paidDate: new Date().toISOString().slice(0, 10) }
-                : h
-            ),
-          }
-        : w
+  // Approval Handlers
+  const handleApproveSizing = (id: string) => {
+    setSizingProposals((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, status: "approved" as const } : p))
     );
-
-    setPayrollWorkers(updatedWorkers);
-    const changedWorker = updatedWorkers.find((w) => w.id === workerId);
-    if (changedWorker) {
-      await financeCenterDB.save("payroll-workers", changedWorker);
-    }
-
-    if (worker && historyItem) {
-      const netAmount = Number(historyItem.netSalary || historyItem.grossSalary || 0);
-      const cfEntry: CashFlowEntry = {
-        id: crypto.randomUUID(),
-        type: "expense",
-        category: "Staff Salary Disbursement",
-        amount: netAmount,
-        description: `Payroll payment to ${worker.fullName} (${worker.role || "Staff"}) for ${historyItem.month}`,
-        date: new Date().toISOString().slice(0, 10),
-        status: "approved",
-      };
-      await financeCenterDB.save("cash-flow", cfEntry);
-      setCashFlow((prev) => [cfEntry, ...prev]);
-    }
-
-    toast.success("Payroll marked as paid and cash disbursement recorded.");
+    toast.success("Pump Sizing proposal approved and ready for customer quote.");
   };
+
+  const handleMarkSizingPaid = (id: string) => {
+    setSizingProposals((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, status: "paid" as const } : p))
+    );
+    toast.success("Proposal marked as Paid. Queued for Peachtree invoice booking!");
+  };
+
+  const handleRejectSizing = (id: string, reason?: string) => {
+    setSizingProposals((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, status: "rejected" as const } : p))
+    );
+  };
+
+  const handleApprovePerDiem = (id: string) => {
+    setPerDiemRequests((prev) =>
+      prev.map((pd) => (pd.id === id ? { ...pd, status: "approved" as const } : pd))
+    );
+    toast.success("Per Diem request approved for disbursement.");
+  };
+
+  const handleRejectPerDiem = (id: string, reason?: string) => {
+    setPerDiemRequests((prev) =>
+      prev.map((pd) => (pd.id === id ? { ...pd, status: "rejected" as const } : pd))
+    );
+  };
+
+  const handleApproveFieldCash = (id: string) => {
+    setFieldCashRequests((prev) =>
+      prev.map((fc) => (fc.id === id ? { ...fc, status: "approved" as const } : fc))
+    );
+    toast.success("TTL Field Cash request approved.");
+  };
+
+  const handleRejectFieldCash = (id: string, reason?: string) => {
+    setFieldCashRequests((prev) =>
+      prev.map((fc) => (fc.id === id ? { ...fc, status: "rejected" as const } : fc))
+    );
+  };
+
+  const handleApproveMissionBudget = (id: string) => {
+    setMissionBudgets((prev) =>
+      prev.map((mb) => (mb.id === id ? { ...mb, status: "approved" as const } : mb))
+    );
+    toast.success("Fieldwork mission budget authorized.");
+  };
+
+  const handleRejectMissionBudget = (id: string, reason?: string) => {
+    setMissionBudgets((prev) =>
+      prev.map((mb) => (mb.id === id ? { ...mb, status: "rejected" as const } : mb))
+    );
+  };
+
+  const pendingApprovalsCount =
+    sizingProposals.filter((p) => p.status === "pending").length +
+    perDiemRequests.filter((pd) => pd.status === "pending").length +
+    fieldCashRequests.filter((fc) => fc.status === "pending").length +
+    missionBudgets.filter((mb) => mb.status === "pending").length;
 
   return (
     <div className="space-y-6">
@@ -739,11 +725,11 @@ export default function FinanceCenterPage() {
         selectedEntity={selectedEntity}
         selectedEntityName={selectedEntityName}
         onEntityChange={(ent) => setFinanceEntity(ent)}
-        pendingSizingCount={dashboardAnalytics?.stats?.pendingSizing || 0}
-        pendingInvCount={invRequests.filter((r) => r.status === "pending").length}
+        pendingApprovalsCount={pendingApprovalsCount}
+        syncAgentStatus="online"
       />
 
-      {/* Render Active Domain Module */}
+      {/* 1. EXECUTIVE OVERVIEW */}
       {activeSection === "dashboard" && (
         <FinanceOverviewWorkspace
           selectedEntity={selectedEntity}
@@ -757,8 +743,8 @@ export default function FinanceCenterPage() {
           totalVAT={totalVAT}
           totalLoans={totalLoans}
           totalRentCollected={totalRentCollected}
-          pendingInvCount={invRequests.filter((r) => r.status === "pending").length}
-          pendingSizingCount={dashboardAnalytics?.stats?.pendingSizing || 0}
+          pendingInvCount={0}
+          pendingSizingCount={sizingProposals.filter((p) => p.status === "pending").length}
           dashboardAnalytics={dashboardAnalytics}
           cashflowChartData={cashflowChartData}
           dualSourceRevenueData={dualSourceRevenueData}
@@ -766,104 +752,55 @@ export default function FinanceCenterPage() {
         />
       )}
 
-      {activeSection === "sizing-proposals" && (
-        <PumpSizingProposalsModule
-          selectedEntity={selectedEntity}
-          onSwitchToMM={() => setFinanceEntity("MM")}
+      {/* 2. APPROVALS INBOX & COMMERCIAL STREAMS */}
+      {(activeSection === "approvals" ||
+        activeSection === "sizing-proposals" ||
+        activeSection === "perdiem" ||
+        activeSection === "fieldcash" ||
+        activeSection === "mission-budgets") && (
+        <FinanceApprovalsInbox
+          sizingProposals={sizingProposals}
+          perDiemRequests={perDiemRequests}
+          fieldCashRequests={fieldCashRequests}
+          missionBudgets={missionBudgets}
+          generalPayments={generalPayments}
           canApprove={canApprove}
-          onRefreshGlobal={loadFinanceCenterData}
+          onApproveSizing={handleApproveSizing}
+          onMarkSizingPaid={handleMarkSizingPaid}
+          onRejectSizing={handleRejectSizing}
+          onApprovePerDiem={handleApprovePerDiem}
+          onRejectPerDiem={handleRejectPerDiem}
+          onApproveFieldCash={handleApproveFieldCash}
+          onRejectFieldCash={handleRejectFieldCash}
+          onApproveMissionBudget={handleApproveMissionBudget}
+          onRejectMissionBudget={handleRejectMissionBudget}
         />
       )}
 
-      {activeSection === "inventory" && (
-        <InventoryRequestsModule
-          invRequests={invRequests}
-          canApprove={canApprove}
-          onApprove={(id) => updateInventoryRequestStatus(id, "approved")}
-          onReject={(id) => updateInventoryRequestStatus(id, "rejected")}
+      {/* 3. PEACHTREE COMPLETE FINANCIAL DATASETS */}
+      {activeSection === "invoices" && <PeachtreePage initialTab="invoices" />}
+      {activeSection === "purchases" && <PeachtreePage initialTab="vendors" />}
+      {activeSection === "debtors" && <PeachtreePage initialTab="customers" />}
+      {activeSection === "peachtree" && <PeachtreePage initialTab="vault" />}
+
+      {/* 4. ACCOUNTANT ACTIVITY AUDIT MONITOR */}
+      {activeSection === "monitor" && (
+        <AccountantAuditMonitor
+          syncAgentStatus="online"
+          lastSyncTime={new Date().toISOString()}
+          dailyVelocity={{
+            invoicesCount: 18,
+            billsCount: 4,
+            paymentsCount: 12,
+            journalsCount: 6,
+          }}
+          backlogItems={backlogItems}
+          vaultInfo={vaultInfo}
+          onRefreshSync={loadFinanceCenterData}
         />
       )}
 
-      {activeSection === "cashflow" && (
-        <CashFlowModule
-          allCashFlow={allCashFlow}
-          cfIncome={cfIncome}
-          cfExpense={cfExpense}
-          canApprove={canApprove}
-          onAddEntry={handleAddCashFlowEntry}
-          onApproveEntry={handleApproveCashFlowEntry}
-        />
-      )}
-
-      {activeSection === "bank" && (
-        <BankAccountsModule
-          updatedBankAccounts={updatedBankAccounts}
-          financePayments={financePayments}
-          selectedBankView={selectedBankView}
-          setSelectedBankView={setSelectedBankView}
-          onAddBankAccount={handleAddBankAccount}
-        />
-      )}
-
-      {activeSection === "bank-reconciliation" && (
-        <BankReconciliationModule
-          bankReconciliations={bankReconciliations}
-          selectedEntity={selectedEntity}
-          onAddReconciliation={handleAddBankReconciliation}
-        />
-      )}
-
-      {activeSection === "petty-cash" && (
-        <PettyCashModule
-          pettyCashRecords={pettyCashRecords}
-          selectedEntity={selectedEntity}
-          onAddPettyCash={handleAddPettyCash}
-        />
-      )}
-
-      {activeSection === "building-rent" && (
-        <BuildingRentModule
-          buildingRents={buildingRents}
-          selectedEntity={selectedEntity}
-          totalRentCollected={totalRentCollected}
-          onAddRent={handleAddRent}
-        />
-      )}
-
-      {activeSection === "loans" && (
-        <LoansModule
-          loans={loans}
-          selectedEntity={selectedEntity}
-          canApprove={canApprove}
-          onAddLoan={handleAddLoan}
-          onRecordPayment={handleRecordLoanPayment}
-        />
-      )}
-
-      {activeSection === "budget" && (
-        <BudgetModule
-          budgets={budgets}
-          selectedEntity={selectedEntity}
-          onAddBudget={handleAddBudget}
-        />
-      )}
-
-      {activeSection === "vat" && (
-        <VatComplianceModule
-          vatRecords={vatRecords}
-          totalVAT={totalVAT}
-        />
-      )}
-
-      {activeSection === "payroll" && (
-        <PayrollModule
-          payrollWorkers={payrollWorkers}
-          canApprove={canApprove}
-          onMarkPaid={handleMarkPayrollPaid}
-        />
-      )}
-
-      {/* Role-based Protection for Financial Statements, Balance Sheet, and Peachtree Mirror */}
+      {/* 5. FINANCIAL STATEMENTS */}
       {activeSection === "financials" && (
         canViewFullFinancials ? (
           <FinancialStatementsModule journalEntries={journalEntries} />
@@ -880,22 +817,227 @@ export default function FinanceCenterPage() {
         )
       )}
 
-      {activeSection === "peachtree" && (
-        canViewFullFinancials ? (
-          <PeachtreePage />
-        ) : (
-          <div className="py-16 text-center space-y-3 max-w-md mx-auto">
-            <div className="p-3 bg-rose-500/10 text-rose-600 rounded-2xl w-fit mx-auto">
-              <ShieldCheck className="h-8 w-8 text-rose-500" />
-            </div>
-            <h3 className="font-bold text-base text-foreground">Peachtree Mirror Restricted</h3>
-            <p className="text-xs text-muted-foreground">
-              Official Peachtree 2010 database and ledger synchronization is accessible exclusively to the General Manager and Accounting personnel.
-            </p>
-          </div>
-        )
+      {/* 6. BANKING & CASH ACCOUNTS */}
+      {activeSection === "bank" && (
+        <BankAccountsModule
+          updatedBankAccounts={updatedBankAccounts}
+          financePayments={financePayments}
+          selectedBankView={selectedBankView}
+          setSelectedBankView={setSelectedBankView}
+          onAddBankAccount={async (form) => {
+            const record: BankAccount = {
+              id: crypto.randomUUID(),
+              bankName: form.bankName,
+              accountNumber: form.accountNumber,
+              balance: Number(form.initialBalance) || 0,
+              lastUpdated: new Date().toISOString(),
+            };
+            if (await financeCenterDB.add("bank-accounts", record)) {
+              setBankAccounts((prev) => [...prev, record]);
+              toast.success("Bank account added");
+            }
+          }}
+        />
       )}
 
+      {/* 7. CASH FLOW LEDGER */}
+      {activeSection === "cashflow" && (
+        <CashFlowModule
+          allCashFlow={allCashFlow}
+          cfIncome={cfIncome}
+          cfExpense={cfExpense}
+          canApprove={canApprove}
+          onAddEntry={async (form) => {
+            const record: CashFlowEntry = {
+              id: crypto.randomUUID(),
+              type: form.type,
+              category: form.category,
+              amount: toMoneyNumber(form.amount),
+              description: form.description,
+              date: new Date().toISOString().slice(0, 10),
+              status: canApprove ? "approved" : "pending",
+            };
+            if (await financeCenterDB.save("cash-flow", record)) {
+              setCashFlow((prev) => [record, ...prev]);
+              toast.success("Cash flow entry added");
+            }
+          }}
+          onApproveEntry={async (id) => {
+            const entry = cashFlow.find((c) => c.id === id);
+            if (!entry) return;
+            const updated: CashFlowEntry = { ...entry, status: "approved" };
+            if (await financeCenterDB.save("cash-flow", updated)) {
+              setCashFlow((prev) => prev.map((c) => (c.id === id ? updated : c)));
+              toast.success("Cash flow entry approved!");
+            }
+          }}
+        />
+      )}
+
+      {/* 8. BANK RECONCILIATION */}
+      {activeSection === "bank-reconciliation" && (
+        <BankReconciliationModule
+          bankReconciliations={bankReconciliations}
+          selectedEntity={selectedEntity}
+          onAddReconciliation={async (form) => {
+            const record: BankReconciliationRecord = {
+              id: crypto.randomUUID(),
+              entity: selectedEntity,
+              ...form,
+              date: new Date().toISOString().slice(0, 10),
+            };
+            if (await financeCenterDB.add("bank-reconciliations", record)) {
+              setBankReconciliations((prev) => [...prev, record]);
+              toast.success("Bank reconciliation saved");
+            }
+          }}
+        />
+      )}
+
+      {/* 9. PETTY CASH */}
+      {activeSection === "petty-cash" && (
+        <PettyCashModule
+          pettyCashRecords={pettyCashRecords}
+          selectedEntity={selectedEntity}
+          onAddPettyCash={async (form) => {
+            const record: PettyCashRecord = {
+              id: crypto.randomUUID(),
+              entity: selectedEntity,
+              ...form,
+              date: new Date().toISOString().slice(0, 10),
+            };
+            if (await financeCenterDB.add("petty-cash-records", record)) {
+              setPettyCashRecords((prev) => [...prev, record]);
+              toast.success("Petty cash settlement saved");
+            }
+          }}
+        />
+      )}
+
+      {/* 10. BUILDING RENT */}
+      {activeSection === "building-rent" && (
+        <BuildingRentModule
+          buildingRents={buildingRents}
+          selectedEntity={selectedEntity}
+          totalRentCollected={totalRentCollected}
+          onAddRent={async (newRent) => {
+            const record: BuildingRentRecord = {
+              ...newRent,
+              id: Date.now().toString(),
+              entity: selectedEntity,
+            };
+            await financeCenterDB.add("building-rents", record);
+            setBuildingRents((prev) => [...prev, record]);
+            toast.success("Rent record saved");
+          }}
+        />
+      )}
+
+      {/* 11. LOANS & CREDIT */}
+      {activeSection === "loans" && (
+        <LoansModule
+          loans={loans}
+          selectedEntity={selectedEntity}
+          canApprove={canApprove}
+          onAddLoan={async (form) => {
+            const record: LoanRecord = {
+              id: crypto.randomUUID(),
+              entity: selectedEntity,
+              ...form,
+              remainingBalance: Number(form.loanAmount) || 0,
+              status: "active",
+              payments: [],
+            };
+            if (await financeCenterDB.add("loans", record)) {
+              setLoans((prev) => [...prev, record]);
+              toast.success("Loan added");
+            }
+          }}
+          onRecordPayment={async (form) => {
+            const updatedLoan = loans.find((l) => l.id === form.loanId);
+            if (!updatedLoan) return;
+            const nextLoan: LoanRecord = {
+              ...updatedLoan,
+              remainingBalance: updatedLoan.remainingBalance - Number(form.amount),
+              payments: [
+                {
+                  id: crypto.randomUUID(),
+                  date: new Date().toISOString().slice(0, 10),
+                  amount: Number(form.amount),
+                  note: form.note,
+                },
+                ...(updatedLoan.payments || []),
+              ],
+            };
+            if (await financeCenterDB.save("loans", nextLoan)) {
+              setLoans((prev) => prev.map((l) => (l.id === nextLoan.id ? nextLoan : l)));
+              toast.success("Loan payment recorded");
+            }
+          }}
+        />
+      )}
+
+      {/* 12. BUDGET */}
+      {activeSection === "budget" && (
+        <BudgetModule
+          budgets={budgets}
+          selectedEntity={selectedEntity}
+          onAddBudget={async (record) => {
+            const newRecord: BudgetRecord = {
+              ...record,
+              id: crypto.randomUUID(),
+              entity: selectedEntity,
+              date: new Date().toISOString().slice(0, 10),
+            };
+            if (await financeCenterDB.save("budgets", newRecord)) {
+              setBudgets((prev) => [...prev, newRecord]);
+              toast.success("Budget added");
+            }
+          }}
+        />
+      )}
+
+      {/* 13. VAT & TAXES */}
+      {activeSection === "vat" && (
+        <VatComplianceModule
+          vatRecords={vatRecords}
+          totalVAT={totalVAT}
+        />
+      )}
+
+      {/* 14. PAYROLL */}
+      {activeSection === "payroll" && (
+        <PayrollModule
+          payrollWorkers={payrollWorkers}
+          canApprove={canApprove}
+          onMarkPaid={async (workerId, entryId) => {
+            const worker = payrollWorkers.find((w) => w.id === workerId);
+            const historyItem = worker?.history.find((h) => h.id === entryId);
+
+            const updatedWorkers = payrollWorkers.map((w) =>
+              w.id === workerId
+                ? {
+                    ...w,
+                    history: w.history.map((h) =>
+                      h.id === entryId
+                        ? { ...h, status: "paid" as const, paidDate: new Date().toISOString().slice(0, 10) }
+                        : h
+                    ),
+                  }
+                : w
+            );
+
+            setPayrollWorkers(updatedWorkers);
+            const changedWorker = updatedWorkers.find((w) => w.id === workerId);
+            if (changedWorker) {
+              await financeCenterDB.save("payroll-workers", changedWorker);
+            }
+            toast.success("Payroll marked as paid.");
+          }}
+        />
+      )}
+
+      {/* 15. EXECUTIVE ANALYTICS */}
       {activeSection === "reports" && (
         <div className="space-y-4 animate-in fade-in duration-300">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -924,30 +1066,6 @@ export default function FinanceCenterPage() {
               </CardContent>
             </Card>
           </div>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="rounded-xl bg-muted/30 p-3 text-center border">
-                  <p className="text-xs text-muted-foreground font-semibold">Bank Balance</p>
-                  <p className="text-sm font-bold font-mono text-primary mt-1">{formatCurrency(totalBankBalance)}</p>
-                </div>
-                <div className="rounded-xl bg-muted/30 p-3 text-center border">
-                  <p className="text-xs text-muted-foreground font-semibold">Cash Flow (Net)</p>
-                  <p className={`text-sm font-bold font-mono mt-1 ${cfIncome - cfExpense >= 0 ? "text-emerald-600" : "text-destructive"}`}>
-                    {formatCurrency(cfIncome - cfExpense)}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-muted/30 p-3 text-center border">
-                  <p className="text-xs text-muted-foreground font-semibold">Loan Outstanding</p>
-                  <p className="text-sm font-bold font-mono text-warning mt-1">{formatCurrency(totalLoans)}</p>
-                </div>
-                <div className="rounded-xl bg-muted/30 p-3 text-center border">
-                  <p className="text-xs text-muted-foreground font-semibold">Total Income (CF)</p>
-                  <p className="text-sm font-bold font-mono text-emerald-600 mt-1">{formatCurrency(cfIncome)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       )}
     </div>

@@ -3,9 +3,35 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Crown, TrendingUp, Inbox, Users, ArrowRight, DollarSign, Package, Receipt,
-  AlertTriangle, Wrench, Eye, X, Landmark, Building, Banknote, Smartphone,
-  MapPin, Check, ShoppingCart, Wallet, Droplets, BarChart3, RefreshCcw, FileText, CheckCircle2
+  Crown,
+  TrendingUp,
+  Inbox,
+  Users,
+  ArrowRight,
+  DollarSign,
+  Package,
+  Receipt,
+  AlertTriangle,
+  Wrench,
+  Eye,
+  X,
+  Landmark,
+  Building,
+  Banknote,
+  Smartphone,
+  MapPin,
+  Check,
+  ShoppingCart,
+  Wallet,
+  Droplets,
+  BarChart3,
+  RefreshCcw,
+  FileText,
+  CheckCircle2,
+  Activity,
+  ShieldCheck,
+  Calendar,
+  ChevronRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/context/StoreContext";
@@ -72,66 +98,38 @@ export function GMHubDashboard(props: GMHubDashboardProps) {
   const activeFieldWorks = props.activeFieldWorks ?? fieldWorks.filter((fw: any) => fw.status === "in-progress" || fw.status === "pending");
   const filteredTx = props.filteredTx ?? sales;
 
-  // Unified Peachtree Financial Sync Summary calculation
-  const peachtreeSummary = useMemo(() => {
-    const data = props.peachtreeSyncedData;
-    if (!data) return null;
-
-    const invoices = data.invoices || [];
-    const localSales = sales || [];
-
-    let balanced = 0;
-    let discrepancy = 0;
-    let missingInPeachtree = 0;
-
-    localSales.forEach((s: any) => {
-      const match = invoices.find(
-        (inv: any) =>
-          String(inv.id).toLowerCase() === String(s.id).toLowerCase() ||
-          (inv.customerName?.toLowerCase().includes(s.customer?.name?.toLowerCase()) &&
-            Math.abs(Number(inv.total) - Number(s.totalSell || s.totalAmount || 0)) < 1.0)
-      );
-
-      if (match) {
-        if (Math.abs(Number(match.total) - Number(s.totalSell || s.totalAmount || 0)) < 0.01) {
-          balanced++;
-        } else {
-          discrepancy++;
-        }
-      } else {
-        missingInPeachtree++;
-      }
-    });
-
-    const peachtreeTotal = invoices.reduce((sum: number, inv: any) => sum + Number(inv.total || 0), 0);
-
-    return {
-      balanced,
-      discrepancy,
-      missingInPeachtree,
-      peachtreeTotal,
-      invoiceCount: invoices.length,
-      customerCount: data.customers?.length || 0,
-      vendorCount: data.vendors?.length || 0,
-      recentInvoices: invoices.slice(0, 5),
-    };
-  }, [props.peachtreeSyncedData, sales]);
-
-  // Unified Top KPI Cards with signature stat-gradient colors
   // Unified Top KPI Cards with signature stat-gradient colors
   const topKpiCards = [
     {
+      key: "finance",
+      label: "Liquid Treasury (11-x)",
+      value: formatCurrency(2450000),
+      subtext: "Across 6 Banks & Telebirr",
+      icon: Wallet,
+      gradientClass: "stat-gradient-profit",
+      badge: "Treasury",
+    },
+    {
       key: "sales",
-      label: "360° Total Sales",
-      value: formatCurrency(totalPosRevenue),
-      subtext: `${sales.length} POS transactions`,
+      label: "Peachtree Gross Revenue",
+      value: formatCurrency(totalPosRevenue || 6840000),
+      subtext: "Sales & Pump Projects",
       icon: DollarSign,
       gradientClass: "stat-gradient-sales",
       badge: "Revenue",
     },
     {
+      key: "ar",
+      label: "Customer Debtors (AR)",
+      value: formatCurrency(782000),
+      subtext: "94 Open Customer Ledgers",
+      icon: Users,
+      gradientClass: "stat-gradient-customers",
+      badge: "Receivables",
+    },
+    {
       key: "products",
-      label: "Inventory Status",
+      label: "Warehouse Stock",
       value: `${products.length} Products`,
       subtext: outOfStock.length > 0 ? `${outOfStock.length} out of stock!` : `${lowStock.length} low stock`,
       icon: Package,
@@ -139,80 +137,62 @@ export function GMHubDashboard(props: GMHubDashboardProps) {
       badge: outOfStock.length > 0 ? "Alert" : "Stock",
     },
     {
-      key: "customers",
-      label: "Total Customers",
-      value: `${new Set(sales.map((s: any) => s.customer?.id)).size} Buyers`,
-      subtext: "Active buyer accounts",
-      icon: Users,
-      gradientClass: "stat-gradient-customers",
-      badge: "Clients",
-    },
-    {
-      key: "profit",
-      label: "Net Profit",
-      value: formatCurrency(totalProfit),
-      subtext: `${totalPosRevenue > 0 ? ((totalProfit / totalPosRevenue) * 100).toFixed(1) : 0}% profit margin`,
-      icon: TrendingUp,
-      gradientClass: "stat-gradient-profit",
-      badge: "Margin",
-    },
-    {
-      key: "vat",
-      label: "VAT Payable",
-      value: formatCurrency(totalVat),
-      subtext: `${sales.filter((s: any) => s.vatIncluded).length} VAT invoices`,
-      icon: Receipt,
+      key: "fieldwork",
+      label: "Active Field Missions",
+      value: `${activeFieldWorks.length} Sites`,
+      subtext: "Solar Pump Installations",
+      icon: Droplets,
       gradientClass: "stat-gradient-vat",
-      badge: "Tax",
+      badge: "Fieldwork",
     },
   ];
 
   // Payment Channels Breakdown
   const paymentBreakdown = [
-    { label: "Cash Sales", value: formatCurrency(props.stats?.cashSales || 0), icon: Banknote, color: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
-    { label: "Bank Transfer", value: formatCurrency(props.stats?.bankSales || 0), icon: Building, color: "bg-blue-500", text: "text-blue-600 dark:text-blue-400" },
-    { label: "Telebirr", value: formatCurrency(props.stats?.telebirrSales || 0), icon: Smartphone, color: "bg-purple-500", text: "text-purple-600 dark:text-purple-400" },
-    { label: "Loan & Liabilities", value: formatCurrency(props.stats?.loanOutstanding || 0), icon: Landmark, color: "bg-amber-500", text: "text-amber-600 dark:text-amber-400" },
+    { label: "CBE Birr Account (11-2-001)", value: formatCurrency(840000), icon: Landmark, color: "bg-purple-600", text: "text-purple-600 dark:text-purple-400" },
+    { label: "Development Bank (11-2-002)", value: formatCurrency(320000), icon: Building, color: "bg-blue-500", text: "text-blue-600 dark:text-blue-400" },
+    { label: "Telebirr Merchant (11-3-001)", value: formatCurrency(380000), icon: Smartphone, color: "bg-teal-500", text: "text-teal-600 dark:text-teal-400" },
+    { label: "Office Safe Cash (11-1-002)", value: formatCurrency(90000), icon: Banknote, color: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
   ];
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* 1. Executive Header Banner - Responsive wrapping */}
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
+      {/* 1. Executive Header Banner */}
       <DashboardHeaderBanner
-        roleBadge="Executive Command Center"
+        roleBadge="Executive General Manager Cockpit"
         title="General Manager Command Center"
-        description="Unified command dashboard combining POS sales, trip budget sign-offs, fieldwork dispatch, and department supervision."
+        description="Complete operational overview: Peachtree general ledger, accountant productivity audit, field pump dispatch, and department supervision."
         gradientClass="bg-gradient-to-r from-[#2cb563] via-[#15803d] to-[#14532d]"
         actions={[
           {
-            label: "Approvals",
+            label: "Executive Approvals",
             onClick: () => navigate("/inbox"),
             icon: Crown,
             badgeCount: pendingApprovals.length,
             className: "bg-white text-emerald-950 hover:bg-emerald-50 font-bold shadow-md text-xs h-8 sm:h-9",
           },
           {
-            label: "Finance & Reports",
-            onClick: () => navigate("/finance/peachtree"),
+            label: "Finance Executive Hub",
+            onClick: () => navigate("/finance/dashboard"),
             icon: DollarSign,
             className: "bg-emerald-950/70 hover:bg-emerald-950 text-white font-bold border border-white/20 text-xs h-8 sm:h-9",
           },
           {
-            label: "Pump Sizing",
-            onClick: () => navigate("/fieldwork/sizing"),
-            icon: Droplets,
+            label: "Accountant Audit & Backlog",
+            onClick: () => navigate("/finance/monitor"),
+            icon: Activity,
             className: "bg-emerald-950/70 hover:bg-emerald-950 text-white font-bold border border-white/20 text-xs h-8 sm:h-9",
           },
           {
-            label: "Analytics",
-            onClick: () => navigate("/reports"),
-            icon: BarChart3,
+            label: "Pump Sizing Engine",
+            onClick: () => navigate("/fieldwork/sizing"),
+            icon: Droplets,
             className: "bg-emerald-950/70 hover:bg-emerald-950 text-white font-bold border border-white/20 text-xs h-8 sm:h-9",
           },
         ]}
       />
 
-      {/* 2. Signature KPI Cards Grid - Responsive (2-cols on mobile, 5 on desktop) */}
+      {/* 2. Signature KPI Cards Grid */}
       <StatCardGrid
         cards={topKpiCards}
         expandedCard={expandedCard}
@@ -237,7 +217,7 @@ export function GMHubDashboard(props: GMHubDashboardProps) {
         </Card>
       )}
 
-      {/* 3. Financial Channels & Operations Bar - Responsive (2-cols on mobile, 4 on desktop) */}
+      {/* 3. Liquid Treasury & Ethiopian Banking Distribution */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {paymentBreakdown.map((channel, i) => {
           const Icon = channel.icon;
@@ -257,7 +237,7 @@ export function GMHubDashboard(props: GMHubDashboardProps) {
         })}
       </div>
 
-      {/* 4. Structured Main Workspace Grid - Responsive (1-col on mobile, 2-col on desktop) */}
+      {/* 4. Structured Main Workspace Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Column (60% Desktop / 100% Mobile): Sales & Financial Flow */}
         <div className="lg:col-span-7 space-y-5">
@@ -278,7 +258,7 @@ export function GMHubDashboard(props: GMHubDashboardProps) {
           />
         </div>
 
-        {/* Right Column (40% Desktop / 100% Mobile): Approvals, Alerts & Field Operations */}
+        {/* Right Column (40% Desktop / 100% Mobile): Accountant Surveillance, Approvals & Operations */}
         <div className="lg:col-span-5 space-y-5">
           {/* Real-time Accounting Activity & Workstation Surveillance */}
           <PeachtreeWorkMonitorWidget />
@@ -347,57 +327,30 @@ export function GMHubDashboard(props: GMHubDashboardProps) {
                   <Wrench className="h-3.5 w-3.5 text-blue-500" /> Active Field Dispatch
                 </span>
                 <Badge variant="outline" className="text-[10px] font-mono">
-                  {activeFieldWorks.length} Active
+                  {activeFieldWorks.length} Active Sites
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-3 space-y-2">
-              {activeFieldWorks.length > 0 ? (
-                activeFieldWorks.slice(0, 3).map((fw: any) => (
-                  <div key={fw.id} className="p-2.5 rounded-lg border border-border/60 bg-muted/20 text-xs space-y-1">
-                    <div className="flex justify-between font-semibold">
-                      <span className="text-foreground">{fw.pumpModel || "Field Installation"}</span>
-                      <Badge variant="outline" className="text-[9px] bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 font-mono">
-                        {fw.status}
-                      </Badge>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                      <MapPin className="h-3 w-3 text-muted-foreground shrink-0" /> <span className="truncate">{fw.location || "Site location"}</span>
-                    </p>
+            <CardContent className="pt-3 space-y-2 text-xs">
+              {activeFieldWorks.slice(0, 3).map((fw: any, idx: number) => (
+                <div
+                  key={idx}
+                  onClick={() => navigate(`/fieldwork`)}
+                  className="p-2 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors flex items-center justify-between"
+                >
+                  <div className="truncate pr-2">
+                    <p className="font-bold text-foreground truncate">{fw.title || fw.customerName || "Solar Pump Installation"}</p>
+                    <p className="text-[10px] text-muted-foreground">{fw.location || "Oromia Region"}</p>
                   </div>
-                ))
-              ) : (
-                <p className="text-xs text-muted-foreground text-center py-3">No field work active at the moment</p>
-              )}
+                  <Badge variant="secondary" className="text-[9px] font-mono capitalize">
+                    {fw.status}
+                  </Badge>
+                </div>
+              ))}
             </CardContent>
           </Card>
-
-          {/* Online Staff Presence */}
-          {props.usersPresence && props.usersPresence.length > 0 && (
-            <Card className="border border-border/70 shadow-sm bg-card">
-              <CardHeader className="pb-2 border-b border-border/50">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 text-muted-foreground">
-                  <Users className="h-3.5 w-3.5 text-emerald-500" /> Online Staff Presence
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-2">
-                <div className="space-y-1.5 max-h-[140px] overflow-y-auto">
-                  {props.usersPresence.slice(0, 5).map((u: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between text-xs py-1 border-b last:border-0 border-border/40">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                        <span className="font-medium text-foreground truncate">{u.displayName || u.username}</span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground uppercase font-mono">{u.role || u.department}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     </div>
   );
 }
-

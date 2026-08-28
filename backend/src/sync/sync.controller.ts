@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
 import { SyncService } from "./sync.service";
 import { ApiKeyGuard } from "../common/guards/api-key.guard";
 import { Public } from "../common/decorators/public.decorator";
@@ -76,15 +76,14 @@ export class SyncController {
 
   @Public()
   @Get("peachtree/vault/download")
-  downloadPeachtreeVault(@Req() req: any) {
-    const fs = require("fs");
-    const path = require("path");
-    const ptbPath = "C:\\Users\\new\\OneDrive\\Documents\\solarflow-manager-main\\Meseret 2016xx-121124.ptb";
-    
-    if (fs.existsSync(ptbPath)) {
-      return fs.createReadStream(ptbPath);
-    }
-    return { success: false, message: "Backup file archive not found on host." };
+  async downloadPeachtreeVault(@Req() req: any, @Res() res: any) {
+    const archive = await this.syncService.getPeachtreeVaultArchive();
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `Meseret_Mare_Peachtree_Database_Vault_${timestamp}.json`;
+
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return res.send(JSON.stringify(archive, null, 2));
   }
 
   @Public()

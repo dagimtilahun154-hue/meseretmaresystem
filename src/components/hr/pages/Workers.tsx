@@ -133,9 +133,13 @@ export default function Workers() {
         id: editing?.id || uuidv4(),
         worker_code: form.worker_code || `EMP-${Date.now().toString().slice(-4)}`,
         full_name: form.full_name,
+        full_name_amharic: form.full_name_amharic || "",
+        fullNameAmharic: form.full_name_amharic || "",
         phone: form.phone || "",
         email: form.email || "",
         position: form.position || "Staff",
+        position_amharic: form.position_amharic || "",
+        positionAmharic: form.position_amharic || "",
         department_id: selectedDept.id,
         departmentName: selectedDept.name,
         photo_url: form.photo_url || "",
@@ -445,33 +449,45 @@ export default function Workers() {
             {/* 2. Personal Information */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 border-b pb-1">
-                <Users className="h-3.5 w-3.5" /> 1. Personal & Identity Details
+                <Users className="h-3.5 w-3.5" /> 1. Personal & Identity Details (የግል መረጃ)
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="sm:col-span-2 space-y-1.5">
-                  <label className="text-xs font-medium">Full Name (First, Middle, Last) *</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Full Name (English) * / ሙሉ ስም (በእንግሊዝኛ)</label>
                   <Input
                     value={form.full_name || ""}
                     onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                    placeholder="e.g. Abebe Bikila Tadesse"
+                    placeholder="e.g. Dagim Tilahun"
                     className="text-xs"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Gender</label>
+                  <label className="text-xs font-medium">ሙሉ ስም (በአማርኛ) / Full Name (Amharic)</label>
+                  <Input
+                    value={form.full_name_amharic || ""}
+                    onChange={(e) => setForm({ ...form, full_name_amharic: e.target.value })}
+                    placeholder="ምሳሌ፡ ዳጊም ጥላሁን"
+                    className="text-xs font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Gender (ጾታ)</label>
                   <Select value={form.gender || "Male"} onValueChange={(v) => setForm({ ...form, gender: v })}>
                     <SelectTrigger className="text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Male">Male</SelectItem>
-                      <SelectItem value="Female">Female</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
+                      <SelectItem value="Male">Male (ወንድ)</SelectItem>
+                      <SelectItem value="Female">Female (ሴት)</SelectItem>
+                      <SelectItem value="Other">Other (ሌላ)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Date of Birth</label>
+                  <label className="text-xs font-medium">Date of Birth (የትውልድ ቀን)</label>
                   <Input
                     type="date"
                     value={form.date_of_birth || ""}
@@ -479,8 +495,8 @@ export default function Workers() {
                     className="text-xs"
                   />
                 </div>
-                <div className="sm:col-span-2 space-y-1.5">
-                  <label className="text-xs font-medium">National / Kebele ID / Passport</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">National / Fayda ID (ፋይዳ / መታወቂያ)</label>
                   <Input
                     value={form.national_id || ""}
                     onChange={(e) => setForm({ ...form, national_id: e.target.value })}
@@ -494,7 +510,7 @@ export default function Workers() {
             {/* 3. Contact & Physical Address */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 border-b pb-1">
-                <MapPin className="h-3.5 w-3.5" /> 2. Contact & Physical Address
+                <MapPin className="h-3.5 w-3.5" /> 2. Contact & Physical Address (አድራሻ እና ግንኙነት)
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
@@ -590,11 +606,11 @@ export default function Workers() {
             {/* 4. Department & Compensation */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 border-b pb-1">
-                <Building2 className="h-3.5 w-3.5" /> 3. Department, Position & Payroll Details
+                <Building2 className="h-3.5 w-3.5" /> 3. Department & Role Details (የክፍል እና የሥራ መደብ)
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-primary">Assigned Department *</label>
+                  <label className="text-xs font-semibold text-primary">Assigned Department * / የተመደበበት ክፍል</label>
                   <Select
                     value={form.department_id || departments[0]?.id || "dept-tech"}
                     onValueChange={(v) => setForm({ ...form, department_id: v })}
@@ -603,9 +619,9 @@ export default function Workers() {
                       <SelectValue placeholder="Select Department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {departments.map((d) => (
+                      {departments.map((d: any) => (
                         <SelectItem key={d.id} value={d.id}>
-                          {d.name}
+                          {d.nameAmharic ? `${d.nameAmharic} (${d.name})` : d.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -613,7 +629,22 @@ export default function Workers() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Job Title / Position *</label>
+                  <label className="text-xs font-medium">Employment Contract / የቅጥር ሁኔታ</label>
+                  <Select value={form.employment_type || "Permanent"} onValueChange={(v) => setForm({ ...form, employment_type: v })}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Permanent">Permanent (ቋሚ)</SelectItem>
+                      <SelectItem value="Contract">Fixed-Term Contract (ኮንትራት)</SelectItem>
+                      <SelectItem value="Probation">Probationary (የሙከራ ጊዜ)</SelectItem>
+                      <SelectItem value="Temporary">Temporary / Daily (ጊዜያዊ)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Job Title / Position (English) * / የሥራ መደብ (በእንግሊዝኛ)</label>
                   <Input
                     value={form.position || ""}
                     onChange={(e) => setForm({ ...form, position: e.target.value })}
@@ -623,18 +654,13 @@ export default function Workers() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Employment Contract</label>
-                  <Select value={form.employment_type || "Permanent"} onValueChange={(v) => setForm({ ...form, employment_type: v })}>
-                    <SelectTrigger className="text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Permanent">Permanent (Full-Time)</SelectItem>
-                      <SelectItem value="Contract">Fixed-Term Contract</SelectItem>
-                      <SelectItem value="Probation">Probationary</SelectItem>
-                      <SelectItem value="Temporary">Temporary / Daily</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <label className="text-xs font-medium">የሥራ መደብ (በአማርኛ) / Position (Amharic)</label>
+                  <Input
+                    value={form.position_amharic || ""}
+                    onChange={(e) => setForm({ ...form, position_amharic: e.target.value })}
+                    placeholder="ምሳሌ፡ ዋና የሶላር ቴክኒሻን"
+                    className="text-xs font-medium"
+                  />
                 </div>
 
                 <div className="space-y-1.5">
