@@ -342,8 +342,8 @@ PEACHTREE_USER = os.environ.get('PEACHTREE_USER', 'Terefe')
 PEACHTREE_PASS = os.environ.get('PEACHTREE_PASS', 'T123456')
 PEACHTREE_DATA_PATH = os.environ.get('PEACHTREE_DATA_PATH', r'C:\Program Files (x86)\Sage Software\Peachtree\Company\mesxxa')
 
-# API details for SolarFlow Manager backend (Targeting local dev or deployed server)
-API_BASE_URL = os.environ.get('API_BASE_URL', 'http://localhost:4000/api/v1')
+# API details for SolarFlow Manager backend (Targeting hosted deployed server or local dev)
+API_BASE_URL = os.environ.get('API_BASE_URL', 'https://meseretmaresystem.onrender.com/api/v1')
 SYNC_URL = f"{API_BASE_URL}/sync/peachtree"
 HEARTBEAT_URL = f"{API_BASE_URL}/sync/peachtree/heartbeat"
 API_KEY = os.environ.get('API_KEY', 'solarflow-sync-secret-2026')

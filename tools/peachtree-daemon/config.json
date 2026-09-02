@@ -1,0 +1,14 @@
+{
+  "serverUrl": "https://meseretmaresystem.onrender.com/api/v1",
+  "localServerUrl": "http://localhost:4000/api/v1",
+  "apiKey": "solarflow-sync-secret-2026",
+  "companyName": "Meseret Mare Agricultural & Solar Machinery",
+  "watchDirectory": "C:\\Program Files (x86)\\Sage Software\\Peachtree\\Company\\mesxxa",
+  "filePatterns": [".ptb", ".dat", ".csv", ".txt"],
+  "heartbeatIntervalSeconds": 60,
+  "syncIntervalSeconds": 900,
+  "autoSyncOnNewBackup": true,
+  "logLevel": "INFO",
+  "maxLogSizeBytes": 5242880,
+  "backupFolder": "C:\\Peachtree_Synced_Archives"
+}
