@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sun, Zap, Droplets, Eye, ChevronRight, ArrowLeft, Pencil, Plus, Trash2, ImagePlus, Search } from "lucide-react";
 import { pumpCategoriesDB, pumpProductsDB } from "@/lib/db-service";
+import { getMasterPumpCategories, getMasterPumpModels } from "@/lib/pump-catalog-importer";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/context/StoreContext";
 import { toast } from "sonner";
@@ -283,13 +284,20 @@ export default function PumpProductsPage() {
         pumpProductsDB.getAll(),
         pumpCategoriesDB.getAll(),
       ]);
-      const parsedPumps = (pumpData || []).map((pump) => ({
+      let parsedPumps = (pumpData || []).map((pump) => ({
         ...pump,
         technicalData: parseJsonField(pump.technicalData),
         performanceData: parseJsonField(pump.performanceData),
         equipment: parseJsonField(pump.equipment),
       }));
-      const persistedCategories = (categoryData || []).map((category) => ({ ...category, persisted: true }));
+      let persistedCategories = (categoryData || []).map((category) => ({ ...category, persisted: true }));
+
+      // Load full extracted master engineering catalog if IndexedDB is empty
+      if (parsedPumps.length === 0 && persistedCategories.length === 0) {
+        parsedPumps = getMasterPumpModels();
+        persistedCategories = getMasterPumpCategories();
+      }
+
       const categoryNames = new Set(persistedCategories.map((category) => category.name));
       const derivedCategories = Array.from(new Set(parsedPumps.map((pump) => pump.firstCategory).filter(Boolean)))
         .filter((name) => !categoryNames.has(name))
@@ -297,7 +305,8 @@ export default function PumpProductsPage() {
       setPumps(parsedPumps);
       setCategories([...persistedCategories, ...derivedCategories]);
     } catch {
-      toast.error("Could not load pump products");
+      setPumps(getMasterPumpModels());
+      setCategories(getMasterPumpCategories());
     } finally {
       setLoading(false);
     }

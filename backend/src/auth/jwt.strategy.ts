@@ -14,10 +14,19 @@ export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
     private readonly prisma: PrismaService,
     config: ConfigService,
   ) {
+    const isProduction = config.get<string>("NODE_ENV") === "production";
+    const secret = config.get<string>("JWT_ACCESS_SECRET");
+
+    if (isProduction && (!secret || secret === "dev-access-secret")) {
+      throw new Error(
+        "FATAL SECURITY ERROR: JWT_ACCESS_SECRET must be explicitly set to a strong custom secret in production environments."
+      );
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: config.get<string>("JWT_ACCESS_SECRET", "dev-access-secret"),
+      secretOrKey: secret || "dev-access-secret",
     });
   }
 

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import {
   Users, Droplets, Receipt, Wrench, MessageSquare, ShieldCheck, Clock, MapPin,
   Phone, Mail, Calendar, Send, FileText, CheckCircle2, ArrowLeft, Printer, Camera,
-  Sparkles, Download, ClipboardCheck, Truck, Eye, Layers, DollarSign, Activity, CheckCircle
+  Sparkles, Download, ClipboardCheck, Truck, Eye, Layers, DollarSign, Activity, CheckCircle, Zap
 } from "lucide-react";
 import { customersDB } from "@/lib/db-service";
 import { formatCurrency } from "@/lib/data";
@@ -109,14 +109,17 @@ export function CustomerDossierPage() {
   const isWarrantyActive = warrantyRemaining > 0;
   const installedPump = completedFieldWork?.pumpModel || sizings[0]?.selectedPumpModel || sales[0]?.items?.[0]?.name || "Solar Pump System";
 
-  // Financial Computations
-  const solarFlowBilled = sales.reduce((acc: number, s: any) => acc + (s.totalAmount || s.amount || 0), 0) || 
-    sizings.reduce((acc: number, s: any) => acc + (s.totalCost || s.totalPrice || 0), 0);
-  const peachtreeBilled = peachtree.reduce((acc: number, r: any) => acc + (r.amount || r.totalAmount || 0), 0);
-  const totalLifetimeSpend = solarFlowBilled + peachtreeBilled;
-  const totalPaid = sales.filter((s: any) => s.status === "PAID" || s.status === "COMPLETED")
-    .reduce((acc: number, s: any) => acc + (s.totalAmount || s.amount || 0), 0) + peachtreeBilled;
-  const outstandingBalance = Math.max(0, totalLifetimeSpend - totalPaid);
+  // Financial Computations (from Peachtree Accounting sync and commercial invoices)
+  const salesBilled = sales.reduce((acc: number, r: any) => acc + (Number(r.total || r.amount) || 0), 0);
+  const peachtreeBilled = peachtree.reduce((acc: number, r: any) => acc + (Number(r.amount || r.totalAmount || r.total) || 0), 0);
+  const totalBilled = Number(customer.totalBilled) || (salesBilled + peachtreeBilled) || Number(customer.balance || 0);
+  
+  const salesPaid = sales.filter((r: any) => String(r.status).toLowerCase() === "paid").reduce((acc: number, r: any) => acc + (Number(r.total || r.amount) || 0), 0);
+  const peachtreePaid = peachtree.filter((r: any) => String(r.status).toUpperCase() === "PAID" || String(r.status).toUpperCase() === "COMPLETED")
+    .reduce((acc: number, r: any) => acc + (Number(r.amount || r.totalAmount || r.total) || 0), 0);
+  const totalPaid = Number(customer.totalReceived) || (salesPaid + peachtreePaid) || 0;
+  
+  const outstandingBalance = Number(customer.pendingReceivables) || (totalBilled > totalPaid ? totalBilled - totalPaid : Number(customer.balance || 0));
   const totalFieldCashRequested = fieldCashRequests.reduce((acc: number, r: any) => acc + (Number(r.amount) || 0), 0);
 
   const scrollToSection = (sectionId: string) => {
@@ -254,12 +257,12 @@ export function CustomerDossierPage() {
             {/* 4 KPI Financial Metric Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
               <div className="p-3.5 rounded-xl border bg-muted/15 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Lifetime Gross Value</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Total Billed</span>
                 <span className="text-base sm:text-lg font-black text-foreground block truncate">
-                  {formatCurrency(totalLifetimeSpend)}
+                  {totalBilled > 0 ? formatCurrency(totalBilled) : "ETB 0"}
                 </span>
                 <span className="text-[9px] text-muted-foreground block truncate">
-                  MM: {formatCurrency(solarFlowBilled)} | PT: {formatCurrency(peachtreeBilled)}
+                  {(sales.length + peachtree.length) > 0 ? `${sales.length + peachtree.length} Invoices` : "Peachtree Managed"}
                 </span>
               </div>
 
@@ -268,7 +271,7 @@ export function CustomerDossierPage() {
                 <span className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 block truncate">
                   {formatCurrency(totalPaid)}
                 </span>
-                <span className="text-[9px] text-emerald-700 dark:text-emerald-400 block">Cleared Bank Funds</span>
+                <span className="text-[9px] text-emerald-700 dark:text-emerald-400 block">Bank Payments</span>
               </div>
 
               <div className="p-3.5 rounded-xl border bg-muted/15 space-y-1">
@@ -277,17 +280,17 @@ export function CustomerDossierPage() {
                   {formatCurrency(outstandingBalance)}
                 </span>
                 <span className="text-[9px] text-muted-foreground block">
-                  {outstandingBalance > 0 ? "Outstanding Balance" : "100% Settled"}
+                  {outstandingBalance > 0 ? "Pending Overdue Balance" : "Account Settled"}
                 </span>
               </div>
 
               <div className="p-3.5 rounded-xl border bg-muted/15 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Operations & History</span>
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Engineering & Sites</span>
                 <span className="text-base sm:text-lg font-black text-foreground block truncate">
-                  {sizings.length} Pumps | {peachtree.length} PT Sales
+                  {sizings.length} Sizing | {fieldWorks.length} Site(s)
                 </span>
                 <span className="text-[9px] text-muted-foreground block">
-                  {fieldWorks.length} Field Jobs Logged
+                  Site Operations
                 </span>
               </div>
             </div>

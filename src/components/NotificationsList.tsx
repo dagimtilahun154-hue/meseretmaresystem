@@ -8,15 +8,18 @@ import { Bell, BellOff, CheckCircle2, Trash2, Calendar, Circle, ShieldAlert, Spa
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
+import { useWebSocket } from "@/context/WebSocketProvider";
+
 export function NotificationsList() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const { currentUser } = useAuth();
+  const { socket } = useWebSocket();
   const navigate = useNavigate();
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (showLoading = false) => {
     if (!currentUser) return;
-    setLoading(true);
+    if (showLoading) setLoading(true);
     try {
       const data = await getNotifications();
       // Strict Role & User Gated Filtering
@@ -36,13 +39,30 @@ export function NotificationsList() {
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchNotifications();
-  }, [currentUser]);
+    fetchNotifications(true);
+
+    const interval = setInterval(() => {
+      fetchNotifications(false);
+    }, 4000);
+
+    if (socket) {
+      const handleNewNotification = () => fetchNotifications(false);
+      socket.on("new_notification", handleNewNotification);
+      socket.on("refresh_notifications", handleNewNotification);
+      return () => {
+        clearInterval(interval);
+        socket.off("new_notification", handleNewNotification);
+        socket.off("refresh_notifications", handleNewNotification);
+      };
+    }
+
+    return () => clearInterval(interval);
+  }, [currentUser, socket]);
 
   const handleMarkAsRead = async (id: string, link?: string | null) => {
     try {

@@ -16,7 +16,7 @@ import { EodActivityWidget } from "./widgets/EodActivityWidget";
 
 export function SalesHubDashboard() {
   const navigate = useNavigate();
-  const { customers = [], sales = [], sizingRequests = [], products = [], eodReports = [] } = useStore() as any;
+  const { customers = [], sales = [], sizingRequests = [], products = [], eodReports = [], refreshStoreData } = useStore() as any;
   const [searchQuery, setSearchQuery] = useState("");
   const [stockQuery, setStockQuery] = useState("");
 
@@ -35,17 +35,17 @@ export function SalesHubDashboard() {
   const statCards = [
     {
       key: "sales",
-      label: "Total Sales Revenue",
+      label: "Total Sales",
       value: formatCurrency(totalSalesVal),
-      subtext: `${sales.length} POS sales closed`,
+      subtext: `${sales.length} Sales completed`,
       icon: DollarSign,
       gradientClass: "stat-gradient-sales",
-      badge: "Revenue",
+      badge: "Sales",
     },
     {
       key: "products",
-      label: "Available Inventory",
-      value: `${products.length} Items`,
+      label: "Products Stock",
+      value: `${products.length} Products`,
       subtext: `${products.filter((p: any) => p.quantity === 0).length} items out of stock`,
       icon: Package,
       gradientClass: "stat-gradient-products",
@@ -53,9 +53,9 @@ export function SalesHubDashboard() {
     },
     {
       key: "customers",
-      label: "Customer Base",
-      value: `${customers.length} Accounts`,
-      subtext: "Digital dossiers registered",
+      label: "Customer Accounts",
+      value: `${customers.length} Clients`,
+      subtext: "Registered customer records",
       icon: Users,
       gradientClass: "stat-gradient-customers",
       badge: "Clients",
@@ -64,10 +64,10 @@ export function SalesHubDashboard() {
       key: "proposals",
       label: "Active Proposals",
       value: `${sizingRequests.length} Proposals`,
-      subtext: "Technical pump packages",
+      subtext: "Pump sizing proposals",
       icon: FileText,
       gradientClass: "stat-gradient-profit",
-      badge: "Pipeline",
+      badge: "Proposals",
     },
   ];
 
@@ -75,22 +75,22 @@ export function SalesHubDashboard() {
     <div className="space-y-6">
       {/* 1. Standardized Header Banner */}
       <DashboardHeaderBanner
-        roleBadge="Sales & Commercial Desk"
-        title="Sales Hub Workspace"
-        description="Customer Intake, Digital Master Dossier, POS Commercial Sales & Pump Package Proposals."
+        roleBadge="Sales & POS"
+        title="Sales Dashboard"
+        description="Manage customer accounts, point of sale invoices, and pump quotes."
         gradientClass="bg-gradient-to-r from-[#f5a600] via-[#d97706] to-[#b45309]"
         actions={[
           {
-            label: "AI Pump Sizing & Quotes",
+            label: "Pump Sizing",
             onClick: () => navigate("/fieldwork/sizing"),
             icon: FileText,
-            className: "bg-white text-blue-900 hover:bg-blue-50 font-bold shadow-md text-xs h-9",
+            className: "bg-white text-amber-950 hover:bg-amber-50 font-bold shadow-md text-xs h-9",
           },
           {
-            label: "Direct Retail POS",
-            onClick: () => navigate("/pos?mode=general"),
+            label: "Point of Sale (POS)",
+            onClick: () => navigate("/pos"),
             icon: ShoppingCart,
-            className: "bg-amber-900/60 hover:bg-amber-900 text-white font-bold border border-white/20 text-xs h-9",
+            className: "bg-amber-950/60 hover:bg-amber-950 text-white font-bold border border-white/20 text-xs h-9",
           },
           {
             label: "Customer Dossiers",
@@ -281,7 +281,7 @@ export function SalesHubDashboard() {
           </Card>
 
           {/* Universal End-of-Day Activity Log */}
-          <EodActivityWidget eodReports={eodReports} />
+          <EodActivityWidget eodReports={eodReports} onReportSubmitted={refreshStoreData} />
         </div>
       </div>
     </div>

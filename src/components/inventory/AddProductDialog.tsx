@@ -285,8 +285,8 @@ export const AddProductDialog: React.FC<AddProductDialogProps> = ({
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border text-foreground text-xs">
                   {MEASUREMENT_UNITS.map((u) => (
-                    <SelectItem key={u.value} value={u.value}>
-                      {u.label}
+                    <SelectItem key={u} value={u}>
+                      {u}
                     </SelectItem>
                   ))}
                 </SelectContent>

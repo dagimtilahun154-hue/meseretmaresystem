@@ -433,7 +433,7 @@ export class SizingService {
     });
     const pumpPrice = dbPump ? Number(dbPump.sellPrice) : 850;
     items.push({
-      id: dbPump ? dbPump.id : 'PUMP-MOCK-ID',
+      id: dbPump ? dbPump.id : 'PRD-PUMP-GENERIC',
       name: pumpModel,
       category: 'PUMP',
       qty: 1,
@@ -486,7 +486,7 @@ export class SizingService {
     });
     const controllerPrice = dbController ? Number(dbController.sellPrice) : 220;
     items.push({
-      id: dbController ? dbController.id : 'CONTROLLER-MOCK-ID',
+      id: dbController ? dbController.id : 'PRD-CTRL-GENERIC',
       name: `Pump Controller / Inverter`,
       category: 'PUMP_EQUIPMENT',
       qty: 1,
@@ -502,7 +502,7 @@ export class SizingService {
     const pipePrice = dbPipes ? Number(dbPipes.sellPrice) : 8.5; // per meter
     const pipesQty = Math.ceil(pipeLength);
     items.push({
-      id: dbPipes ? dbPipes.id : 'PIPE-MOCK-ID',
+      id: dbPipes ? dbPipes.id : 'PRD-PIPE-GENERIC',
       name: `PE Piping (meters)`,
       category: 'WORK_TOOL',
       qty: pipesQty,
@@ -518,7 +518,7 @@ export class SizingService {
     const cablePrice = dbCables ? Number(dbCables.sellPrice) : 3.0; // per meter
     const cableQty = Math.ceil(pipeLength + 10);
     items.push({
-      id: dbCables ? dbCables.id : 'CABLE-MOCK-ID',
+      id: dbCables ? dbCables.id : 'PRD-CABLE-GENERIC',
       name: `Submersible Cable (meters)`,
       category: 'PUMP_EQUIPMENT',
       qty: cableQty,

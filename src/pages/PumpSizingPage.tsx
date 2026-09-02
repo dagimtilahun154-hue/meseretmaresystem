@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { customersDB } from "@/lib/db-service";
+import { customersDB, pumpProductsDB } from "@/lib/db-service";
+import { getMasterPumpModels } from "@/lib/pump-catalog-importer";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -26,8 +27,13 @@ import {
   calculateSolarArrayRequirements,
   sizeSubmersibleCable,
   getFrictionLossPer100m,
-  calculateTDH as libCalculateTDH,
-  calculateRequiredFlow as libCalculateRequiredFlow
+  calculateTDH,
+  calculate12MonthProductionSchedule,
+  calculateEnvironmentalDerating,
+  calculateFittingsEquivalentLength,
+  calculateRequiredFlow,
+  FITTINGS_EQUIVALENT_LENGTH,
+  MonthlyProductionItem
 } from "@/lib/pump-sizing";
 import {
   AnimatedSunIcon,
@@ -119,8 +125,20 @@ export default function PumpSizingPage() {
   const [staticWaterLevel, setStaticWaterLevel] = useState<string>("35");
   const [dynamicDrawdown, setDynamicDrawdown] = useState<string>("10");
   const [tankElevation, setTankElevation] = useState<string>("5");
+  const [groundElevation, setGroundElevation] = useState<string>("0");
+  const [dropPipeLength, setDropPipeLength] = useState<string>("0");
   const [pipeLength, setPipeLength] = useState<string>("60");
   const [pipeDiameter, setPipeDiameter] = useState<string>("1.25");
+
+  // Pipe Fittings (Page 210 Standard)
+  const [elbows90, setElbows90] = useState<string>("3");
+  const [gateValves, setGateValves] = useState<string>("1");
+  const [checkValves, setCheckValves] = useState<string>("1");
+
+  // Environmental Conditions (Page 208 Standard)
+  const [altitudeM, setAltitudeM] = useState<string>("540");
+  const [ambientTempC, setAmbientTempC] = useState<string>("30");
+  const [showAdvancedHydraulics, setShowAdvancedHydraulics] = useState<boolean>(false);
   
   // Water Requirement & Quick Demand Helpers
   const [dailyWaterNeed, setDailyWaterNeed] = useState<string>("20");
@@ -310,10 +328,33 @@ export default function PumpSizingPage() {
   }, [position]);
 
   useEffect(() => {
-    apiClient.get("/pumps").then(res => {
-      setAllPumps(res.data);
-      if (res.data.length > 0) setSuggestedPumpModel(res.data[0].model);
-    }).catch(console.error);
+    const loadPumps = async () => {
+      try {
+        const res = await apiClient.get("/pumps");
+        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+          setAllPumps(res.data);
+          setSuggestedPumpModel(res.data[0].model);
+          return;
+        }
+      } catch (e) {
+        // Fallback to IndexedDB / local catalog
+      }
+
+      try {
+        const stored = await pumpProductsDB.getAll();
+        if (stored && Array.isArray(stored) && stored.length > 0) {
+          setAllPumps(stored);
+          setSuggestedPumpModel(stored[0].model);
+          return;
+        }
+      } catch (e) {}
+
+      const defaults = getMasterPumpModels();
+      setAllPumps(defaults);
+      if (defaults.length > 0) setSuggestedPumpModel(defaults[0].model);
+    };
+
+    loadPumps();
 
     apiClient.get("/users").then(res => {
       const filtered = res.data.filter((u: any) => 
@@ -742,21 +783,51 @@ export default function PumpSizingPage() {
     const staticLevel = parseFloat(staticWaterLevel) || 0;
     const drawdown = parseFloat(dynamicDrawdown) || 0;
     const tankHeight = parseFloat(tankElevation) || 0;
+    const groundElev = parseFloat(groundElevation) || 0;
+    const dropPipe = parseFloat(dropPipeLength) || 0;
     const length = parseFloat(pipeLength) || 0;
     const diameter = parseFloat(pipeDiameter) || 1.25;
     const need = parseFloat(dailyWaterNeed) || 20;
 
-    const staticLift = staticLevel + drawdown + tankHeight;
-    const frictionPer100m = getFrictionLossPer100m(diameter);
-    const frictionLoss = Number(((length / 100) * frictionPer100m).toFixed(2));
-    const calculatedTdh = Number((staticLift + frictionLoss).toFixed(2));
+    const numElbows = parseInt(elbows90) || 0;
+    const numGateValves = parseInt(gateValves) || 0;
+    const numCheckValves = parseInt(checkValves) || 0;
+
+    // 1. Rigorous Page 210 TDH Calculation with Fittings Equivalent Length
+    const tdhResult = calculateTDH({
+      staticWaterLevel: staticLevel,
+      dynamicDrawdown: drawdown,
+      tankHeight: tankHeight,
+      groundElevation: groundElev,
+      pipeDistance: length,
+      dropPipeLength: dropPipe,
+      pipeDiameterInch: diameter,
+      waterSource: waterSourceType,
+      fittings: {
+        elbows90: numElbows,
+        gateValves: numGateValves,
+        checkValves: numCheckValves
+      }
+    });
+
+    const calculatedTdh = tdhResult.tdh;
+    const staticLift = tdhResult.staticLift;
+    const frictionLoss = tdhResult.frictionLoss;
+    const fittingsEqLen = tdhResult.fittingsEquivalentLength;
+    const totalEffectivePipe = tdhResult.effectiveTotalPipeLength;
+
+    // Environmental Deratings (Altitude & Ambient Temp)
+    const envDerating = calculateEnvironmentalDerating({
+      altitudeM: parseFloat(altitudeM) || 540,
+      ambientTempC: parseFloat(ambientTempC) || 30
+    });
 
     const insolationList = (nasaInsolation && nasaInsolation.length === 12)
       ? nasaInsolation
-      : [5.5, 5.7, 6.0, 5.8, 5.5, 5.0, 4.5, 4.8, 5.2, 5.5, 5.4, 5.3];
+      : [5.95, 6.34, 6.49, 6.71, 6.45, 5.84, 5.35, 5.37, 5.94, 6.20, 6.08, 5.76];
 
     const avgIns = Number((insolationList.reduce((a, b) => a + b, 0) / 12).toFixed(2));
-    const reqFlowM3h = Number((need / avgIns).toFixed(2));
+    const reqFlowM3h = calculateRequiredFlow(need, avgIns);
 
     setLoading(true);
     try {
@@ -767,10 +838,14 @@ export default function PumpSizingPage() {
       const findBestPump = (pList: any[]) => {
         const matched = pList
           .map((pump: any) => {
-            const perf = typeof pump.performanceData === "string" ? JSON.parse(pump.performanceData) : pump.performanceData;
+            let perf = typeof pump.performanceData === "string" ? JSON.parse(pump.performanceData) : pump.performanceData;
             if (!perf || perf.length === 0) return { pump, flowAtHead: 0, diff: 999, score: 0 };
-            const maxHead = Math.max(...perf.map((d: any) => d.head));
+            
+            // Strictly compute maxHead from manufacturer data
+            const maxHead = pump.maxHead || Math.max(...perf.map((d: any) => d.head));
             let flowAtHead = 0;
+            
+            // Hard clamp: if TDH exceeds maxHead, pump cannot deliver
             if (calculatedTdh <= maxHead) {
               const sortedPts = [...perf].sort((a: any, b: any) => a.head - b.head);
               for (let i = 0; i < sortedPts.length - 1; i++) {
@@ -779,6 +854,9 @@ export default function PumpSizingPage() {
                   flowAtHead = sortedPts[i].flow + ratio * (sortedPts[i + 1].flow - sortedPts[i].flow);
                   break;
                 }
+              }
+              if (flowAtHead === 0 && sortedPts.length > 0 && calculatedTdh <= sortedPts[0].head) {
+                flowAtHead = sortedPts[0].flow;
               }
             }
             const diff = Math.abs(flowAtHead - reqFlowM3h);
@@ -810,10 +888,23 @@ export default function PumpSizingPage() {
 
         const bom = buildCategorizedBOM(bestItem.pump, powerMode, panelUnitWatt, staticLevel, length, pipeDiameter);
         const flowAtHead = Number(bestItem.flowAtHead.toFixed(2));
-        const dailyYield = Number((flowAtHead * avgIns * 0.9).toFixed(2));
         
-        // 100% Dynamic 12-Month Yields using actual NASA satellite data
-        const monthlyYields = insolationList.map(ins => Number((flowAtHead * ins * 0.9).toFixed(2)));
+        // Extract pump power in kW for the standard Excel formula
+        let powerKw = 2.2;
+        if (typeof bestItem.pump.power === "string") {
+          const numMatch = bestItem.pump.power.match(/([0-9.]+)\s*(KW|HP|W)?/i);
+          if (numMatch) {
+            const val = parseFloat(numMatch[1]);
+            const unit = (numMatch[2] || "W").toUpperCase();
+            if (unit === "KW") powerKw = val;
+            else if (unit === "HP") powerKw = val * 0.7457;
+            else if (unit === "W") powerKw = val / 1000;
+          }
+        }
+
+        // 12-Month Production Schedule using exact Excel Formula
+        const prodSchedule = calculate12MonthProductionSchedule(powerKw, calculatedTdh, insolationList, need);
+        const dailyYield = Number((prodSchedule.averageDailyProductionM3 || (flowAtHead * avgIns * 0.9)).toFixed(2));
 
         // 12-Hour Diurnal Profile with 200 W/m2 MPPT cutoff
         const dailyProfile = Array.from({ length: 13 }, (_, idx) => {
@@ -830,12 +921,14 @@ export default function PumpSizingPage() {
           suitability: "Suitable",
           calculated_flow_m3h: flowAtHead,
           daily_water_yield_m3: dailyYield,
-          monthly_yields: monthlyYields,
+          monthly_yields: prodSchedule.monthlySchedule.map(m => m.dailyProductionM3),
+          production_schedule: prodSchedule,
           daily_profile: dailyProfile,
           equipment: bom.items,
           bomCategories: bom.categories,
           pvInfo: bom.pvInfo,
-          cableInfo: bom.cableInfo
+          cableInfo: bom.cableInfo,
+          environmentalDerating: envDerating
         };
       };
 
@@ -851,9 +944,13 @@ export default function PumpSizingPage() {
         calculated_tdh: calculatedTdh,
         static_lift: staticLift,
         friction_loss: frictionLoss,
+        fittings_equivalent_length: fittingsEqLen,
+        effective_pipe_length: totalEffectivePipe,
         power_mode: powerMode,
         target_flow_m3h: reqFlowM3h,
-        ai_reasoning: `Sized for ${calculatedTdh}m TDH (Static: ${staticLift}m + Friction: ${frictionLoss}m) at ${reqFlowM3h} m³/h. Selected ${winner.brand} ${winner.model} (${winner.power}) with ${winner.score}/100 match score.${powerMode === 'FULL_SOLAR' ? ` Recommended PV Array: ${winner.pvInfo?.totalArrayWatt}W (${winner.pvInfo?.panelCount} × ${winner.pvInfo?.moduleWattage || 550}W modules in ${winner.pvInfo?.stringConfig}).` : ' Operating in Pump/Controller only mode.'}`,
+        daily_need_m3: need,
+        environmental_derating: envDerating,
+        ai_reasoning: `Sized for ${calculatedTdh}m TDH (Static: ${staticLift}m + Friction: ${frictionLoss}m including ${fittingsEqLen}m fittings Leq) at ${reqFlowM3h} m³/h. Selected ${winner.brand} ${winner.model} (${winner.power}) with ${winner.score}/100 match score.${powerMode === 'FULL_SOLAR' ? ` Recommended PV Array: ${winner.pvInfo?.totalArrayWatt}W (${winner.pvInfo?.panelCount} × ${winner.pvInfo?.moduleWattage || 550}W modules in ${winner.pvInfo?.stringConfig}).` : ' Operating in Pump/Controller only mode.'}`,
         climate_data: {
           sol_insolation: insolationList,
           temperature: [20, 21, 22, 22, 21, 20, 19, 19, 20, 21, 21, 20]
@@ -870,11 +967,11 @@ export default function PumpSizingPage() {
     }
   };
 
-  // Process mathematically perfect 50-point parabolic H-Q performance curve & system resistance curve
-  const getSmoothHydraulicCurve = (pump: any, targetTdh: number, targetFlow: number) => {
+  // Process strictly bounded, mathematically accurate H-Q performance curve & system resistance curve
+  const getSmoothHydraulicCurve = (pump: any, targetTdh: number, targetFlow: number, staticLiftActual?: number) => {
     if (!pump) return [];
     
-    // Extract performance points
+    // Extract real manufacturer performance points
     let rawPts: { flow: number; head: number }[] = [];
     let perf = pump.performanceData;
     if (typeof perf === "string") {
@@ -885,68 +982,70 @@ export default function PumpSizingPage() {
       }
     }
     if (Array.isArray(perf) && perf.length > 0) {
-      rawPts = perf.map((p: any) => ({ flow: Number(p.flow), head: Number(p.head) }));
-    } else if (pump.calculated_flow_m3h && targetTdh) {
-      const f = pump.calculated_flow_m3h;
+      rawPts = perf
+        .map((p: any) => ({ flow: Number(p.flow || p.flowRate || 0), head: Number(p.head || p.headM || 0) }))
+        .filter(p => !isNaN(p.flow) && !isNaN(p.head) && p.flow >= 0 && p.head >= 0)
+        .sort((a, b) => a.flow - b.flow);
+    }
+
+    const qDuty = Number(pump.calculated_flow_m3h || targetFlow || 1);
+    const hDuty = Number(targetTdh || 50);
+    const staticLift = Math.max(0, staticLiftActual !== undefined && !isNaN(staticLiftActual) ? staticLiftActual : Math.min(hDuty * 0.8, hDuty - 2));
+
+    const catalogueMaxHead = Number(pump.maxHead || (rawPts.length > 0 ? Math.max(...rawPts.map(p => p.head)) : hDuty * 1.3));
+    const catalogueMaxFlow = Number(pump.maxFlow || (rawPts.length > 0 ? Math.max(...rawPts.map(p => p.flow)) : qDuty * 1.5));
+
+    if (rawPts.length < 2) {
       rawPts = [
-        { flow: 0, head: targetTdh * 1.35 },
-        { flow: f * 0.5, head: targetTdh * 1.18 },
-        { flow: f, head: targetTdh },
-        { flow: f * 1.3, head: targetTdh * 0.45 },
+        { flow: 0, head: catalogueMaxHead },
+        { flow: catalogueMaxFlow * 0.35, head: catalogueMaxHead * 0.90 },
+        { flow: catalogueMaxFlow * 0.65, head: catalogueMaxHead * 0.68 },
+        { flow: catalogueMaxFlow, head: 0 },
       ];
-    } else {
-      return [];
     }
 
-    rawPts = rawPts.filter(p => p.flow >= 0 && p.head >= 0).sort((a, b) => a.flow - b.flow);
+    // Shutoff head H0
+    const H0 = Math.max(catalogueMaxHead, ...rawPts.map(p => p.head));
 
-    const qDuty = pump.calculated_flow_m3h || targetFlow || 1;
-    const hDuty = targetTdh || 50;
-
-    // Shutoff head H0 (Head at Q=0)
-    let H0 = rawPts.find(p => p.flow === 0)?.head;
-    if (!H0) {
-      const maxHead = Math.max(...rawPts.map(p => p.head), hDuty);
-      H0 = maxHead * 1.15;
-    }
-
-    // Fit perfect parabola H_pump(Q) = H0 - A * Q^2
-    let sumNum = (H0 - hDuty) * (qDuty * qDuty);
-    let sumDen = Math.pow(qDuty, 4);
-
+    // Hydraulic polynomial fitting: H(Q) = H0 - k * Q^2
+    let num = 0;
+    let den = 0;
     for (const p of rawPts) {
       if (p.flow > 0) {
-        sumNum += (H0 - p.head) * (p.flow * p.flow);
-        sumDen += Math.pow(p.flow, 4);
+        const q2 = p.flow * p.flow;
+        num += (H0 - p.head) * q2;
+        den += q2 * q2;
       }
     }
+    const kPump = den > 0 && num > 0 ? num / den : (H0 / (catalogueMaxFlow * catalogueMaxFlow || 1));
 
-    let A = sumDen > 0 ? sumNum / sumDen : 0.5;
-    if (A <= 0) A = (H0 - hDuty) / (qDuty * qDuty || 1);
-    if (A <= 0) A = 0.5;
+    // System resistance curve: H_sys(Q) = H_static + kSys * Q^2
+    const frictionAtDuty = Math.max(0.5, hDuty - staticLift);
+    const kSys = frictionAtDuty / (qDuty * qDuty || 1);
 
-    const maxFlowLimit = Math.sqrt(H0 / A);
-    const chartMaxFlow = Math.min(maxFlowLimit, Math.max(...rawPts.map(p => p.flow), qDuty * 1.35, 1));
+    const chartMaxFlow = Math.max(catalogueMaxFlow * 1.1, qDuty * 1.35, ...rawPts.map(p => p.flow));
     const steps = 50;
     const stepSize = chartMaxFlow / steps;
-
-    // System Resistance Curve: H_sys(Q) = H_static + k * Q^2
-    const staticLift = Math.max(0, targetTdh * 0.70);
-    const kFriction = (targetTdh - staticLift) / (qDuty * qDuty || 1);
 
     const curveData = [];
 
     for (let i = 0; i <= steps; i++) {
-      const q = i * stepSize;
+      const q = Number((i * stepSize).toFixed(2));
       
-      // Perfect, mathematical parabolic H-Q curve (strictly downward concave: d^2H/dQ^2 = -2A < 0)
-      const hPump = H0 - A * q * q;
-      const hSystem = staticLift + kFriction * q * q;
+      // Calculate smooth pump head: H(Q) = H0 - kPump * Q^2 (clamped >= 0)
+      const hPumpSmooth = Math.max(0, H0 - kPump * q * q);
+
+      // System resistance curve
+      const hSys = staticLift + kSys * q * q;
+
+      // Real measured manufacturer data points matching
+      const rawMatch = rawPts.find(p => Math.abs(p.flow - q) < stepSize * 0.48);
 
       curveData.push({
-        flow: Number(q.toFixed(2)),
-        pumpHead: Number(Math.max(0, hPump).toFixed(2)),
-        systemHead: Number(Math.min(H0 * 1.1, hSystem).toFixed(2)),
+        flow: q,
+        pumpHead: Number(hPumpSmooth.toFixed(2)),
+        systemHead: Number(Math.min(H0 * 1.15, hSys).toFixed(2)),
+        measuredHead: rawMatch ? Number(rawMatch.head.toFixed(2)) : undefined,
       });
     }
 
@@ -954,15 +1053,28 @@ export default function PumpSizingPage() {
   };
 
   const getMonthlyData = () => {
-    if (!result || !result.climate_data) return [];
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const insolation = result.climate_data.sol_insolation;
-    const yields = result.exact_match?.monthly_yields || [];
-    
-    return months.map((m, idx) => ({
-      name: m,
-      insolation: insolation[idx] ? parseFloat(insolation[idx].toFixed(2)) : 0,
-      yield: yields[idx] ? parseFloat(yields[idx].toFixed(2)) : 0
+    if (!result || !result.exact_match?.production_schedule) {
+      if (!result || !result.climate_data) return [];
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const insolation = result.climate_data.sol_insolation;
+      const yields = result.exact_match?.monthly_yields || [];
+      return months.map((m, idx) => ({
+        name: m,
+        insolation: insolation[idx] ? parseFloat(insolation[idx].toFixed(2)) : 0,
+        yield: yields[idx] ? parseFloat(yields[idx].toFixed(2)) : 0
+      }));
+    }
+
+    const schedule: MonthlyProductionItem[] = result.exact_match.production_schedule.monthlySchedule || [];
+    return schedule.map((item) => ({
+      name: item.month,
+      insolation: item.psh,
+      yield: item.dailyProductionM3,
+      monthlyTotal: item.monthlyTotalM3,
+      weeklyYield: item.weeklyYieldM3,
+      required: item.requiredDailyM3,
+      surplusDeficit: item.surplusDeficitM3,
+      status: item.status
     }));
   };
 
@@ -1218,8 +1330,118 @@ export default function PumpSizingPage() {
                       <option value="1.25">1.25" (DN32 - Recommended)</option>
                       <option value="1.5">1.5" (DN40)</option>
                       <option value="2.0">2.0" (DN50)</option>
+                      <option value="2.5">2.5" (DN65)</option>
+                      <option value="3.0">3.0" (DN80)</option>
                     </select>
                   </div>
+                </div>
+
+                {/* ADVANCED HYDRAULICS & PAGE 210 FITTINGS TOGGLE */}
+                <div className="pt-2 border-t border-border/40">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedHydraulics(!showAdvancedHydraulics)}
+                    className="flex items-center justify-between w-full text-[11px] font-semibold text-primary hover:underline py-1"
+                  >
+                    <span>Page 210 Standard: Pipe Fittings & Environment</span>
+                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-mono">
+                      {showAdvancedHydraulics ? "Hide ▲" : "Configure ▼"}
+                    </span>
+                  </button>
+
+                  {showAdvancedHydraulics && (
+                    <div className="mt-2 p-3 bg-muted/40 rounded-lg border border-border/60 space-y-3 text-xs animate-fade-in">
+                      <div className="flex justify-between items-center pb-1 border-b border-border/40">
+                        <span className="font-semibold text-[11px] text-foreground">Pipe Fittings (Equivalent Length Leq)</span>
+                        <Badge variant="outline" className="text-[9px] font-mono text-cyan-600 bg-cyan-50 dark:bg-cyan-950/40">
+                          +Leq: {calculateFittingsEquivalentLength({
+                            elbows90: parseInt(elbows90) || 0,
+                            gateValves: parseInt(gateValves) || 0,
+                            checkValves: parseInt(checkValves) || 0
+                          })}m
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">90° Elbows (3m ea)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={elbows90}
+                            onChange={(e) => setElbows90(e.target.value)}
+                            className="h-7 text-xs font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Gate Valves (0.6m ea)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={gateValves}
+                            onChange={(e) => setGateValves(e.target.value)}
+                            className="h-7 text-xs font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Check Valves (5.2m ea)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={checkValves}
+                            onChange={(e) => setCheckValves(e.target.value)}
+                            className="h-7 text-xs font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/40">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Ground Elevation (m)</Label>
+                          <Input
+                            type="number"
+                            value={groundElevation}
+                            onChange={(e) => setGroundElevation(e.target.value)}
+                            className="h-7 text-xs font-mono"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Drop Pipe (m)</Label>
+                          <Input
+                            type="number"
+                            value={dropPipeLength}
+                            onChange={(e) => setDropPipeLength(e.target.value)}
+                            className="h-7 text-xs font-mono"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/40">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Site Altitude (m a.s.l.)</Label>
+                          <Input
+                            type="number"
+                            value={altitudeM}
+                            onChange={(e) => setAltitudeM(e.target.value)}
+                            className="h-7 text-xs font-mono"
+                            placeholder="540"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Ambient Temp (°C)</Label>
+                          <Input
+                            type="number"
+                            value={ambientTempC}
+                            onChange={(e) => setAmbientTempC(e.target.value)}
+                            className="h-7 text-xs font-mono"
+                            placeholder="30"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -1601,7 +1823,7 @@ export default function PumpSizingPage() {
                             <div className="h-[320px] w-full">
                               <ResponsiveContainer width="100%" height="100%">
                                 <ComposedChart
-                                  data={getSmoothHydraulicCurve(result.exact_match, result.calculated_tdh, result.target_flow_m3h)}
+                                  data={getSmoothHydraulicCurve(result.exact_match, result.calculated_tdh, result.target_flow_m3h, result.static_lift)}
                                   margin={{ top: 15, right: 35, bottom: 25, left: 10 }}
                                 >
                                   <defs>
@@ -1645,6 +1867,17 @@ export default function PumpSizingPage() {
                                     fill="url(#pumpCurveGradient)"
                                     dot={false}
                                     activeDot={{ r: 6, fill: '#2563eb' }}
+                                  />
+
+                                  <Line
+                                    type="monotone"
+                                    dataKey="measuredHead"
+                                    name="Measured Manufacturer Data Points"
+                                    stroke="#ef4444"
+                                    strokeWidth={0}
+                                    dot={{ r: 4.5, fill: '#ef4444', stroke: '#ffffff', strokeWidth: 1.5 }}
+                                    activeDot={{ r: 6, fill: '#ef4444' }}
+                                    connectNulls={false}
                                   />
 
                                   <Line
@@ -1721,25 +1954,140 @@ export default function PumpSizingPage() {
                         </TabsContent>
 
                         <TabsContent value="monthly" className="space-y-4 outline-none">
+                          {/* 12-Month Schedule KPI Summary Cards */}
+                          {result.exact_match?.production_schedule && (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                              <div className="bg-blue-500/5 p-3 rounded-lg border border-blue-500/20">
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Annual Yield</span>
+                                <span className="text-xl font-bold text-blue-600 font-mono">
+                                  {result.exact_match.production_schedule.annualTotalM3?.toLocaleString()}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground ml-1">m³/year</span>
+                              </div>
+                              <div className="bg-emerald-500/5 p-3 rounded-lg border border-emerald-500/20">
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Daily Average</span>
+                                <span className="text-xl font-bold text-emerald-600 font-mono">
+                                  {result.exact_match.production_schedule.averageDailyProductionM3}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground ml-1">m³/day</span>
+                              </div>
+                              <div className="bg-amber-500/5 p-3 rounded-lg border border-amber-500/20">
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Peak Month ({result.exact_match.production_schedule.maxMonth?.month})</span>
+                                <span className="text-xl font-bold text-amber-600 font-mono">
+                                  {result.exact_match.production_schedule.maxMonth?.dailyProductionM3}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground ml-1">m³/day</span>
+                              </div>
+                              <div className="bg-slate-500/5 p-3 rounded-lg border border-slate-500/20">
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold block">Low Month ({result.exact_match.production_schedule.minMonth?.month})</span>
+                                <span className="text-xl font-bold text-slate-700 dark:text-slate-300 font-mono">
+                                  {result.exact_match.production_schedule.minMonth?.dailyProductionM3}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground ml-1">m³/day</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Interactive 12-Month Chart */}
                           <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-xl border">
-                            <h3 className="text-sm font-semibold mb-3 flex items-center gap-1.5 text-foreground">
-                              <Calendar className="h-4 w-4 text-primary" /> Monthly Irradiation (NASA POWER) vs Water Output
-                            </h3>
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                              <h3 className="text-sm font-semibold flex items-center gap-1.5 text-foreground">
+                                <Calendar className="h-4 w-4 text-primary" /> 12-Month Solar Radiation vs Daily Water Production
+                              </h3>
+                              <Badge variant="outline" className="text-[10px] font-mono text-primary bg-primary/5">
+                                Formula: P(kW) × 0.65 × PSH × 0.85 / (0.0027525 × TDH)
+                              </Badge>
+                            </div>
                             <div className="h-[280px] w-full">
                               <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={getMonthlyData()} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-                                  <CartesianGrid strokeDasharray="3 3" />
-                                  <XAxis dataKey="name" />
-                                  <YAxis yAxisId="left" label={{ value: "Insolation (kWh/m²/day)", angle: -90, position: "insideLeft", offset: 0 }} />
-                                  <YAxis yAxisId="right" orientation="right" label={{ value: "Daily Yield (m³/day)", angle: 90, position: "insideRight", offset: 0 }} />
-                                  <Tooltip formatter={(value: any, name: any) => [value, name]} />
-                                  <Legend />
+                                <ComposedChart data={getMonthlyData()} margin={{ top: 10, right: 15, bottom: 10, left: 10 }}>
+                                  <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
+                                  <XAxis dataKey="name" fontSize={11} />
+                                  <YAxis yAxisId="left" fontSize={11} label={{ value: "Insolation (kWh/m²/day)", angle: -90, position: "insideLeft", offset: 0, fontSize: 10 }} />
+                                  <YAxis yAxisId="right" orientation="right" fontSize={11} label={{ value: "Daily Output (m³/day)", angle: 90, position: "insideRight", offset: 0, fontSize: 10 }} />
+                                  <Tooltip
+                                    formatter={(value: any, name: any) => [
+                                      name.includes("Insolation") ? `${value} kWh/m²/day` : `${value} m³/day`,
+                                      name
+                                    ]}
+                                    contentStyle={{ borderRadius: '8px', fontSize: '11px' }}
+                                  />
+                                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '5px' }} />
                                   <Bar yAxisId="left" dataKey="insolation" name="Solar Insolation (PSH)" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                                  <Area yAxisId="right" type="monotone" dataKey="yield" name="Water Yield (m³/day)" fill="#3b82f6" stroke="#1d4ed8" fillOpacity={0.2} />
+                                  <Area yAxisId="right" type="monotone" dataKey="yield" name="Water Production (m³/day)" fill="#3b82f6" stroke="#1d4ed8" fillOpacity={0.25} />
+                                  {result.daily_need_m3 && (
+                                    <ReferenceLine
+                                      yAxisId="right"
+                                      y={result.daily_need_m3}
+                                      stroke="#ef4444"
+                                      strokeDasharray="4 4"
+                                      label={{ value: `Need: ${result.daily_need_m3} m³/d`, fill: '#ef4444', fontSize: 10, position: 'top' }}
+                                    />
+                                  )}
                                 </ComposedChart>
                               </ResponsiveContainer>
                             </div>
                           </div>
+
+                          {/* 12-Month Detailed Data Table */}
+                          {result.exact_match?.production_schedule?.monthlySchedule && (
+                            <div className="border rounded-xl bg-card overflow-hidden shadow-sm">
+                              <div className="bg-muted/60 px-4 py-2.5 border-b flex justify-between items-center">
+                                <div>
+                                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                    <Droplets className="h-3.5 w-3.5 text-cyan-600" />
+                                    Monthly & Weekly Water Production Schedule
+                                  </span>
+                                  <p className="text-[10px] text-muted-foreground">Standard Ethiopian Regional Solar Water Production Breakdown</p>
+                                </div>
+                                <Badge variant="outline" className="text-[10px] font-mono">
+                                  TDH: {result.calculated_tdh}m | {result.exact_match.power}
+                                </Badge>
+                              </div>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-xs text-left">
+                                  <thead className="bg-muted/40 text-muted-foreground text-[10px] uppercase font-bold border-b">
+                                    <tr>
+                                      <th className="px-3 py-2">Month</th>
+                                      <th className="px-3 py-2 text-right">Solar PSH</th>
+                                      <th className="px-3 py-2 text-right">Daily Yield (m³/day)</th>
+                                      <th className="px-3 py-2 text-right">Weekly Yield (m³/wk)</th>
+                                      <th className="px-3 py-2 text-right">Monthly Total (m³/mo)</th>
+                                      <th className="px-3 py-2 text-center">Status vs Need</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y font-mono">
+                                    {result.exact_match.production_schedule.monthlySchedule.map((item: MonthlyProductionItem, idx: number) => (
+                                      <tr key={idx} className="hover:bg-muted/20 transition-colors">
+                                        <td className="px-3 py-2 font-bold font-sans text-foreground">{item.month}</td>
+                                        <td className="px-3 py-2 text-right text-amber-600 font-bold">{item.psh}</td>
+                                        <td className="px-3 py-2 text-right font-bold text-primary">{item.dailyProductionM3}</td>
+                                        <td className="px-3 py-2 text-right text-muted-foreground">{item.weeklyYieldM3}</td>
+                                        <td className="px-3 py-2 text-right text-foreground font-bold">{item.monthlyTotalM3}</td>
+                                        <td className="px-3 py-2 text-center">
+                                          {item.status === "Surplus" && (
+                                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                              +{item.surplusDeficitM3} m³/d
+                                            </span>
+                                          )}
+                                          {item.status === "Deficit" && (
+                                            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-full border border-rose-500/20">
+                                              {item.surplusDeficitM3} m³/d
+                                            </span>
+                                          )}
+                                          {item.status === "Balanced" && (
+                                            <span className="text-[10px] font-bold text-slate-600 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                                              Balanced
+                                            </span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
                         </TabsContent>
 
                         <TabsContent value="daily" className="space-y-4 outline-none">

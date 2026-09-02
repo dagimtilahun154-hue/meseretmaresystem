@@ -30,6 +30,12 @@ interface StoreContextType {
   financeEntity: FinanceEntity;
   setFinanceEntity: React.Dispatch<React.SetStateAction<FinanceEntity>>;
   refreshStoreData: () => Promise<void>;
+  customers: Customer[];
+  setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
+  sizingRequests: any[];
+  setSizingRequests: React.Dispatch<React.SetStateAction<any[]>>;
+  eodReports: any[];
+  setEodReports: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -62,10 +68,11 @@ const getSavedFinanceEntity = (): FinanceEntity => {
 };
 
 import { useEffect } from "react";
-import { DBFieldWork, productsDB, salesDB, fieldWorkDB } from "@/lib/db-service";
-import { financeStore, normalizePayment, Payment as FinancePayment } from "@/lib/finance-hub-store";
+import { DBFieldWork, productsDB, salesDB, fieldWorkDB, customersDB, eodReportsDB } from "@/lib/db-service";
+import { financeStore, normalizePayment, Payment as FinancePayment, Customer } from "@/lib/finance-hub-store";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { apiClient } from "@/lib/api/client";
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { currentUser } = useAuth();
@@ -74,6 +81,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [fieldWorks, setFieldWorks] = useState<FieldWork[]>([]);
   const [financePayments, setFinancePayments] = useState<FinancePayment[]>([]);
   const [financeEntity, setFinanceEntity] = useState<FinanceEntity>(() => getSavedFinanceEntity());
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [sizingRequests, setSizingRequests] = useState<any[]>([]);
+  const [eodReports, setEodReports] = useState<any[]>([]);
 
   useEffect(() => {
     localStorage.setItem(FINANCE_ENTITY_KEY, financeEntity);
@@ -163,8 +173,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     return {
       id: dbf.id,
-      startDate: dbf.scheduled_date || payload.startDate || new Date().toISOString().slice(0, 10),
-      endDate: dbf.completed_date || payload.endDate || new Date().toISOString().slice(0, 10),
+      startDate: payload.startDate || dbf.scheduled_date || new Date().toISOString().slice(0, 10),
+      endDate: payload.endDate || dbf.completed_date || new Date().toISOString().slice(0, 10),
       location: dbf.location || payload.location || "Site",
       pumpModel: dbf.title || payload.pumpModel || "Solar Pump",
       customerName,
@@ -187,18 +197,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const isFinanceOrManager = userRoles.includes("admin") || userRoles.includes("finance");
 
     const promises: Promise<any>[] = [
-      productsDB.getAll(),
-      salesDB.getAll(),
+      productsDB.getAll().catch(() => []),
+      salesDB.getAll().catch(() => []),
+      customersDB.getAll().catch(() => []),
+      apiClient.get("/sizing-requests").then(r => r.data).catch(() => []),
+      eodReportsDB.getAll().catch(() => []),
     ];
     if (isFinanceOrManager) {
-      promises.push(financeStore.loadPayments());
+      promises.push(financeStore.loadPayments().catch(() => []));
     } else {
       promises.push(Promise.resolve([]));
     }
 
-    const [dbProds, dbSales, dbPayments] = await Promise.all(promises);
+    const [dbProds, dbSales, dbCusts, dbSizings, dbEods, dbPayments] = await Promise.all(promises);
     setProducts(mapDbProducts(dbProds));
     setSales(mapDbSales(dbSales));
+    setCustomers(Array.isArray(dbCusts) ? dbCusts : []);
+    setSizingRequests(Array.isArray(dbSizings) ? dbSizings : []);
+    setEodReports(Array.isArray(dbEods) ? dbEods : []);
     setFinancePayments(Array.isArray(dbPayments) ? dbPayments.map(normalizePayment) : []);
   };
 
@@ -207,21 +223,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const isFinanceOrManager = userRoles.includes("admin") || userRoles.includes("finance");
 
     const promises: Promise<any>[] = [
-      productsDB.getAll(),
-      salesDB.getAll(),
-      fieldWorkDB.getAll(),
+      productsDB.getAll().catch(() => []),
+      salesDB.getAll().catch(() => []),
+      fieldWorkDB.getAll().catch(() => []),
+      customersDB.getAll().catch(() => []),
+      apiClient.get("/sizing-requests").then(r => r.data).catch(() => []),
+      eodReportsDB.getAll().catch(() => []),
     ];
     if (isFinanceOrManager) {
-      promises.push(financeStore.loadPayments());
+      promises.push(financeStore.loadPayments().catch(() => []));
     } else {
       promises.push(Promise.resolve([]));
     }
 
-    const [dbProds, dbSales, dbField, dbPayments] = await Promise.all(promises);
+    const [dbProds, dbSales, dbField, dbCusts, dbSizings, dbEods, dbPayments] = await Promise.all(promises);
 
     setProducts(mapDbProducts(dbProds));
     setSales(mapDbSales(dbSales));
     setFieldWorks(mapDbFieldWorks(dbField));
+    setCustomers(Array.isArray(dbCusts) ? dbCusts : []);
+    setSizingRequests(Array.isArray(dbSizings) ? dbSizings : []);
+    setEodReports(Array.isArray(dbEods) ? dbEods : []);
     setFinancePayments(Array.isArray(dbPayments) ? dbPayments.map(normalizePayment) : []);
   };
 
@@ -234,21 +256,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const isFinanceOrManager = userRoles.includes("admin") || userRoles.includes("finance");
 
         const promises: Promise<any>[] = [
-          productsDB.getAll(),
-          salesDB.getAll(),
-          fieldWorkDB.getAll(),
+          productsDB.getAll().catch(() => []),
+          salesDB.getAll().catch(() => []),
+          fieldWorkDB.getAll().catch(() => []),
+          customersDB.getAll().catch(() => []),
+          apiClient.get("/sizing-requests").then(r => r.data).catch(() => []),
+          eodReportsDB.getAll().catch(() => []),
         ];
         if (isFinanceOrManager) {
-          promises.push(financeStore.loadPayments());
+          promises.push(financeStore.loadPayments().catch(() => []));
         } else {
           promises.push(Promise.resolve([]));
         }
 
-        const [dbProds, dbSales, dbField, dbPayments] = await Promise.all(promises);
+        const [dbProds, dbSales, dbField, dbCusts, dbSizings, dbEods, dbPayments] = await Promise.all(promises);
         
         setProducts(mapDbProducts(dbProds));
         setSales(mapDbSales(dbSales));
         setFieldWorks(mapDbFieldWorks(dbField));
+        setCustomers(Array.isArray(dbCusts) ? dbCusts : []);
+        setSizingRequests(Array.isArray(dbSizings) ? dbSizings : []);
+        setEodReports(Array.isArray(dbEods) ? dbEods : []);
         setFinancePayments(Array.isArray(dbPayments) ? dbPayments.map(normalizePayment) : []);
       } catch (e) {
         console.error("Failed to load store data:", e);
@@ -572,6 +600,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         financeEntity,
         setFinanceEntity,
         refreshStoreData,
+        customers,
+        setCustomers,
+        sizingRequests,
+        setSizingRequests,
+        eodReports,
+        setEodReports,
       }}
     >
       {children}

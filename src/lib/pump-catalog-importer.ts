@@ -360,3 +360,63 @@ export function generateMasterCatalogProducts(existingProducts: Product[] = []):
     newProducts,
   };
 }
+
+/**
+ * Returns all master categories from extracted_pumps_data.json
+ */
+export function getMasterPumpCategories() {
+  const data = extractedData as any;
+  return (data.categories || []).map((cat: any, index: number) => ({
+    id: `cat-${cat.name.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}`,
+    name: cat.name,
+    description: cat.description || `${cat.name} solar pump models.`,
+    icon: (cat.icon || "droplets").toLowerCase(),
+    sortOrder: cat.sortOrder || index + 1,
+    persisted: true,
+  }));
+}
+
+/**
+ * Returns all master DIFFUL & REDBUD pump models with normalized performance data, technical specs & equipment
+ */
+export function getMasterPumpModels() {
+  const data = extractedData as any;
+  return (data.pumps || []).map((p: any) => {
+    let perf = p.performanceData;
+    if (typeof perf === "string") {
+      try {
+        perf = JSON.parse(perf);
+      } catch {
+        perf = [];
+      }
+    }
+    let tech = p.technicalData;
+    if (typeof tech === "string") {
+      try {
+        tech = JSON.parse(tech);
+      } catch {
+        tech = [];
+      }
+    }
+    let eq = p.equipment;
+    if (typeof eq === "string") {
+      try {
+        eq = JSON.parse(eq);
+      } catch {
+        eq = [];
+      }
+    }
+
+    const brand = (p.brand || (p.model?.startsWith("4SDC") ? "REDBUD" : "DIFFUL")).toUpperCase();
+
+    return {
+      ...p,
+      brand,
+      status: p.status || "Published",
+      performanceData: Array.isArray(perf) ? perf : [],
+      technicalData: Array.isArray(tech) ? tech : [],
+      equipment: Array.isArray(eq) ? eq : [],
+    };
+  });
+}
+

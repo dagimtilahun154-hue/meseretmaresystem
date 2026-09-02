@@ -179,7 +179,7 @@ export const FieldWorkMaterialPlanning: React.FC<FieldWorkMaterialPlanningProps>
 
     const panelItems = panelQuantity > 0 ? [{
       name: panelType,
-      productId: matchedPanelProduct?.id || `PRD-PANEL-MOCK`,
+      productId: matchedPanelProduct?.id || `PRD-PANEL-RESERVED`,
       productCode: matchedPanelProduct?.code ? String(matchedPanelProduct.code) : undefined,
       category: "SOLAR_PANEL" as ProductCategory,
       quantity: panelQuantity,

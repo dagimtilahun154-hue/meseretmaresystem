@@ -29,6 +29,7 @@ import {
   Send,
   Download,
   ClipboardCheck,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -158,7 +159,53 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
   const [cashReason, setCashReason] = useState("");
   const [submittingCashReq, setSubmittingCashReq] = useState(false);
 
+  const isJobDeployed = (job: any) => {
+    if (!job || !job.status) return false;
+    const s = String(job.status).toLowerCase();
+    return (
+      s === "crew_dispatched" ||
+      s === "in_progress" ||
+      s === "deployed" ||
+      s === "completed_ttl" ||
+      s === "completed" ||
+      s === "done" ||
+      job.status === "Approved and ready to go"
+    );
+  };
+
+  const isUserTTL = (job?: any) => {
+    if (!currentUser) return false;
+    const role = String(currentUser?.role || "").toLowerCase();
+    const roles = (currentUser?.roles || []).map((r: any) => String(r).toLowerCase());
+    
+    const isTtlRole = 
+      role === "ttl" || 
+      role === "technical_lead" || 
+      role === "team_lead" ||
+      role === "technician" ||
+      role === "manager" ||
+      role === "admin" ||
+      roles.some(r => ["ttl", "technical_lead", "team_lead", "technician", "manager", "admin"].includes(r));
+      
+    if (job && job.assignedTo) {
+      const assigned = String(job.assignedTo).toLowerCase();
+      const username = String(currentUser.username || "").toLowerCase();
+      const name = String(currentUser.displayName || "").toLowerCase();
+      const isAssignedTtl = assigned === username || assigned === name;
+      return isTtlRole || isAssignedTtl;
+    }
+    return isTtlRole;
+  };
+
   const handleOpenCashRequest = (job: any) => {
+    if (!isUserTTL(job)) {
+      toast.error("Only the Technical Team Leader (TTL) assigned to this project can request on-site cash.");
+      return;
+    }
+    if (!isJobDeployed(job)) {
+      toast.error("On-site cash can only be requested once the field crew has been deployed to the site.");
+      return;
+    }
     setCashRequestJob(job);
     setCashAmount("");
     setCashCategory("Local Materials & Fittings");
@@ -253,16 +300,20 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
   const [planStartDate, setPlanStartDate] = useState<string>("");
   const [planEndDate, setPlanEndDate] = useState<string>("");
 
+  const [hierarchyReqs, setHierarchyReqs] = useState<any[]>([]);
+
   const refreshPlanningData = async () => {
     try {
-      const [toolsRes, workersRes] = await Promise.all([
+      const [toolsRes, workersRes, hierarchyRes] = await Promise.all([
         apiClient.get("/company-assets"),
-        apiClient.get("/hr/workers")
+        apiClient.get("/hr/workers"),
+        apiClient.get("/hierarchy/requests").catch(() => ({ data: [] }))
       ]);
       const assetsData = Array.isArray(toolsRes.data) ? toolsRes.data : [];
       setAllCompanyAssets(assetsData);
       setAvailableTools(assetsData);
       setHrWorkersList((workersRes.data || []).filter((w: any) => w.status === "Active"));
+      setHierarchyReqs(Array.isArray(hierarchyRes.data) ? hierarchyRes.data : []);
     } catch (e) {
       console.error("Failed to load planning lists:", e);
     }
@@ -553,9 +604,9 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
   }, [fieldWorks]);
 
   const filtered = fieldWorks.filter((fw: FieldWork) => {
-    const userRoles = currentUser?.roles || [currentUser?.role];
+    const userRoles = (currentUser?.roles || [currentUser?.role]).map((r: any) => String(r).toLowerCase());
     const isTtlOnly = userRoles.includes("ttl") && !userRoles.includes("fieldwork") && !userRoles.includes("admin") && !userRoles.includes("manager");
-    if (isTtlOnly && fw.assignedTo !== currentUser?.username) {
+    if (isTtlOnly && fw.assignedTo && !isUserTTL(fw)) {
       return false;
     }
 
@@ -576,7 +627,12 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
       customerName.includes(query) ||
       assignedTo.includes(query);
 
-    const matchStatus = filterStatus === "all" || fw.status === filterStatus;
+    const matchStatus =
+      filterStatus === "all" ||
+      fw.status === filterStatus ||
+      (filterStatus === "completed" && (fw.status === "completed_ttl" || fw.status === "completed" || fw.status === "done")) ||
+      (filterStatus === "completed_ttl" && fw.status === "completed_ttl") ||
+      (filterStatus === "in-progress" && (fw.status === "in-progress" || fw.status === "in_progress" || fw.status === "crew_dispatched" || fw.status === "Approved and ready to go"));
     return matchSearch && matchStatus;
   });
 
@@ -781,8 +837,9 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                 <SelectItem value="submitted_tm">Awaiting TM Check</SelectItem>
                 <SelectItem value="checked_tm">Awaiting GM Approval</SelectItem>
                 <SelectItem value="approved_gm">Awaiting Finance Approval</SelectItem>
-                <SelectItem value="Approved and ready to go">Approved & Ready to Go</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="Approved and ready to go">Active / Deployed in Field</SelectItem>
+                <SelectItem value="completed_ttl">Pending Storekeeper Verification</SelectItem>
+                <SelectItem value="completed">Completed & Closed</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -857,14 +914,16 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-1.5 font-bold text-xs border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 hover:bg-amber-500/20"
-                            onClick={() => handleOpenCashRequest(fw)}
-                          >
-                            <Zap className="h-3.5 w-3.5 text-amber-600" /> 💸 Request On-Site Cash
-                          </Button>
+                          {isJobDeployed(fw) && isUserTTL(fw) && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5 font-bold text-xs border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 hover:bg-amber-500/20"
+                              onClick={() => handleOpenCashRequest(fw)}
+                            >
+                              <Zap className="h-3.5 w-3.5 text-amber-600" /> 💸 Request On-Site Cash
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
@@ -961,25 +1020,40 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                         <div>
                           <p className="text-sm font-medium mb-2">Return Forms</p>
                           <div className="space-y-2">
-                            {fw.returnForms.map((rf) => (
-                              <div key={rf.id} className="rounded-lg border bg-card p-3 space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold">{rf.id}</span>
-                                  <Badge
-                                    className={
-                                      rf.status === "approved"
-                                        ? "bg-success/15 text-success border-success/20"
-                                        : rf.status === "reviewed"
-                                          ? "bg-info/15 text-info border-info/20"
-                                          : "bg-warning/15 text-warning border-warning/20"
-                                    }
-                                  >
-                                    {rf.status}
-                                  </Badge>
-                                </div>
-                                <div className="text-xs space-y-1">
-                                  <p><span className="text-muted-foreground">Worker:</span> {rf.workerName}</p>
-                                  <p><span className="text-muted-foreground">Date:</span> {rf.date}</p>
+                              {fw.returnForms.map((rf) => {
+                                const isVerified =
+                                  rf.status === "reviewed" ||
+                                  rf.status === "verified" ||
+                                  fw.status === "verified_storekeeper" ||
+                                  Boolean(fw.payload?.storekeeperVerification);
+                                const isApproved =
+                                  rf.status === "approved" ||
+                                  fw.status === "done" ||
+                                  Boolean(fw.returnsApproved);
+
+                                const displayRfStatus = isApproved
+                                  ? "APPROVED"
+                                  : isVerified
+                                  ? "VERIFIED"
+                                  : (rf.status || "PENDING").toUpperCase();
+
+                                return (
+                                  <div key={rf.id} className="rounded-lg border bg-card p-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-bold">{rf.id}</span>
+                                      <Badge
+                                        className={
+                                          isApproved || isVerified
+                                            ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30 font-bold uppercase text-[10px]"
+                                            : "bg-amber-500/15 text-amber-700 border-amber-500/30 font-bold uppercase text-[10px]"
+                                        }
+                                      >
+                                        {displayRfStatus}
+                                      </Badge>
+                                    </div>
+                                    <div className="text-xs space-y-1">
+                                      <p><span className="text-muted-foreground">Worker:</span> {rf.workerName}</p>
+                                      <p><span className="text-muted-foreground">Date:</span> {rf.date}</p>
                                   {rf.returnedMaterials.length > 0 && (
                                     <div>
                                       <span className="text-muted-foreground">Returned:</span>
@@ -993,9 +1067,10 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                                   )}
                                   {rf.comments && <p><span className="text-muted-foreground">Comments:</span> {rf.comments}</p>}
                                   {rf.otherNotes && <p><span className="text-muted-foreground">Notes:</span> {rf.otherNotes}</p>}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -1003,55 +1078,118 @@ export default function FieldWorkPage({ standalone = true, preSelectedCustomerId
                       {/* ═══════════════ ON-SITE EMERGENCY CASH & FIELD EXPENSE REQUESTS ═══════════════ */}
                       {(() => {
                         const payload = fw.payload && typeof fw.payload === "object" ? (fw.payload as any) : {};
-                        const cashReqs = Array.isArray(payload.fieldCashRequests) ? payload.fieldCashRequests : [];
+                        const payloadReqs = Array.isArray(payload.fieldCashRequests) ? payload.fieldCashRequests : [];
+                        const dbReqs = (hierarchyReqs || []).filter((h: any) => String(h.fieldWorkJobId) === String(fw.id));
+
+                        const cashReqs = [...payloadReqs];
+                        for (const h of dbReqs) {
+                          if (!cashReqs.some((cr: any) => String(cr.id) === String(h.id))) {
+                            let descObj: any = {};
+                            try { descObj = JSON.parse(h.description || "{}"); } catch (_) {}
+                            cashReqs.unshift({
+                              id: h.id,
+                              amount: Number(h.amount),
+                              category: descObj.category || "Field Expense",
+                              reason: descObj.reason || h.title,
+                              receiptUrl: descObj.receiptUrl,
+                              status: h.status,
+                              requestedBy: h.createdById || "TTL",
+                              requestedAt: h.createdAt || new Date().toISOString()
+                            });
+                          }
+                        }
+
                         return (
                           <div className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
                             <div className="flex items-center justify-between">
                               <p className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 uppercase tracking-wider">
                                 <Zap className="h-4 w-4 text-amber-600" /> On-Site Emergency Cash & Expense Requests ({cashReqs.length})
                               </p>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleOpenCashRequest(fw)}
-                                className="h-7 text-xs font-bold border-amber-500/40 bg-amber-500/15 text-amber-900 dark:text-amber-200 hover:bg-amber-500/25"
-                              >
-                                + Request Extra Cash
-                              </Button>
+                              {isJobDeployed(fw) && isUserTTL(fw) ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleOpenCashRequest(fw)}
+                                  className="h-7 text-xs font-bold border-amber-500/40 bg-amber-500/15 text-amber-900 dark:text-amber-200 hover:bg-amber-500/25"
+                                >
+                                  + Request Extra Cash
+                                </Button>
+                              ) : isJobDeployed(fw) && !isUserTTL(fw) ? (
+                                <span className="text-[10px] font-semibold text-amber-700/70 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                                  TTL Authorization Required
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-semibold text-amber-700/70 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                                  Available once deployed to site
+                                </span>
+                              )}
                             </div>
 
                             {cashReqs.length === 0 ? (
                               <p className="text-xs text-muted-foreground italic py-1">No emergency on-site cash requested for this project.</p>
                             ) : (
                               <div className="space-y-2 pt-1">
-                                {cashReqs.map((cr: any, idx: number) => (
-                                  <div key={cr.id || idx} className="rounded-lg border bg-card p-3 flex items-center justify-between text-xs gap-3 shadow-xs">
-                                    <div className="space-y-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-bold text-foreground">{cr.category || "Field Expense"}</span>
-                                        <Badge className={`text-[10px] uppercase font-bold ${
-                                          cr.status === "APPROVED" || cr.status === "PAID"
-                                            ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30"
-                                            : cr.status === "REJECTED"
-                                            ? "bg-rose-500/15 text-rose-700 border-rose-500/30"
-                                            : "bg-amber-500/15 text-amber-700 border-amber-500/30"
-                                        }`}>
-                                          {cr.status || "PENDING"}
-                                        </Badge>
+                                {cashReqs.map((cr: any, idx: number) => {
+                                  const linkedReq = (hierarchyReqs || []).find((h: any) =>
+                                    String(h.fieldWorkJobId) === String(fw.id) ||
+                                    String(h.id) === String(cr.id) ||
+                                    (h.amount && Number(h.amount) === Number(cr.amount) && String(h.type) === "EXPENSE_REQUEST")
+                                  );
+
+                                  const rawStatus = (linkedReq?.status || cr.status || "PENDING").toUpperCase();
+                                  const isApproved =
+                                    rawStatus === "APPROVED" ||
+                                    rawStatus === "FINANCE_APPROVED" ||
+                                    rawStatus === "PAID" ||
+                                    rawStatus === "DISBURSED" ||
+                                    rawStatus === "FINISHED";
+
+                                  const isRejected =
+                                    rawStatus === "REJECTED" || rawStatus === "CANCELLED";
+
+                                  const displayBadgeText = isApproved
+                                    ? "APPROVED & DISBURSED"
+                                    : isRejected
+                                    ? "REJECTED"
+                                    : "AWAITING FINANCE";
+
+                                  return (
+                                    <div key={cr.id || idx} className="rounded-lg border bg-card p-3 flex items-center justify-between text-xs gap-3 shadow-xs">
+                                      <div className="space-y-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-bold text-foreground">{cr.category || "Field Expense"}</span>
+                                          <Badge className={`text-[10px] uppercase font-bold ${
+                                            isApproved
+                                              ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30"
+                                              : isRejected
+                                              ? "bg-rose-500/15 text-rose-700 border-rose-500/30"
+                                              : "bg-amber-500/15 text-amber-700 border-amber-500/30"
+                                          }`}>
+                                            {displayBadgeText}
+                                          </Badge>
+                                        </div>
+                                        <p className="text-muted-foreground">{cr.reason}</p>
+                                        <span className="text-[10px] text-muted-foreground block">
+                                          Requested by {cr.requestedBy || "TTL"} • {cr.requestedAt ? new Date(cr.requestedAt).toLocaleDateString() : "Recent"} • <strong className="text-foreground">Tracked on Customer Master File</strong>
+                                        </span>
                                       </div>
-                                      <p className="text-muted-foreground">{cr.reason}</p>
-                                      <span className="text-[10px] text-muted-foreground block">
-                                        Requested by {cr.requestedBy || "TTL"} • {cr.requestedAt ? new Date(cr.requestedAt).toLocaleDateString() : "Recent"} • <strong className="text-foreground">Tracked on Customer Master File</strong>
-                                      </span>
+                                      <div className="text-right shrink-0">
+                                        <span className="text-base font-black font-mono text-amber-600 block">
+                                          {Number(cr.amount || 0).toLocaleString()} ETB
+                                        </span>
+                                        <span className="text-[10px] font-semibold block">
+                                          {isApproved ? (
+                                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓ Approved & Disbursed</span>
+                                          ) : isRejected ? (
+                                            <span className="text-rose-600 dark:text-rose-400 font-bold">✗ Rejected by Finance</span>
+                                          ) : (
+                                            <span className="text-amber-600 dark:text-amber-400 font-bold">⏳ Sent to Finance & GM</span>
+                                          )}
+                                        </span>
+                                      </div>
                                     </div>
-                                    <div className="text-right shrink-0">
-                                      <span className="text-base font-black font-mono text-amber-600 block">
-                                        {Number(cr.amount || 0).toLocaleString()} ETB
-                                      </span>
-                                      <span className="text-[10px] text-muted-foreground">Routed to Finance</span>
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             )}
                           </div>

@@ -143,7 +143,7 @@ export function FinanceWorkspaceNav({
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Peachtree 2010 Single Source of Truth • Commercial Approvals • General Manager Financial Oversight
+              Manage company sales, expenses, bank accounts, and Peachtree sync.
             </p>
           </div>
         </div>

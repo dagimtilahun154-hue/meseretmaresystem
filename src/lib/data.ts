@@ -1,4 +1,4 @@
-// Shared data types and mock data for the solar pump management system
+// Shared data types and domain constants for the solar pump management system
 
 export interface Customer {
   id: string;

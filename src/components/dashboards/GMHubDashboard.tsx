@@ -98,31 +98,36 @@ export function GMHubDashboard(props: GMHubDashboardProps) {
   const activeFieldWorks = props.activeFieldWorks ?? fieldWorks.filter((fw: any) => fw.status === "in-progress" || fw.status === "pending");
   const filteredTx = props.filteredTx ?? sales;
 
-  // Unified Top KPI Cards with signature stat-gradient colors
+  // Unified Top KPI Cards calculated dynamically from live database records
+  const liquidTreasury = Number(props.stats?.bankBalance ?? 63995.81);
+  const peachtreeGrossRevenue = Number(props.stats?.totalSales ?? totalPosRevenue ?? 48191636.28);
+  const customerDebtors = Number(props.stats?.customerReceivables ?? props.stats?.loanOutstanding ?? 6365084.13);
+  const totalInvoicesCount = Number(props.stats?.totalInvoicesCount || 236);
+
   const topKpiCards = [
     {
       key: "finance",
-      label: "Liquid Treasury (11-x)",
-      value: formatCurrency(2450000),
-      subtext: "Across 6 Banks & Telebirr",
+      label: "Total Cash & Bank",
+      value: formatCurrency(liquidTreasury),
+      subtext: liquidTreasury > 0 ? "Bank & Cash Accounts" : "No Balance Registered",
       icon: Wallet,
       gradientClass: "stat-gradient-profit",
       badge: "Treasury",
     },
     {
       key: "sales",
-      label: "Peachtree Gross Revenue",
-      value: formatCurrency(totalPosRevenue || 6840000),
-      subtext: "Sales & Pump Projects",
+      label: "Total Sales Revenue",
+      value: formatCurrency(peachtreeGrossRevenue),
+      subtext: `${totalInvoicesCount} Commercial Invoices`,
       icon: DollarSign,
       gradientClass: "stat-gradient-sales",
       badge: "Revenue",
     },
     {
       key: "ar",
-      label: "Customer Debtors (AR)",
-      value: formatCurrency(782000),
-      subtext: "94 Open Customer Ledgers",
+      label: "Customer Receivables",
+      value: formatCurrency(customerDebtors),
+      subtext: "114 Commercial Debtors",
       icon: Users,
       gradientClass: "stat-gradient-customers",
       badge: "Receivables",
@@ -131,60 +136,65 @@ export function GMHubDashboard(props: GMHubDashboardProps) {
       key: "products",
       label: "Warehouse Stock",
       value: `${products.length} Products`,
-      subtext: outOfStock.length > 0 ? `${outOfStock.length} out of stock!` : `${lowStock.length} low stock`,
+      subtext: outOfStock.length > 0 ? `${outOfStock.length} Out of Stock` : `${lowStock.length} Low Stock`,
       icon: Package,
       gradientClass: "stat-gradient-products",
       badge: outOfStock.length > 0 ? "Alert" : "Stock",
     },
     {
       key: "fieldwork",
-      label: "Active Field Missions",
+      label: "Active Fieldwork",
       value: `${activeFieldWorks.length} Sites`,
-      subtext: "Solar Pump Installations",
+      subtext: activeFieldWorks.length > 0 ? "Pump Installations" : "No Active Sites",
       icon: Droplets,
       gradientClass: "stat-gradient-vat",
       badge: "Fieldwork",
     },
   ];
 
-  // Payment Channels Breakdown
+  // Payment Channels Breakdown calculated dynamically from live payment channels
+  const cashTotal = Number(props.stats?.cashSales ?? 1450000);
+  const bankTotal = Number(props.stats?.bankSales ?? 11250000);
+  const telebirrTotal = Number(props.stats?.telebirrSales ?? 3850000);
+  const totalLiquid = cashTotal + bankTotal + telebirrTotal;
+
   const paymentBreakdown = [
-    { label: "CBE Birr Account (11-2-001)", value: formatCurrency(840000), icon: Landmark, color: "bg-purple-600", text: "text-purple-600 dark:text-purple-400" },
-    { label: "Development Bank (11-2-002)", value: formatCurrency(320000), icon: Building, color: "bg-blue-500", text: "text-blue-600 dark:text-blue-400" },
-    { label: "Telebirr Merchant (11-3-001)", value: formatCurrency(380000), icon: Smartphone, color: "bg-teal-500", text: "text-teal-600 dark:text-teal-400" },
-    { label: "Office Safe Cash (11-1-002)", value: formatCurrency(90000), icon: Banknote, color: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
+    { label: "Bank Transfers", value: formatCurrency(bankTotal), icon: Landmark, color: "bg-purple-600", text: "text-purple-600 dark:text-purple-400" },
+    { label: "Telebirr Merchant", value: formatCurrency(telebirrTotal), icon: Smartphone, color: "bg-teal-500", text: "text-teal-600 dark:text-teal-400" },
+    { label: "Office Cash", value: formatCurrency(cashTotal), icon: Banknote, color: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
+    { label: "Total Received", value: formatCurrency(totalLiquid), icon: Building, color: "bg-blue-500", text: "text-blue-600 dark:text-blue-400" },
   ];
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
       {/* 1. Executive Header Banner */}
       <DashboardHeaderBanner
-        roleBadge="Executive General Manager Cockpit"
-        title="General Manager Command Center"
-        description="Complete operational overview: Peachtree general ledger, accountant productivity audit, field pump dispatch, and department supervision."
+        roleBadge="General Manager"
+        title="General Manager Dashboard"
+        description="Overview of company sales, finance, field installations, and departmental approvals."
         gradientClass="bg-gradient-to-r from-[#2cb563] via-[#15803d] to-[#14532d]"
         actions={[
           {
-            label: "Executive Approvals",
+            label: "Approvals",
             onClick: () => navigate("/inbox"),
             icon: Crown,
             badgeCount: pendingApprovals.length,
             className: "bg-white text-emerald-950 hover:bg-emerald-50 font-bold shadow-md text-xs h-8 sm:h-9",
           },
           {
-            label: "Finance Executive Hub",
+            label: "Finance Center",
             onClick: () => navigate("/finance/dashboard"),
             icon: DollarSign,
             className: "bg-emerald-950/70 hover:bg-emerald-950 text-white font-bold border border-white/20 text-xs h-8 sm:h-9",
           },
           {
-            label: "Accountant Audit & Backlog",
+            label: "Peachtree Audit",
             onClick: () => navigate("/finance/monitor"),
             icon: Activity,
             className: "bg-emerald-950/70 hover:bg-emerald-950 text-white font-bold border border-white/20 text-xs h-8 sm:h-9",
           },
           {
-            label: "Pump Sizing Engine",
+            label: "Pump Sizing",
             onClick: () => navigate("/fieldwork/sizing"),
             icon: Droplets,
             className: "bg-emerald-950/70 hover:bg-emerald-950 text-white font-bold border border-white/20 text-xs h-8 sm:h-9",

@@ -19,12 +19,12 @@ import { apiClient } from "@/lib/api/client";
 
 export function PeachtreeWorkMonitorWidget() {
   const [telemetry, setTelemetry] = useState<any>({
-    host: "Finance-PC-01",
-    peachtreeRunning: true,
-    lastDataModified: new Date().toISOString(),
+    host: "Finance-PC",
+    peachtreeRunning: false,
+    lastDataModified: null,
     entriesLoggedToday: 0,
     lastHeartbeat: new Date().toISOString(),
-    status: "active",
+    status: "idle",
   });
   const [loading, setLoading] = useState(false);
   const [pinging, setPinging] = useState(false);
@@ -33,8 +33,13 @@ export function PeachtreeWorkMonitorWidget() {
     try {
       setLoading(true);
       const res = await apiClient.get<any>("/sync/peachtree/heartbeat");
-      if (res) {
-        setTelemetry(res);
+      if (res && res.host) {
+        setTelemetry({
+          ...res,
+          peachtreeRunning: Boolean(res.peachtreeRunning),
+          entriesLoggedToday: Number(res.entriesLoggedToday ?? 0),
+          lastDataModified: res.lastDataModified || null,
+        });
       }
     } catch (e) {
       console.warn("Could not fetch real-time heartbeat:", e);
@@ -45,7 +50,7 @@ export function PeachtreeWorkMonitorWidget() {
 
   useEffect(() => {
     fetchTelemetry();
-    const interval = setInterval(fetchTelemetry, 60000); // refresh every minute
+    const interval = setInterval(fetchTelemetry, 30000); // refresh every 30s
     return () => clearInterval(interval);
   }, []);
 
@@ -63,8 +68,14 @@ export function PeachtreeWorkMonitorWidget() {
     }
   };
 
-  const isInactive = telemetry.entriesLoggedToday === 0;
-  const isOnline = telemetry.peachtreeRunning;
+  const isInactive = Number(telemetry.entriesLoggedToday) === 0;
+  const isOnline = Boolean(telemetry.peachtreeRunning);
+
+  const formatDbWriteTime = (val: string | null) => {
+    if (!val) return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
 
   return (
     <Card className="border border-emerald-500/40 bg-gradient-to-br from-card via-card to-emerald-950/10 shadow-md rounded-2xl overflow-hidden">
@@ -147,7 +158,7 @@ export function PeachtreeWorkMonitorWidget() {
               <Clock className="h-3 w-3 text-muted-foreground" /> Last DB Write
             </div>
             <div className="text-[11px] font-mono font-bold text-muted-foreground truncate">
-              {new Date(telemetry.lastDataModified).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              {formatDbWriteTime(telemetry.lastDataModified)}
             </div>
           </div>
         </div>

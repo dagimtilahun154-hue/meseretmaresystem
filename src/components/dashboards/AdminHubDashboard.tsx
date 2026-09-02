@@ -1,25 +1,44 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShieldAlert, Users, Key, Settings, CheckCircle2, UserCheck, ArrowRight, Activity } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "@/context/StoreContext";
+import { usersDB } from "@/lib/db-service";
 import { DashboardHeaderBanner } from "./widgets/DashboardHeaderBanner";
 import { StatCardGrid } from "./widgets/StatCardGrid";
 import { EodActivityWidget } from "./widgets/EodActivityWidget";
 
 export function AdminHubDashboard() {
   const navigate = useNavigate();
-  const { eodReports = [] } = useStore() as any;
+  const { eodReports = [], refreshStoreData } = useStore() as any;
+  const [systemUsers, setSystemUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // System roles matrix sample data
-  const systemUsers = [
-    { id: "1", username: "manager", role: "manager", displayName: "General Manager", department: "EXECUTIVE", status: "Active" },
-    { id: "2", username: "finance", role: "finance", displayName: "Finance Officer", department: "FINANCE", status: "Active" },
-    { id: "3", username: "store", role: "storekeeper", displayName: "Store Keeper", department: "INVENTORY", status: "Active" },
-    { id: "4", username: "field", role: "fieldwork", displayName: "Field Controller", department: "TECHNICAL", status: "Active" },
-  ];
+  useEffect(() => {
+    async function loadUsers() {
+      setLoading(true);
+      try {
+        const users = await usersDB.getAll();
+        if (Array.isArray(users)) {
+          setSystemUsers(users.map((u: any) => ({
+            id: u.id,
+            username: u.username,
+            role: u.role || (u.roles && u.roles[0]) || "Staff",
+            displayName: u.displayName || u.display_name || u.username,
+            department: u.department || "General",
+            status: u.status || "Active",
+          })));
+        }
+      } catch (e) {
+        console.error("Failed to load users for admin dashboard", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadUsers();
+  }, []);
 
   const statCards = [
     {
@@ -55,16 +74,16 @@ export function AdminHubDashboard() {
     <div className="space-y-6">
       {/* 1. Standardized Header Banner */}
       <DashboardHeaderBanner
-        roleBadge="System Administrator Desk"
-        title="Admin Control Center"
-        description="System Configuration, Role Access Controls (RBAC), User Account Auditing & Environment Diagnostics."
+        roleBadge="System Admin"
+        title="Admin Dashboard"
+        description="User accounts, role permissions, and system settings."
         gradientClass="bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-900"
         actions={[
           {
-            label: "User Accounts",
+            label: "Manage Users",
             onClick: () => navigate("/user-accounts"),
             icon: Users,
-            className: "bg-white text-slate-900 hover:bg-slate-100 font-bold shadow-md text-xs h-9",
+            className: "bg-white text-indigo-950 hover:bg-indigo-50 font-bold shadow-md text-xs h-9",
           },
         ]}
       />
@@ -122,7 +141,7 @@ export function AdminHubDashboard() {
 
         {/* Right Column (1/3): Universal EOD Activity Log */}
         <div>
-          <EodActivityWidget eodReports={eodReports} />
+          <EodActivityWidget eodReports={eodReports} onReportSubmitted={refreshStoreData} />
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/api/client";
 import { enqueueOfflineMutation } from "@/lib/offline-queue";
+import { getMasterPumpCategories, getMasterPumpModels } from "@/lib/pump-catalog-importer";
 import type {
   Account,
   Customer,
@@ -314,6 +315,8 @@ export const peachtreeDB = {
 export const analyticsDB = {
   dashboard: async (company?: string) =>
     apiFetch(`/analytics/dashboard${company ? `?${new URLSearchParams({ company }).toString()}` : ""}`),
+  getDashboard: async (company?: string) =>
+    apiFetch(`/analytics/dashboard${company ? `?${new URLSearchParams({ company }).toString()}` : ""}`),
 };
 
 export const syncDB = {
@@ -322,15 +325,33 @@ export const syncDB = {
 };
 
 export const pumpProductsDB = {
-  getAll: async (): Promise<any[]> => apiFetch("/pumps"),
-  getById: async (id: string): Promise<any> => apiFetch(`/pumps/${id}`),
+  getAll: async (): Promise<any[]> => {
+    try {
+      const res = await apiFetch("/pumps");
+      if (Array.isArray(res) && res.length > 0) return res;
+    } catch {}
+    return getMasterPumpModels();
+  },
+  getById: async (id: string): Promise<any> => {
+    try {
+      const res = await apiFetch(`/pumps/${id}`);
+      if (res && res.id) return res;
+    } catch {}
+    return getMasterPumpModels().find((p: any) => p.id === id || p.model === id);
+  },
   save: async (pump: any): Promise<boolean> => !!(await apiFetch("/pumps", { method: "POST", body: JSON.stringify(pump) })),
   update: async (id: string, pump: any): Promise<boolean> => !!(await apiFetch(`/pumps/${id}`, { method: "PUT", body: JSON.stringify(pump) })),
   delete: async (id: string): Promise<boolean> => !!(await apiFetch(`/pumps/${id}`, { method: "DELETE" }))?.success,
 };
 
 export const pumpCategoriesDB = {
-  getAll: async (): Promise<any[]> => apiFetch("/pump-categories"),
+  getAll: async (): Promise<any[]> => {
+    try {
+      const res = await apiFetch("/pump-categories");
+      if (Array.isArray(res) && res.length > 0) return res;
+    } catch {}
+    return getMasterPumpCategories();
+  },
   save: async (category: any): Promise<any> => apiFetch("/pump-categories", { method: "POST", body: JSON.stringify(category) }),
   update: async (id: string, category: any): Promise<any> =>
     apiFetch(`/pump-categories/${id}`, { method: "PUT", body: JSON.stringify(category) }),

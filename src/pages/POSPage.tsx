@@ -115,6 +115,7 @@ export default function POSPage() {
   const [lastSale, setLastSale] = useState<Sale | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Bank" | "Telebirr">("Cash");
   const [selectedBank, setSelectedBank] = useState<string>("");
+  const [pumpModels, setPumpModels] = useState<any[]>([]);
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

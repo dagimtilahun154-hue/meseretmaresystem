@@ -11,7 +11,7 @@ import { EodActivityWidget } from "./widgets/EodActivityWidget";
 
 export function TechHubDashboard() {
   const navigate = useNavigate();
-  const { sizingRequests = [], fieldWorks = [], eodReports = [] } = useStore() as any;
+  const { sizingRequests = [], fieldWorks = [], eodReports = [], refreshStoreData } = useStore() as any;
 
   const pendingSizings = sizingRequests.filter((sr: any) => sr.status === "PENDING_TM" || sr.status === "DRAFT");
   const unassignedJobs = fieldWorks.filter((fw: any) => fw.status === "pending");
@@ -20,7 +20,7 @@ export function TechHubDashboard() {
   const statCards = [
     {
       key: "sizings",
-      label: "Technical Sizing Queue",
+      label: "Sizing Queue",
       value: `${pendingSizings.length} Pending`,
       subtext: "Awaiting engineering review",
       icon: Zap,
@@ -29,7 +29,7 @@ export function TechHubDashboard() {
     },
     {
       key: "dispatch",
-      label: "TTL Dispatch Queue",
+      label: "Dispatch Queue",
       value: `${unassignedJobs.length} Jobs`,
       subtext: "Paid jobs awaiting crew lead",
       icon: UserCheck,
@@ -38,16 +38,16 @@ export function TechHubDashboard() {
     },
     {
       key: "returns",
-      label: "Tool & Asset Returns",
+      label: "Tool Returns",
       value: `${returnReviews.length} Reviews`,
-      subtext: "Awaiting condition verification",
+      subtext: "Awaiting condition check",
       icon: ShieldCheck,
       gradientClass: "stat-gradient-customers",
       badge: "Assets",
     },
     {
       key: "active",
-      label: "Active Field Operations",
+      label: "Active Fieldwork",
       value: `${fieldWorks.length} Total`,
       subtext: "Active installation crews",
       icon: Wrench,
@@ -60,22 +60,22 @@ export function TechHubDashboard() {
     <div className="space-y-6">
       {/* 1. Standardized Header Banner */}
       <DashboardHeaderBanner
-        roleBadge="Engineering & Field Dispatch"
-        title="Technical Manager Workspace"
-        description="Pump Sizing Calculations, Engineering Approvals, TTL Dispatch, & Tool Return Sign-offs."
+        roleBadge="Technical Manager"
+        title="Technical & Field Dashboard"
+        description="Manage pump sizing, site installations, crew dispatch, and tool returns."
         gradientClass="bg-gradient-to-r from-[#2cb563] via-[#10b981] to-[#047857]"
         actions={[
           {
-            label: "Pump Sizing Studio",
+            label: "Pump Sizing",
             onClick: () => navigate("/pump-sizing"),
             icon: Zap,
-            className: "bg-white text-purple-900 hover:bg-purple-50 font-bold shadow-md text-xs h-9",
+            className: "bg-white text-emerald-950 hover:bg-emerald-50 font-bold shadow-md text-xs h-9",
           },
           {
-            label: "Field Work Center",
+            label: "Field Work",
             onClick: () => navigate("/fieldwork"),
             icon: Wrench,
-            className: "bg-indigo-900/60 hover:bg-indigo-900 text-white font-bold border border-white/20 text-xs h-9",
+            className: "bg-emerald-950/60 hover:bg-emerald-950 text-white font-bold border border-white/20 text-xs h-9",
           },
         ]}
       />
@@ -166,7 +166,7 @@ export function TechHubDashboard() {
 
         {/* Right Column (1/3): Universal EOD Activity Log */}
         <div>
-          <EodActivityWidget eodReports={eodReports} />
+          <EodActivityWidget eodReports={eodReports} onReportSubmitted={refreshStoreData} />
         </div>
       </div>
     </div>

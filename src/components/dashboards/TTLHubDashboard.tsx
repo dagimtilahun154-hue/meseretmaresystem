@@ -13,7 +13,7 @@ import { EodActivityWidget } from "./widgets/EodActivityWidget";
 export function TTLHubDashboard() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  const { fieldWorks = [], eodReports = [] } = useStore() as any;
+  const { fieldWorks = [], eodReports = [], refreshStoreData } = useStore() as any;
 
   const myFieldWorks = fieldWorks.filter((fw: any) => fw.assignedTo === currentUser?.username);
 
@@ -27,16 +27,16 @@ export function TTLHubDashboard() {
   const statCards = [
     {
       key: "trips",
-      label: "Active Assigned Trips",
+      label: "Active Trips",
       value: `${assignedTrips.length} Active`,
-      subtext: "Field installation missions",
+      subtext: "Field installation sites",
       icon: Wrench,
       gradientClass: "stat-gradient-sales",
       badge: "Trips",
     },
     {
       key: "completed",
-      label: "Completed Field Jobs",
+      label: "Completed Jobs",
       value: `${completedTrips.length} Done`,
       subtext: "Handed over to technical review",
       icon: CheckCircle2,
@@ -46,7 +46,7 @@ export function TTLHubDashboard() {
     {
       key: "crews",
       label: "Crew Operations",
-      value: "Active Lead",
+      value: "Team Lead",
       subtext: "On-site installation lead",
       icon: UserCheck,
       gradientClass: "stat-gradient-customers",
@@ -58,16 +58,16 @@ export function TTLHubDashboard() {
     <div className="space-y-6">
       {/* 1. Standardized Header Banner */}
       <DashboardHeaderBanner
-        roleBadge="Technical Team Lead Desk"
-        title="TTL Operational Workspace"
-        description="On-Site Installation Execution, Crew Per-Diem Management, Daily Field Reports & Tool Condition Sign-off."
+        roleBadge="Team Lead"
+        title="Team Lead Dashboard"
+        description="Manage assigned field trips, crew per diems, and installation reports."
         gradientClass="bg-gradient-to-r from-[#2cb563] via-[#0d9488] to-[#115e59]"
         actions={[
           {
-            label: "Field Work Workspace",
+            label: "Field Work",
             onClick: () => navigate("/fieldwork"),
             icon: Wrench,
-            className: "bg-white text-emerald-900 hover:bg-emerald-50 font-bold shadow-md text-xs h-9",
+            className: "bg-white text-emerald-950 hover:bg-emerald-50 font-bold shadow-md text-xs h-9",
           },
         ]}
       />
@@ -122,7 +122,7 @@ export function TTLHubDashboard() {
 
         {/* Right Column (1/3): Universal EOD Activity Log */}
         <div>
-          <EodActivityWidget eodReports={eodReports} />
+          <EodActivityWidget eodReports={eodReports} onReportSubmitted={refreshStoreData} />
         </div>
       </div>
     </div>

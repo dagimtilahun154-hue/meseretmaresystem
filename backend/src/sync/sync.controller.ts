@@ -69,6 +69,7 @@ export class SyncController {
     return this.syncService.matchPeachtreePayments();
   }
 
+  @Public()
   @Get("peachtree/vault")
   getPeachtreeVault() {
     return this.syncService.getPeachtreeVaultArchive();

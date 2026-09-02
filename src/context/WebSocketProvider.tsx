@@ -73,6 +73,13 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    socketInstance.on("new_notification", (notif) => {
+      if (notif && (!notif.userId || notif.userId === currentUser.id)) {
+        toast.info(`🔔 Alert: ${notif.title || "New Activity"}`);
+        refreshCounts();
+      }
+    });
+
     setSocket(socketInstance);
     
     // Initial fetch of counts

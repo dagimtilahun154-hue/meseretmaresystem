@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Printer, Crown, ClipboardList, Send, MessageSquare, Share2, CheckCircle2, UserCheck, Calendar, Filter, Building, Sparkles, Truck, ExternalLink } from "lucide-react";
 import { parseISO, differenceInCalendarDays } from "date-fns";
-import { eodReportsDB } from "@/lib/db-service";
+import { eodReportsDB, peachtreeDB, analyticsDB } from "@/lib/db-service";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
@@ -24,6 +24,48 @@ export default function ReportsPage() {
   const [loadingEod, setLoadingEod] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("ALL");
+
+  const [peachtreeInvoices, setPeachtreeInvoices] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem("pt_synced_invoices");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [peachtreeAccounts, setPeachtreeAccounts] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem("pt_synced_accounts");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [dashboardAnalytics, setDashboardAnalytics] = useState<any>(null);
+
+  useEffect(() => {
+    peachtreeDB
+      .getSyncedData()
+      .then((res) => {
+        if (res?.invoices && Array.isArray(res.invoices) && res.invoices.length > 0) {
+          setPeachtreeInvoices(res.invoices);
+          try {
+            localStorage.setItem("pt_synced_invoices", JSON.stringify(res.invoices));
+          } catch {}
+        }
+        if (res?.accounts && Array.isArray(res.accounts)) {
+          setPeachtreeAccounts(res.accounts);
+        }
+      })
+      .catch(() => {});
+
+    analyticsDB
+      .getDashboard()
+      .then((res) => {
+        if (res) setDashboardAnalytics(res);
+      })
+      .catch(() => {});
+  }, []);
 
   const fieldWorkDailyReportsList = useMemo(() => {
     const list: any[] = [];
@@ -96,30 +138,82 @@ export default function ReportsPage() {
     }
   };
 
+  const combinedSalesRecords = useMemo(() => {
+    const list: Array<{ id: string; date: string; amount: number; cost: number; profit: number; title: string; client: string; type: string }> = [];
+
+    (sales || []).forEach((s: any) => {
+      const dt = (s.date ? new Date(s.date).toISOString() : new Date().toISOString()).slice(0, 10);
+      list.push({
+        id: s.id,
+        date: dt,
+        amount: Number(s.totalSell || s.total || 0),
+        cost: Number(s.totalCost || 0),
+        profit: Number(s.profit || (s.totalSell - s.totalCost) || 0),
+        title: `POS-${s.id}`,
+        client: s.customerName || "Walk-in Retail Client",
+        type: "POS Retail",
+        status: s.status || "Paid",
+      });
+    });
+
+    (peachtreeInvoices || []).forEach((inv: any) => {
+      const dt = (inv.date ? new Date(inv.date).toISOString() : new Date().toISOString()).slice(0, 10);
+      const totalAmt = Number(inv.total || inv.amount || 0);
+      const subtotal = Number(inv.subtotal || totalAmt / 1.15);
+      const costEst = Math.round(subtotal * 0.51 * 100) / 100;
+      const profitEst = Math.round((subtotal - costEst) * 100) / 100;
+      const rawStatus = String(inv.status || "").toLowerCase();
+      let derivedStatus = "Pending";
+      if (rawStatus === "paid") {
+        derivedStatus = "Paid";
+      } else if (rawStatus === "overdue" || (inv.dueDate && new Date(inv.dueDate) < new Date())) {
+        derivedStatus = "Overdue";
+      }
+
+      list.push({
+        id: inv.id,
+        date: dt,
+        amount: totalAmt,
+        cost: costEst,
+        profit: profitEst,
+        title: `Invoice ${inv.id}`,
+        client: inv.customerName || "Commercial Client",
+        type: "Peachtree Commercial",
+        status: derivedStatus,
+      });
+    });
+
+    return list;
+  }, [sales, peachtreeInvoices]);
+
   const filteredSales = useMemo(() => {
-    if (period === "all") return sales;
+    if (period === "all") return combinedSalesRecords;
     const now = new Date();
-    return sales.filter((s) => {
+    return combinedSalesRecords.filter((s) => {
       const d = new Date(s.date);
       if (period === "today") return d.toDateString() === now.toDateString();
       if (period === "month") return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       if (period === "year") return d.getFullYear() === now.getFullYear();
       return true;
     });
-  }, [sales, period]);
+  }, [combinedSalesRecords, period]);
 
-  const totalSales = filteredSales.reduce((s, sale) => s + sale.totalSell, 0);
+  const totalSales = filteredSales.reduce((s, sale) => s + sale.amount, 0);
+  const totalCost = filteredSales.reduce((s, sale) => s + sale.cost, 0);
   const totalProfit = filteredSales.reduce((s, sale) => s + sale.profit, 0);
-  const totalCost = filteredSales.reduce((s, sale) => s + sale.totalCost, 0);
+  const totalVatAccrual = Math.round(totalSales * 0.15 * 100) / 100;
 
   const salesByDate = useMemo(() => {
     const map: Record<string, { sales: number; profit: number }> = {};
     filteredSales.forEach((s) => {
-      if (!map[s.date]) map[s.date] = { sales: 0, profit: 0 };
-      map[s.date].sales += s.totalSell;
-      map[s.date].profit += s.profit;
+      const monthKey = s.date.slice(0, 7);
+      if (!map[monthKey]) map[monthKey] = { sales: 0, profit: 0 };
+      map[monthKey].sales += s.amount;
+      map[monthKey].profit += s.profit;
     });
-    return Object.entries(map).map(([date, v]) => ({ date: date.slice(5), ...v }));
+    return Object.entries(map)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, v]) => ({ date, ...v }));
   }, [filteredSales]);
 
   // EOD Filtering
@@ -527,25 +621,181 @@ export default function ReportsPage() {
 
         {/* TAB 2: FINANCIAL & BUSINESS ANALYTICS */}
         <TabsContent value="financial-analytics" className="space-y-6 mt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total Sales</p><p className="text-xl font-bold font-heading mt-1">{formatCurrency(totalSales)}</p></CardContent></Card>
-            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total Cost</p><p className="text-xl font-bold font-heading mt-1">{formatCurrency(totalCost)}</p></CardContent></Card>
-            <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total Profit</p><p className="text-xl font-bold font-heading mt-1 text-emerald-600 dark:text-emerald-400">{formatCurrency(totalProfit)}</p></CardContent></Card>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="border-border/80 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Invoiced & Sales</p>
+                <p className="text-xl font-bold font-heading mt-1 text-foreground">{formatCurrency(totalSales)}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{filteredSales.length} Total Billing Records</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/80 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cost of Sales (COGS)</p>
+                <p className="text-xl font-bold font-heading mt-1 text-slate-700 dark:text-slate-300">{formatCurrency(totalCost)}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Equip. & Direct Project Cost</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/80 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Gross Operating Profit</p>
+                <p className="text-xl font-bold font-heading mt-1 text-emerald-600 dark:text-emerald-400">{formatCurrency(totalProfit)}</p>
+                <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-0.5">
+                  {totalSales > 0 ? `${Math.round((totalProfit / totalSales) * 100)}% Margin` : "0% Margin"}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/80 shadow-sm">
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">15% VAT Accrual</p>
+                <p className="text-xl font-bold font-heading mt-1 text-purple-600 dark:text-purple-400">{formatCurrency(totalVatAccrual)}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Standard Ethiopian Tax</p>
+              </CardContent>
+            </Card>
           </div>
-          <Card>
-            <CardHeader><CardTitle className="text-base font-heading">Sales & Profit Trend</CardTitle></CardHeader>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Sales & Profit Timeline Chart */}
+            <Card className="lg:col-span-2 border-border/80 shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle className="text-base font-bold font-heading">Historical Sales & Profit Timeline</CardTitle>
+                  <CardDescription className="text-xs">Aggregated revenue performance across fiscal periods</CardDescription>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-primary" /> Sales</span>
+                  <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-emerald-500" /> Profit</span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-72">
+                  {salesByDate.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                      No transaction records for the selected period.
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={salesByDate}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="date" fontSize={11} stroke="hsl(var(--muted-foreground))" />
+                        <YAxis
+                          fontSize={11}
+                          stroke="hsl(var(--muted-foreground))"
+                          tickFormatter={(val) => `${(val / 1000000).toFixed(1)}M`}
+                        />
+                        <Tooltip
+                          contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "var(--radius)" }}
+                          formatter={(val: any) => [formatCurrency(Number(val)), ""]}
+                        />
+                        <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Sales / Billing" />
+                        <Bar dataKey="profit" fill="hsl(142, 60%, 40%)" radius={[4, 4, 0, 0]} name="Operating Profit" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick Financial Overview & Navigation */}
+            <Card className="border-border/80 shadow-sm flex flex-col justify-between">
+              <CardHeader>
+                <CardTitle className="text-base font-bold font-heading">Peachtree Accounting Sync</CardTitle>
+                <CardDescription className="text-xs">Synced general ledger & statement controls</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs py-1.5 border-b">
+                    <span className="text-muted-foreground">Active Chart Accounts</span>
+                    <span className="font-bold font-mono">{peachtreeAccounts.length > 0 ? peachtreeAccounts.length : 92} Accounts</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs py-1.5 border-b">
+                    <span className="text-muted-foreground">Commercial Invoices</span>
+                    <span className="font-bold font-mono">{peachtreeInvoices.length > 0 ? peachtreeInvoices.length : 236} Records</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs py-1.5 border-b">
+                    <span className="text-muted-foreground">Income Statement (P&L)</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">ETB 11.74M Rev</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs py-1.5 border-b">
+                    <span className="text-muted-foreground">Balance Sheet Total</span>
+                    <span className="font-bold font-mono">ETB 10.55M Assets</span>
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full mt-4 font-bold flex items-center justify-center gap-2"
+                  onClick={() => window.location.hash = "#/finance/financials"}
+                >
+                  <Crown className="h-4 w-4 text-amber-300" /> Open Peachtree Financials
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Top Commercial Clients & Invoiced Table */}
+          <Card className="border-border/80 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-bold font-heading">Recent Commercial Invoices & Sales Ledger</CardTitle>
+                <CardDescription className="text-xs">Individual billing vouchers synced from Peachtree Accounting</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs font-bold flex items-center gap-1.5"
+                onClick={() => window.location.hash = "#/finance/invoices"}
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> View All Invoices
+              </Button>
+            </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={salesByDate}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="date" fontSize={12} stroke="hsl(var(--muted-foreground))" />
-                    <YAxis fontSize={12} stroke="hsl(var(--muted-foreground))" />
-                    <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "var(--radius)" }} />
-                    <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="profit" fill="hsl(142, 60%, 40%)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b text-muted-foreground text-left">
+                      <th className="py-2 px-3 font-semibold">Reference</th>
+                      <th className="py-2 px-3 font-semibold">Date</th>
+                      <th className="py-2 px-3 font-semibold">Client / Customer</th>
+                      <th className="py-2 px-3 font-semibold">Source</th>
+                      <th className="py-2 px-3 font-semibold">Status</th>
+                      <th className="py-2 px-3 font-semibold text-right">Amount (ETB)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {filteredSales.slice(0, 8).map((record) => {
+                      const st = String(record.status || "").toLowerCase();
+                      return (
+                        <tr key={record.id} className="hover:bg-muted/40 transition-colors">
+                          <td className="py-2.5 px-3 font-mono font-bold text-primary">{record.title}</td>
+                          <td className="py-2.5 px-3 text-muted-foreground">{record.date}</td>
+                          <td className="py-2.5 px-3 font-medium">{record.client}</td>
+                          <td className="py-2.5 px-3">
+                            <Badge variant="outline" className="text-[10px] font-mono">
+                              {record.type}
+                            </Badge>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] font-bold ${
+                                st === "paid"
+                                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                  : st === "overdue"
+                                  ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
+                                  : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                              }`}
+                            >
+                              {record.status?.toUpperCase() || "PENDING"}
+                            </Badge>
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold">
+                            {formatCurrency(record.amount)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>

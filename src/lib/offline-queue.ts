@@ -107,7 +107,10 @@ export async function flushOfflineQueue() {
         url: mutation.endpoint,
         method: mutation.method,
         data: mutation.payload,
-        headers: mutation.headers,
+        headers: {
+          ...mutation.headers,
+          "x-idempotency-key": mutation.id,
+        },
       });
       await removeOfflineMutation(mutation.id);
       flushed += 1;

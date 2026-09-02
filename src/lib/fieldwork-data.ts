@@ -44,9 +44,11 @@ export interface ReturnForm {
   workerName: string;
   date: string;
   returnedMaterials: { productId?: string; name: string; quantity: number; condition: string }[];
+  toolReturns?: any[];
   comments: string;
   otherNotes: string;
   status: "pending" | "reviewed" | "approved";
+  completionPhotos?: string[];
 }
 
 export interface DailyReport {

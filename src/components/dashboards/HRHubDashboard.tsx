@@ -9,12 +9,14 @@ import {
 import { useNavigate } from "react-router-dom";
 import { hrDB, DEFAULT_DEPARTMENTS } from "@/lib/db-service";
 import { formatCurrency } from "@/lib/data";
+import { useStore } from "@/context/StoreContext";
 import { DashboardHeaderBanner } from "./widgets/DashboardHeaderBanner";
 import { StatCardGrid } from "./widgets/StatCardGrid";
 import { EodActivityWidget } from "./widgets/EodActivityWidget";
 
 export function HRHubDashboard() {
   const navigate = useNavigate();
+  const { eodReports = [] } = useStore() as any;
   const [workers, setWorkers] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>(DEFAULT_DEPARTMENTS);
   const [loading, setLoading] = useState(false);
@@ -48,12 +50,12 @@ export function HRHubDashboard() {
   const statCards = [
     {
       key: "total_staff",
-      label: "Total Workforce",
-      value: `${workers.length} Personnel`,
-      subtext: `${activeWorkersCount} Active Staff members`,
+      label: "Total Staff",
+      value: `${workers.length} Employees`,
+      subtext: `${activeWorkersCount} Active Employees`,
       icon: Users,
       gradientClass: "stat-gradient-sales",
-      badge: "Workforce",
+      badge: "Staff",
     },
     {
       key: "departments",
@@ -66,21 +68,21 @@ export function HRHubDashboard() {
     },
     {
       key: "monthly_payroll",
-      label: "Base Payroll Expense",
+      label: "Monthly Payroll",
       value: formatCurrency(totalPayrollEstimate),
-      subtext: "Monthly gross base compensation",
+      subtext: "Monthly base salary total",
       icon: DollarSign,
       gradientClass: "stat-gradient-profit",
-      badge: "Compensation",
+      badge: "Payroll",
     },
     {
       key: "active_status",
-      label: "Active Operations Rate",
+      label: "Active Rate",
       value: `${workers.length ? Math.round((activeWorkersCount / workers.length) * 100) : 100}%`,
-      subtext: "On-duty / operational status",
+      subtext: "On-duty staff status",
       icon: UserCheck,
       gradientClass: "stat-gradient-customers",
-      badge: "Readiness",
+      badge: "Active",
     },
   ];
 
@@ -88,22 +90,22 @@ export function HRHubDashboard() {
     <div className="space-y-6">
       {/* 1. Header Banner */}
       <DashboardHeaderBanner
-        roleBadge="Human Resources & Workforce Desk"
-        title="HR Hub Workspace"
-        description="Personnel Master Registry, Departmental Structures, Staff Allocation, and Monthly Payroll Processing."
+        roleBadge="HR Manager"
+        title="HR & Payroll Dashboard"
+        description="Manage employee records, departments, and payroll."
         gradientClass="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-800"
         actions={[
           {
-            label: "Workforce Registry",
+            label: "Employee Directory",
             onClick: () => navigate("/hr/workers"),
             icon: Users,
-            className: "bg-white text-emerald-900 hover:bg-emerald-50 font-bold shadow-md text-xs h-9",
+            className: "bg-white text-emerald-950 hover:bg-emerald-50 font-bold shadow-md text-xs h-9",
           },
           {
-            label: "Monthly Payroll",
+            label: "Payroll",
             onClick: () => navigate("/hr/payroll"),
             icon: DollarSign,
-            className: "bg-emerald-900/60 hover:bg-emerald-900 text-white font-bold border border-white/20 text-xs h-9",
+            className: "bg-emerald-950/60 hover:bg-emerald-950 text-white font-bold border border-white/20 text-xs h-9",
           },
         ]}
       />
@@ -244,7 +246,7 @@ export function HRHubDashboard() {
             </div>
           </Card>
 
-          <EodActivityWidget eodReports={[]} />
+          <EodActivityWidget eodReports={eodReports} />
         </div>
       </div>
     </div>

@@ -15,19 +15,29 @@ import { useNavigate } from "react-router-dom";
 
 export default function CustomersPage() {
   const navigate = useNavigate();
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    try {
+      const saved = localStorage.getItem("customers_cache");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [dossierOpen, setDossierOpen] = useState(false);
 
   const fetchCustomers = async () => {
-    setLoading(true);
+    if (customers.length === 0) setLoading(true);
     try {
       const list = await customersDB.getAll();
-      setCustomers(Array.isArray(list) ? list : []);
+      if (Array.isArray(list) && list.length > 0) {
+        setCustomers(list);
+        try { localStorage.setItem("customers_cache", JSON.stringify(list)); } catch {}
+      }
     } catch (e) {
-      toast.error("Failed to load customers list");
+      // Keep cached list
     } finally {
       setLoading(false);
     }
@@ -162,7 +172,7 @@ export default function CustomersPage() {
                           <div>
                             <span className="text-sm font-semibold block">{c.name}</span>
                             <span className="block text-[10px] text-muted-foreground font-mono font-normal">
-                              ACCOUNT: {c.id}
+                              ACCOUNT: {c.id.length > 22 ? `${c.id.slice(0, 8)}...${c.id.slice(-6)}` : c.id}
                             </span>
                           </div>
                         </div>
@@ -190,7 +200,7 @@ export default function CustomersPage() {
                       </TableCell>
                       <TableCell className="text-xs">
                         <span className="flex items-center gap-1 text-muted-foreground">
-                          <Phone className="h-3 w-3 text-primary" /> {c.phone || "N/A"}
+                          <Phone className="h-3 w-3 text-primary" /> {c.phone || "Recorded via Sizing"}
                         </span>
                       </TableCell>
                       <TableCell className="text-xs">

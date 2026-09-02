@@ -806,8 +806,17 @@ export class AssetsService {
       }
     });
 
+    const rawReturnForms = Array.isArray(existingPayload.returnForms) ? existingPayload.returnForms : [];
+    const updatedReturnForms = rawReturnForms.map((rf: any) => ({
+      ...rf,
+      status: "reviewed",
+      verifiedBy: displayName || "Storekeeper",
+      verifiedAt: new Date().toISOString(),
+    }));
+
     const updatedPayload = {
       ...existingPayload,
+      returnForms: updatedReturnForms,
       storekeeperVerification: {
         verifiedMaterials: payload?.verifiedMaterials || [],
         verifiedTools: payload?.verifiedTools || [],
@@ -863,17 +872,25 @@ export class AssetsService {
     const job = await this.prisma.fieldWorkJob.findUnique({ where: { id } });
     if (!job) throw new NotFoundException(`Field work job ${id} not found`);
 
+    const payload = job.payload && typeof job.payload === "object" ? { ...(job.payload as any) } : {};
+    const rawReturnForms = Array.isArray(payload.returnForms) ? payload.returnForms : [];
+    const updatedReturnForms = rawReturnForms.map((rf: any) => ({
+      ...rf,
+      status: "approved",
+      approvedBy: displayName || "Technical Manager",
+      approvedAt: new Date().toISOString(),
+    }));
+    payload.returnForms = updatedReturnForms;
+    payload.returnsApproved = true;
+
     const updated = await this.prisma.fieldWorkJob.update({
       where: { id },
       data: {
         status: 'done',
         returnsApproved: true,
-        completedDate: new Date(),
+        payload,
       },
     });
-
-    // If there is an associated sizing request, mark the sale as fully completed
-    const payload = job.payload && typeof job.payload === 'object' ? (job.payload as any) : {};
     if (payload.sizingRequestId) {
       await this.prisma.sizingRequest.update({
         where: { id: payload.sizingRequestId },

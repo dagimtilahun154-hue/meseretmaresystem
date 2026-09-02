@@ -68,4 +68,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`channel_${payload.channelId}`).emit('new_message', message);
     return message;
   }
+
+  sendNotificationToUser(userId: string, notification: any) {
+    if (this.server) {
+      if (userId) {
+        this.server.to(`user_${userId}`).emit('new_notification', notification);
+      }
+      this.server.emit('new_notification', notification);
+    }
+  }
 }

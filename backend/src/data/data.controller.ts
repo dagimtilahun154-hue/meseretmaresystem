@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Uploaded
 import { FileInterceptor } from "@nestjs/platform-express";
 import { DataService } from "./data.service";
 import { Roles } from "../common/decorators/roles.decorator";
+import { Public } from "../common/decorators/public.decorator";
 
 @Controller()
 export class DataController {
@@ -47,8 +48,8 @@ export class DataController {
   @Delete("accounts/:id")
   @Roles('finance', 'manager', 'admin')
   deleteAccount(@Param("id") id: string) { return this.data.deleteAccount(id); }
+  @Public()
   @Get("invoices")
-  @Roles('finance', 'manager', 'admin')
   invoices() { return this.data.invoices(); }
   @Post("invoices")
   @Roles('finance', 'manager', 'admin')

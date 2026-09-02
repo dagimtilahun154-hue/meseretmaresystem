@@ -25,6 +25,30 @@ export interface PumpProduct extends Product {
   performanceTable: PerformancePoint[];
 }
 
+export interface PipeFittings {
+  elbows90?: number;     // 3.0m equivalent pipe length each (Page 210 standard)
+  gateValves?: number;   // 0.6m equivalent pipe length each
+  checkValves?: number;  // 5.2m equivalent pipe length each (Non-return valve)
+}
+
+export interface EnvironmentalConditions {
+  altitudeM?: number;    // meters above sea level (Derating: 3.5% per 300m above 150m)
+  ambientTempC?: number; // degrees Celsius (Derating: 2% per 5.5°C above 30°C)
+  humidityPercent?: number;
+}
+
+export interface MonthlyProductionItem {
+  month: string;
+  monthIndex: number;
+  psh: number;             // Peak Sun Hours (kWh/m2/day)
+  dailyProductionM3: number; // m3/day
+  monthlyTotalM3: number;   // m3/month
+  weeklyYieldM3: number;    // m3/week
+  requiredDailyM3: number;
+  surplusDeficitM3: number; // Daily surplus (+) or deficit (-) compared to required
+  status: "Surplus" | "Balanced" | "Deficit";
+}
+
 export interface SiteSurvey {
   id: string;
   customerName: string;
@@ -40,8 +64,16 @@ export interface SiteSurvey {
   staticWaterLevel?: number; // meters from surface
   dynamicDrawdown?: number;   // meters drawdown when pumping
   tankHeight: number;         // elevation to tank inlet (meters)
+  groundElevation?: number;   // elevation difference from well head to tank base (meters)
   pipeDistance: number;       // total pipe run (meters)
+  dropPipeLength?: number;    // submersible drop pipe inside borehole (meters)
   pipeSize: string;           // pipe diameter (inches)
+  
+  // Pipe Fittings (Page 210 standard)
+  fittings?: PipeFittings;
+
+  // Environmental conditions
+  environment?: EnvironmentalConditions;
   
   landSize?: string;
   employeeName: string;
@@ -53,7 +85,9 @@ export interface SiteSurvey {
   
   // Results
   calculatedTDH?: number;
+  staticLift?: number;
   frictionHead?: number;
+  fittingsEquivalentLength?: number;
   requiredFlowM3h?: number;
   recommendedPumpId?: string;
   selectionReason?: string;
@@ -68,6 +102,31 @@ export interface SiteSurvey {
 export const PIPE_SIZES = ["1\"", "1.25\"", "1.5\"", "2\"", "2.5\"", "3\"", "4\""];
 
 /**
+ * Standard Pipe Fittings Equivalent Pipe Lengths in meters (Page 210 / Annex A Standard)
+ */
+export const FITTINGS_EQUIVALENT_LENGTH = {
+  elbow90: 3.0,     // 90 degree standard elbow = 3.0m
+  gateValve: 0.6,   // Full-port gate valve = 0.6m
+  checkValve: 5.2,  // Non-return / check valve = 5.2m
+};
+
+/**
+ * Computes total equivalent straight pipe length (meters) introduced by pipe fittings
+ */
+export function calculateFittingsEquivalentLength(fittings?: PipeFittings): number {
+  if (!fittings) return 0;
+  const elbows = Number(fittings.elbows90) || 0;
+  const gateValves = Number(fittings.gateValves) || 0;
+  const checkValves = Number(fittings.checkValves) || 0;
+
+  const eqLen = (elbows * FITTINGS_EQUIVALENT_LENGTH.elbow90) +
+                (gateValves * FITTINGS_EQUIVALENT_LENGTH.gateValve) +
+                (checkValves * FITTINGS_EQUIVALENT_LENGTH.checkValve);
+
+  return Number(eqLen.toFixed(2));
+}
+
+/**
  * Calculates friction loss (meters) per 100m of pipe based on diameter and nominal flow.
  */
 export function getFrictionLossPer100m(diameterInch: number): number {
@@ -80,29 +139,93 @@ export function getFrictionLossPer100m(diameterInch: number): number {
 }
 
 /**
- * Total Dynamic Head (TDH) calculation (Industrial Standard)
- * TDH = Static Water Level + Dynamic Drawdown + Tank Elevation + Piping Friction Loss
+ * Total Dynamic Head (TDH) calculation (Strict Page 210 / Annex A Standard)
+ * TDH = Static Water Level + Dynamic Drawdown + Ground Elevation + Tank Height + (Effective Pipe Length * Friction Coefficient)
  */
 export function calculateTDH(survey: {
   staticWaterLevel?: number;
   dynamicDrawdown?: number;
   tankHeight?: number;
+  groundElevation?: number;
   pipeDistance?: number;
+  dropPipeLength?: number;
   pipeDiameterInch?: number;
   waterSource?: string;
-}): { tdh: number; staticLift: number; frictionLoss: number } {
+  fittings?: PipeFittings;
+}): {
+  tdh: number;
+  staticLift: number;
+  frictionLoss: number;
+  fittingsEquivalentLength: number;
+  effectiveTotalPipeLength: number;
+} {
   const staticLevel = Number(survey.staticWaterLevel) || 0;
   const drawdown = Number(survey.dynamicDrawdown) || 0;
   const tankElevation = Number(survey.tankHeight) || 0;
+  const groundElev = Number(survey.groundElevation) || 0;
   const pipeLen = Number(survey.pipeDistance) || 0;
+  const dropPipe = Number(survey.dropPipeLength) || 0;
   const diameter = Number(survey.pipeDiameterInch) || 1.25;
 
-  const staticLift = staticLevel + drawdown + tankElevation;
+  // 1. Static Lift (Vertical component)
+  const staticLift = staticLevel + drawdown + groundElev + tankElevation;
+
+  // 2. Pipe Fittings equivalent length (Page 210)
+  const fittingsEqLen = calculateFittingsEquivalentLength(survey.fittings);
+
+  // 3. Effective Total Pipe Length for friction
+  const effectiveTotalPipeLength = pipeLen + dropPipe + fittingsEqLen;
+
+  // 4. Friction Head Loss
   const frictionPer100 = getFrictionLossPer100m(diameter);
-  const frictionLoss = Number(((pipeLen / 100) * frictionPer100).toFixed(2));
+  const frictionLoss = Number(((effectiveTotalPipeLength / 100) * frictionPer100).toFixed(2));
+
+  // 5. Total Dynamic Head
   const tdh = Number((staticLift + frictionLoss).toFixed(2));
 
-  return { tdh: Math.max(1, tdh), staticLift, frictionLoss };
+  return {
+    tdh: Math.max(1, tdh),
+    staticLift: Number(staticLift.toFixed(2)),
+    frictionLoss,
+    fittingsEquivalentLength: fittingsEqLen,
+    effectiveTotalPipeLength: Number(effectiveTotalPipeLength.toFixed(2)),
+  };
+}
+
+/**
+ * Environmental Derating Factors (Page 208 / Annex A Standard)
+ */
+export function calculateEnvironmentalDerating(env?: EnvironmentalConditions): {
+  altitudeLossPercent: number;
+  tempLossPercent: number;
+  totalDeratingFactor: number;
+  combinedMultiplier: number;
+} {
+  const alt = Number(env?.altitudeM) || 540; // Default ~540m if unspecified
+  const temp = Number(env?.ambientTempC) || 30;
+
+  // Altitude derating: 3.5% loss for every 300m above 150m sea level
+  let altLoss = 0;
+  if (alt > 150) {
+    altLoss = ((alt - 150) / 300) * 3.5;
+  }
+
+  // Temperature derating: 2% loss for every 5.5°C above 30°C
+  let tempLoss = 0;
+  if (temp > 30) {
+    tempLoss = ((temp - 30) / 5.5) * 2.0;
+  }
+
+  const totalLossPercent = Math.min(30, altLoss + tempLoss);
+  const totalDeratingFactor = Number((1 - (totalLossPercent / 100)).toFixed(3));
+  const combinedMultiplier = Number((1 / totalDeratingFactor).toFixed(3));
+
+  return {
+    altitudeLossPercent: Number(altLoss.toFixed(2)),
+    tempLossPercent: Number(tempLoss.toFixed(2)),
+    totalDeratingFactor,
+    combinedMultiplier,
+  };
 }
 
 /**
@@ -114,8 +237,91 @@ export function calculateRequiredFlow(dailyNeedM3: number, peakSunHours: number 
 }
 
 /**
+ * 12-Month & Weekly Water Production Engine (Standard Formula from pumpsacerage dialy production.xlsx)
+ * Formula: Daily Water (m3/day) = [PumpPower(kW) * 0.65 * PSH * 0.85] / [0.0027525 * TDH]
+ */
+export const HYDRAULIC_ENERGY_CONSTANT = 0.0027525; // kWh / (m3 * m)
+export const WIRE_TO_WATER_EFFICIENCY = 0.65;
+export const PV_DERATING_FACTOR = 0.85;
+
+export const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+// Standard Ethiopian Regional PSH Baseline (kWh/m2/day)
+export const ETHIOPIAN_BASELINE_PSH = [5.95, 6.34, 6.49, 6.71, 6.45, 5.84, 5.35, 5.37, 5.94, 6.20, 6.08, 5.76];
+
+export function calculateDailyWaterProductionM3(
+  pumpPowerKw: number,
+  tdh: number,
+  psh: number,
+  wireToWaterEff: number = WIRE_TO_WATER_EFFICIENCY,
+  derating: number = PV_DERATING_FACTOR
+): number {
+  if (pumpPowerKw <= 0 || tdh <= 0 || psh <= 0) return 0;
+  const numerator = pumpPowerKw * wireToWaterEff * psh * derating;
+  const denominator = HYDRAULIC_ENERGY_CONSTANT * tdh;
+  return Number((numerator / denominator).toFixed(2));
+}
+
+export function calculate12MonthProductionSchedule(
+  pumpPowerKw: number,
+  tdh: number,
+  monthlyPshList?: number[],
+  requiredDailyM3: number = 0
+): {
+  monthlySchedule: MonthlyProductionItem[];
+  annualTotalM3: number;
+  averageDailyProductionM3: number;
+  minMonth: MonthlyProductionItem;
+  maxMonth: MonthlyProductionItem;
+} {
+  const pshList = (monthlyPshList && monthlyPshList.length === 12) ? monthlyPshList : ETHIOPIAN_BASELINE_PSH;
+  
+  const monthlySchedule: MonthlyProductionItem[] = pshList.map((psh, idx) => {
+    const dailyM3 = calculateDailyWaterProductionM3(pumpPowerKw, tdh, psh);
+    const days = DAYS_IN_MONTH[idx];
+    const monthlyTotalM3 = Number((dailyM3 * days).toFixed(1));
+    const weeklyYieldM3 = Number((dailyM3 * 7).toFixed(1));
+    const surplusDeficitM3 = Number((dailyM3 - requiredDailyM3).toFixed(2));
+    
+    let status: "Surplus" | "Balanced" | "Deficit" = "Balanced";
+    if (requiredDailyM3 > 0) {
+      if (surplusDeficitM3 > 0.5) status = "Surplus";
+      else if (surplusDeficitM3 < -0.5) status = "Deficit";
+    }
+
+    return {
+      month: MONTH_NAMES[idx],
+      monthIndex: idx + 1,
+      psh: Number(psh.toFixed(2)),
+      dailyProductionM3: dailyM3,
+      monthlyTotalM3,
+      weeklyYieldM3,
+      requiredDailyM3,
+      surplusDeficitM3,
+      status,
+    };
+  });
+
+  const annualTotalM3 = Number(monthlySchedule.reduce((acc, m) => acc + m.monthlyTotalM3, 0).toFixed(1));
+  const averageDailyProductionM3 = Number((annualTotalM3 / 365).toFixed(2));
+
+  // Find min and max production months
+  const sorted = [...monthlySchedule].sort((a, b) => a.dailyProductionM3 - b.dailyProductionM3);
+  const minMonth = sorted[0];
+  const maxMonth = sorted[sorted.length - 1];
+
+  return {
+    monthlySchedule,
+    annualTotalM3,
+    averageDailyProductionM3,
+    minMonth,
+    maxMonth,
+  };
+}
+
+/**
  * Dynamic Solar PV Array Sizing (Engineered standard: 1.25x - 1.35x pump power)
- * Intelligently suggests optimal module wattage (550W / 650W) based on pump motor size.
  */
 export function calculateSolarArrayRequirements(
   pumpPowerWatt: number,
@@ -179,7 +385,6 @@ export function calculateSolarArrayRequirements(
   };
 }
 
-
 /**
  * Submersible Cable Sizer to keep voltage drop under 3%
  */
@@ -191,7 +396,7 @@ export function sizeSubmersibleCable(
   const currentAmp = motorPowerWatt / (motorVoltage || 220);
   const copperResistivity = 0.0175; // Ohm * mm2 / m
 
-  // Test standard sizes: 2.5mm2, 4.0mm2, 6.0mm2, 10.0mm2
+  // Test standard sizes: 2.5mm2, 4.0mm2, 6.0mm2, 10.0mm2, 16.0mm2
   const sizes = [2.5, 4.0, 6.0, 10.0, 16.0];
   for (const size of sizes) {
     const loopResistance = (2 * cableLengthMeters * copperResistivity) / size;
@@ -208,35 +413,41 @@ export function sizeSubmersibleCable(
   return { recommendedSizeMm2: "4.0 mm²", voltageDropPercent: 2.1 };
 }
 
+/**
+ * Strict bounded flow evaluation at given Head.
+ * HARD-CLAMPED: If target head exceeds the manufacturer's maximum physical cutoff (maxHead), flow is strictly 0.
+ */
 export function getFlowAtHead(pump: PumpProduct, head: number): number {
   const table = pump.performanceTable;
   if (!table || table.length === 0) return 0;
   
+  // Sort by head ascending
   const sorted = [...table].sort((a, b) => a.head - b.head);
-  if (head <= sorted[0].head) return sorted[0].flow;
-  if (head >= sorted[sorted.length - 1].head) return 0;
+  const minHead = sorted[0].head;
+  const maxHead = pump.maxHead || sorted[sorted.length - 1].head;
 
-  let low = 0;
-  let high = sorted.length - 1;
-  while (high - low > 1) {
-    const mid = Math.floor((low + high) / 2);
-    if (sorted[mid].head <= head) {
-      low = mid;
-    } else {
-      high = mid;
+  // Strict physical bounds
+  if (head > maxHead) return 0;
+  if (head <= minHead) return sorted[0].flow;
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    if (head >= sorted[i].head && head <= sorted[i + 1].head) {
+      const h1 = sorted[i].head;
+      const h2 = sorted[i + 1].head;
+      const f1 = sorted[i].flow;
+      const f2 = sorted[i + 1].flow;
+      const flow = f1 + ((head - h1) * (f2 - f1)) / (h2 - h1 || 1);
+      return Number(flow.toFixed(2));
     }
   }
 
-  const p1 = sorted[low];
-  const p2 = sorted[high];
-  const flow = p1.flow + ((head - p1.head) * (p2.flow - p1.flow) / (p2.head - p1.head || 1));
-  return Number(flow.toFixed(2));
+  return 0;
 }
 
 export type MatchResult = {
   pump: PumpProduct;
   flowAtHead: number;
-  suitability: "Suitable" | "Oversized" | "Low Capacity" | "Out of Stock";
+  suitability: "Suitable" | "Oversized" | "Low Capacity" | "Out of Stock" | "Exceeds Head Limit";
   reason: string;
 };
 
@@ -245,38 +456,57 @@ export function findSuitablePumps(survey: Partial<SiteSurvey>, pumps: PumpProduc
     staticWaterLevel: survey.staticWaterLevel,
     dynamicDrawdown: survey.dynamicDrawdown,
     tankHeight: survey.tankHeight,
+    groundElevation: survey.groundElevation,
     pipeDistance: survey.pipeDistance,
+    dropPipeLength: survey.dropPipeLength,
     pipeDiameterInch: Number(survey.pipeSize?.replace('"', '')) || 1.25,
-    waterSource: survey.waterSource
+    waterSource: survey.waterSource,
+    fittings: survey.fittings,
   });
 
   const reqFlow = calculateRequiredFlow(Number(survey.dailyWaterNeed) || 0);
   const results: MatchResult[] = [];
   
-  pumps.forEach(pump => {
+  pumps.forEach((pump) => {
     if (survey.waterSource && !pump.suitableSources?.includes(survey.waterSource)) return;
+    
+    // Check if TDH exceeds pump maximum head
+    if (pump.maxHead && tdh > pump.maxHead) {
+      results.push({
+        pump,
+        flowAtHead: 0,
+        suitability: "Exceeds Head Limit",
+        reason: `Target TDH of ${tdh}m exceeds pump's maximum head limit of ${pump.maxHead}m.`,
+      });
+      return;
+    }
+
     const flowAtHead = getFlowAtHead(pump, tdh);
     let suitability: MatchResult["suitability"] = "Suitable";
     let reason = "This pump meets the head and flow requirements.";
+    
     if (pump.quantity <= 0) {
       suitability = "Out of Stock";
-      reason = "Suitable capacity but currently out of stock.";
+      reason = "Suitable capacity but currently out of stock in warehouse.";
+    } else if (flowAtHead <= 0) {
+      suitability = "Exceeds Head Limit";
+      reason = `At ${tdh}m head, this pump delivers 0 m³/h (cutoff exceeded).`;
     } else if (flowAtHead < reqFlow) {
       suitability = "Low Capacity";
       reason = `Flow at ${tdh}m is ${flowAtHead} m³/h, which is below required ${reqFlow} m³/h.`;
     } else if (flowAtHead > reqFlow * 2.5) {
       suitability = "Oversized";
-      reason = "Capacity is much higher than needed.";
+      reason = `Capacity (${flowAtHead} m³/h) is significantly higher than required ${reqFlow} m³/h.`;
     }
+    
     results.push({ pump, flowAtHead, suitability, reason });
   });
 
   return results.sort((a, b) => {
     if (a.pump.quantity > 0 && b.pump.quantity <= 0) return -1;
     if (a.pump.quantity <= 0 && b.pump.quantity > 0) return 1;
-    const rank = { Suitable: 0, Oversized: 1, "Low Capacity": 2, "Out of Stock": 3 };
+    const rank = { Suitable: 0, Oversized: 1, "Low Capacity": 2, "Out of Stock": 3, "Exceeds Head Limit": 4 };
     if (rank[a.suitability] !== rank[b.suitability]) return rank[a.suitability] - rank[b.suitability];
     return Math.abs(a.flowAtHead - reqFlow) - Math.abs(b.flowAtHead - reqFlow);
   });
 }
-

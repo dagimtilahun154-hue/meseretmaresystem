@@ -42,6 +42,9 @@ export class AnalyticsService {
         bankAccountRows,
         loanRows,
         peachtreeImports,
+        dbInvoices,
+        dbCustomers,
+        dbVendors,
       ] = await Promise.all([
         this.prisma.product.findMany({ orderBy: { name: "asc" } }).catch(() => []),
         this.prisma.posSale.findMany({ orderBy: { date: "desc" }, take: 500 }).catch(() => []),
@@ -52,9 +55,16 @@ export class AnalyticsService {
         this.prisma.financeCenterRecord.findMany({ where: financeWhere("bank-accounts"), orderBy: { createdAt: "desc" }, take: 200 }).catch(() => []),
         this.prisma.financeCenterRecord.findMany({ where: financeWhere("loans"), orderBy: { createdAt: "desc" }, take: 200 }).catch(() => []),
         this.prisma.peachtreeImport.findMany({ where: company ? { company } : undefined, orderBy: { uploadedAt: "desc" }, take: 10 }).catch(() => []),
+        this.prisma.invoice.findMany({ orderBy: { date: "desc" }, take: 2000 }).catch(() => []),
+        this.prisma.customer.findMany().catch(() => []),
+        this.prisma.vendor.findMany().catch(() => []),
       ]);
 
-      const totalSales = sales.reduce((sum, sale) => sum + toNumber(sale.total), 0);
+      const invoiceSales = dbInvoices.reduce((sum, inv) => sum + toNumber(inv.total), 0);
+      const posSalesTotal = sales.reduce((sum, sale) => sum + toNumber(sale.total), 0);
+      const totalSales = invoiceSales > 0 ? invoiceSales : posSalesTotal;
+      const totalReceivables = dbCustomers.reduce((sum, c) => sum + toNumber(c.balance), 0);
+      const totalPayables = dbVendors.reduce((sum, v) => sum + toNumber(v.balance), 0);
       const totalCost = sales.reduce((sum, sale) => sum + Math.max(0, toNumber(sale.subtotal) - toNumber(sale.discount)), 0);
       const totalProfit = totalSales - totalCost;
       const totalVat = sales.reduce((sum, sale) => sum + toNumber(sale.tax), 0);
@@ -98,6 +108,8 @@ export class AnalyticsService {
           totalVat,
           uniqueCustomers,
           totalProducts,
+          totalReceivables,
+          totalPayables,
           lowStockCount,
           outOfStockCount,
           inventoryValue,

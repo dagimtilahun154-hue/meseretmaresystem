@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
-import { hrDB, DEFAULT_DEPARTMENTS } from "@/lib/db-service";
+import { hrDB, DEFAULT_DEPARTMENTS, getDepartmentBilingual } from "@/lib/db-service";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

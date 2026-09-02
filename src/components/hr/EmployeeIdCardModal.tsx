@@ -56,7 +56,7 @@ export const EmployeeIdCardModal: React.FC<EmployeeIdCardModalProps> = ({ open, 
   const workerCode = worker?.worker_code || worker?.workerCode || "EMP-001";
   const fullNameEnglish = worker?.full_name || worker?.fullName || "Staff Member";
   const fullNameAmharic = worker?.full_name_amharic || worker?.fullNameAmharic || "";
-  
+
   const positionEnglish = worker?.position || "Solar Technician";
   const positionAmharic = worker?.position_amharic || worker?.positionAmharic || "";
 
@@ -266,12 +266,12 @@ export const EmployeeIdCardModal: React.FC<EmployeeIdCardModalProps> = ({ open, 
                 {/* 5. Side-by-Side Signature & QR Code Area */}
                 <div className="mx-3 my-0.5 py-0.5 px-1.5 flex items-center justify-between border-t border-slate-100 z-10 gap-1.5">
                   {/* Left: Compact Authorized Signature Section */}
-                  <div className="w-[110px] shrink-0 flex flex-col items-center justify-center pr-1 border-r border-slate-200">
-                    <div className="h-10 w-full overflow-hidden flex items-center justify-center">
+                  <div className="w-[120px] shrink-0 flex flex-col items-center justify-center pr-1 border-r border-slate-200">
+                    <div className="h-12 w-full overflow-hidden flex items-center justify-center">
                       <img
-                        src="/uploads/logo3.jpg"
+                        src="/uploads/sign.png"
                         alt="Authorized Signature"
-                        className="h-9 w-auto max-w-[115px] scale-[1.5] object-contain"
+                        className="h-10 w-auto max-w-[130px] scale-[2.2] object-contain"
                       />
                     </div>
                     <div className="text-center mt-0.5">
@@ -395,9 +395,9 @@ export const EmployeeIdCardModal: React.FC<EmployeeIdCardModalProps> = ({ open, 
                 {/* 4. Official Company Stamp */}
                 <div className="flex items-center justify-center my-1 z-10">
                   <img
-                    src="/uploads/stamp.jpg"
+                    src="/uploads/stamp.png"
                     alt="Official Company Stamp"
-                    className="h-[75px] max-h-[75px] w-auto object-contain drop-shadow-sm mix-blend-multiply opacity-95"
+                    className="h-[110px] max-h-[110px] w-auto object-contain drop-shadow-md mix-blend-multiply opacity-95 scale-[1.3] transition-transform"
                   />
                 </div>
 
@@ -413,11 +413,11 @@ export const EmployeeIdCardModal: React.FC<EmployeeIdCardModalProps> = ({ open, 
                   <div className="mt-1 flex items-center justify-between pt-0.5 border-t border-dashed border-slate-300">
                     <span className="text-[8px] font-mono font-bold text-slate-500">{workerCode}</span>
                     <div className="text-right">
-                      <div className="h-5 flex items-center justify-end">
+                      <div className="h-7 flex items-center justify-end overflow-hidden">
                         <img
-                          src="/uploads/logo3.jpg"
+                          src="/uploads/sign.png"
                           alt="Signature"
-                          className="h-4 max-h-4 max-w-[80px] object-contain"
+                          className="h-6 max-h-6 max-w-[100px] scale-[2.0] object-contain"
                         />
                       </div>
                       <span className="text-[7.5px] font-black text-slate-800 block">

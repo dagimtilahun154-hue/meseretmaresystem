@@ -171,7 +171,13 @@ export function TaskBoard() {
             return (
               <div
                 key={col.id}
-                className="flex flex-col bg-slate-50 dark:bg-slate-900/40 rounded-xl p-3 border border-border"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const taskId = e.dataTransfer.getData("taskId");
+                  if (taskId) handleStatusChange(taskId, col.id as Task["status"]);
+                }}
+                className="flex flex-col bg-slate-50 dark:bg-slate-900/40 rounded-xl p-3 border border-border transition-colors hover:bg-slate-100/80 dark:hover:bg-slate-900/60"
               >
                 <div className="flex items-center justify-between border-b pb-2 mb-3 border-border">
                   <span className="font-semibold text-sm flex items-center gap-2">
@@ -183,12 +189,14 @@ export function TaskBoard() {
                   </Badge>
                 </div>
 
-                <div className="flex-1 space-y-3 overflow-y-auto min-h-0 max-h-[600px] pr-1">
+                <div className="flex-1 space-y-3 overflow-y-auto min-h-[120px] max-h-[600px] pr-1">
                   {colTasks.map((task) => (
                     <Card
                       key={task.id}
+                      draggable
+                      onDragStart={(e) => e.dataTransfer.setData("taskId", task.id)}
                       onClick={() => handleTaskClick(task)}
-                      className={`cursor-pointer hover:border-primary/40 hover:shadow-md transition-all border-t-4 ${col.color}`}
+                      className={`cursor-grab active:cursor-grabbing hover:border-primary/40 hover:shadow-md transition-all border-t-4 ${col.color}`}
                     >
                       <CardContent className="p-3 space-y-2">
                         <div className="flex items-center justify-between">
