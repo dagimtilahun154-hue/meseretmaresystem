@@ -11,8 +11,19 @@ import subprocess
 from datetime import datetime, date, timedelta
 from dotenv import load_dotenv
 
-# Load local environment variables
-load_dotenv()
+# Load local environment variables from multiple candidate paths
+candidate_env_paths = [
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env') if '__file__' in globals() else None,
+    os.path.join(os.path.dirname(sys.executable), '.env'),
+    os.path.join(os.getcwd(), 'tools', 'peachtree-sync-agent', '.env'),
+    os.path.join(os.getcwd(), '.env'),
+]
+for p in candidate_env_paths:
+    if p and os.path.exists(p):
+        load_dotenv(dotenv_path=p, override=True)
+        break
+else:
+    load_dotenv()
 
 class Peachtree2010LiveParser:
     """
@@ -343,8 +354,8 @@ PEACHTREE_PASS = os.environ.get('PEACHTREE_PASS', 'T123456')
 PEACHTREE_DATA_PATH = os.environ.get('PEACHTREE_DATA_PATH', r'C:\Program Files (x86)\Sage Software\Peachtree\Company\mesxxa')
 
 # API details for SolarFlow Manager backend (Targeting hosted deployed server or local dev)
-API_BASE_URL = os.environ.get('API_BASE_URL', 'https://meseretmaresystem.onrender.com/api/v1')
-SYNC_URL = f"{API_BASE_URL}/sync/peachtree"
+API_BASE_URL = os.environ.get('API_BASE_URL', 'https://meseretmaresystem.onrender.com/api/v1').rstrip('/')
+SYNC_URL = os.environ.get('API_URL', f"{API_BASE_URL}/sync/peachtree")
 HEARTBEAT_URL = f"{API_BASE_URL}/sync/peachtree/heartbeat"
 API_KEY = os.environ.get('API_KEY', 'solarflow-sync-secret-2026')
 POLL_INTERVAL_SECONDS = int(os.environ.get('POLL_INTERVAL_SECONDS', '900'))  # Default: 15 minutes (900s)
