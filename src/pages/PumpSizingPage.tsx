@@ -28,6 +28,8 @@ import {
   sizeSubmersibleCable,
   getFrictionLossPer100m,
   calculateTDH,
+  calculateHydraulicPowerKw,
+  calculateRequiredShaftPowerKw,
   calculate12MonthProductionSchedule,
   calculateEnvironmentalDerating,
   calculateFittingsEquivalentLength,
