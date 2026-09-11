@@ -1468,7 +1468,7 @@ export default function PumpSizingPage() {
                     onClick={loadSurfacePreset}
                     className="flex-1 text-[11px] h-7 font-semibold bg-background hover:bg-primary/10 hover:text-primary text-foreground border-border/80"
                   >
-                    ⚡ Surface Preset (12m, 23.2L/s, 5.5kW)
+                    ⚡ Surface Preset (H=12m, Q=23.2 L/s, 83.33m³/hr, 500m³/day, 19°C, η≥65%, 5.5kW)
                   </Button>
                   <Button
                     type="button"
@@ -1477,7 +1477,7 @@ export default function PumpSizingPage() {
                     onClick={loadSubmersiblePreset}
                     className="flex-1 text-[11px] h-7 font-semibold bg-background hover:bg-primary/10 hover:text-primary text-foreground border-border/80"
                   >
-                    ⚡ Submersible Preset (34m, 6L/s, 3.3kW)
+                    ⚡ Submersible Preset (H=34m, Q=6.0 L/s, 21.0m³/hr, 129.6m³/day, 20°C, η≥65%, 3.3kW)
                   </Button>
                 </div>
 
@@ -1644,79 +1644,132 @@ export default function PumpSizingPage() {
                   </div>
                 )}
 
-                {/* TECHNICAL QUESTIONNAIRE INPUTS */}
+                {/* TECHNICAL QUESTIONNAIRE INPUTS WITH EXACT WORDS */}
                 <div className="p-3 bg-muted/40 rounded-lg border border-border/70 space-y-2.5">
                   <div className="flex items-center justify-between pb-1 border-b border-border/40">
                     <span className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
                       <Sparkles className="h-3.5 w-3.5 text-primary" /> Technical Questionnaire & Target Capacity
                     </span>
                     <Badge variant="outline" className="text-[9px] font-mono text-primary bg-background">
-                      {pumpType} Criteria
+                      {pumpType} Specifications
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground font-medium">Discharge Q (L/s)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        value={dischargeFlowLps}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setDischargeFlowLps(val);
-                          const num = parseFloat(val);
-                          if (!isNaN(num) && num > 0) {
-                            setHourlyWaterReq((num * 3.6).toFixed(2));
-                          }
-                        }}
-                        className="h-7 text-xs font-mono bg-background"
-                      />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                    <div className="space-y-1 bg-background p-2 rounded border border-border/50">
+                      <Label className="text-[11px] text-foreground font-semibold">Total Dynamic Head (H) =</Label>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="text"
+                          readOnly
+                          value={`${pumpType === "Surface" 
+                            ? (Number(suctionLift || 0) + Number(tankElevation || 0) + ((Number(pipeLength || 0) + Number(suctionPipeLength || 0)) / 100) * getFrictionLossPer100m(Number(pipeDiameter || 3.0))).toFixed(1)
+                            : (Number(staticWaterLevel || 0) + Number(dynamicDrawdown || 0) + Number(tankElevation || 0) + (Number(pipeLength || 0) / 100) * getFrictionLossPer100m(Number(pipeDiameter || 2.0))).toFixed(1)
+                          } m`}
+                          className="h-7 text-xs font-mono font-bold bg-muted/40"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground font-medium">Hourly Req (m³/hr)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        value={hourlyWaterReq}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setHourlyWaterReq(val);
-                          const num = parseFloat(val);
-                          if (!isNaN(num) && num > 0) {
-                            setDischargeFlowLps((num / 3.6).toFixed(2));
-                          }
-                        }}
-                        className="h-7 text-xs font-mono bg-background"
-                      />
+
+                    <div className="space-y-1 bg-background p-2 rounded border border-border/50">
+                      <Label className="text-[11px] text-foreground font-semibold">Discharge rate capacity (Q) =</Label>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          step="0.1"
+                          placeholder="23.2"
+                          value={dischargeFlowLps}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setDischargeFlowLps(val);
+                            const num = parseFloat(val);
+                            if (!isNaN(num) && num > 0) {
+                              setHourlyWaterReq((num * 3.6).toFixed(2));
+                            }
+                          }}
+                          className="h-7 text-xs font-mono font-bold bg-background flex-1"
+                        />
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">L/s</span>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground font-medium">Water Temp (°C)</Label>
-                      <Input
-                        type="number"
-                        value={waterTemperatureC}
-                        onChange={(e) => setWaterTemperatureC(e.target.value)}
-                        className="h-7 text-xs font-mono bg-background"
-                      />
+
+                    <div className="space-y-1 bg-background p-2 rounded border border-border/50">
+                      <Label className="text-[11px] text-foreground font-semibold">Hourly water requirement =</Label>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          step="0.1"
+                          placeholder="83.33"
+                          value={hourlyWaterReq}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setHourlyWaterReq(val);
+                            const num = parseFloat(val);
+                            if (!isNaN(num) && num > 0) {
+                              setDischargeFlowLps((num / 3.6).toFixed(2));
+                            }
+                          }}
+                          className="h-7 text-xs font-mono font-bold bg-background flex-1"
+                        />
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">m³/hr</span>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground font-medium">Pump Eff. η (≥%)</Label>
-                      <Input
-                        type="number"
-                        value={pumpEfficiencyPercent}
-                        onChange={(e) => setPumpEfficiencyPercent(e.target.value)}
-                        className="h-7 text-xs font-mono bg-background"
-                      />
+
+                    <div className="space-y-1 bg-background p-2 rounded border border-border/50">
+                      <Label className="text-[11px] text-foreground font-semibold">Minimum Day Demand =</Label>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          placeholder="500"
+                          value={dailyWaterNeed}
+                          onChange={(e) => setDailyWaterNeed(e.target.value)}
+                          className="h-7 text-xs font-mono font-bold bg-background flex-1"
+                        />
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">m³/day</span>
+                      </div>
                     </div>
-                    <div className="space-y-1 sm:col-span-2">
-                      <Label className="text-[10px] text-muted-foreground font-medium">Min Pump Power (kW)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        value={minPumpKw}
-                        onChange={(e) => setMinPumpKw(e.target.value)}
-                        className="h-7 text-xs font-mono bg-background"
-                      />
+
+                    <div className="space-y-1 bg-background p-2 rounded border border-border/50">
+                      <Label className="text-[11px] text-foreground font-semibold">Water tempertaure =</Label>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          placeholder="19"
+                          value={waterTemperatureC}
+                          onChange={(e) => setWaterTemperatureC(e.target.value)}
+                          className="h-7 text-xs font-mono font-bold bg-background flex-1"
+                        />
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">°C</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 bg-background p-2 rounded border border-border/50">
+                      <Label className="text-[11px] text-foreground font-semibold">Pump efficiency (η) ≥</Label>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          placeholder="65"
+                          value={pumpEfficiencyPercent}
+                          onChange={(e) => setPumpEfficiencyPercent(e.target.value)}
+                          className="h-7 text-xs font-mono font-bold bg-background flex-1"
+                        />
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">%</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 bg-background p-2 rounded border border-border/50 sm:col-span-2">
+                      <Label className="text-[11px] text-foreground font-semibold">minimum Pump Kw =</Label>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          step="0.1"
+                          placeholder="5.5"
+                          value={minPumpKw}
+                          onChange={(e) => setMinPumpKw(e.target.value)}
+                          className="h-7 text-xs font-mono font-bold bg-background flex-1"
+                        />
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">kW</span>
+                      </div>
                     </div>
                   </div>
                 </div>
