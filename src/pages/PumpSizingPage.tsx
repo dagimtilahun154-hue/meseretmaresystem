@@ -2029,13 +2029,48 @@ export default function PumpSizingPage() {
           <div className="lg:col-span-7">
             {result ? (
               <div className="space-y-6">
+                {/* Sticky Sizing Context Summary Bar on Scroll */}
+                <div className="sticky top-2 z-30 p-2.5 bg-card/95 backdrop-blur-md rounded-xl border border-primary/30 shadow-md flex flex-wrap items-center justify-between gap-2 text-xs transition-all">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default" className="bg-primary text-primary-foreground font-mono text-[10px] font-bold">
+                      {result.exact_match?.brand || "AI"} SELECTED
+                    </Badge>
+                    <span className="font-bold text-foreground font-heading truncate max-w-[160px] sm:max-w-xs">
+                      {result.exact_match?.model || "Configured Pump Package"}
+                    </span>
+                    <Badge variant="outline" className="text-[9px] font-bold text-primary border-primary/30 hidden sm:inline-flex">
+                      [{result.exact_match?.pumpType || pumpType} Pump]
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] font-mono tabular-nums text-muted-foreground">
+                    <span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">
+                      TDH: <strong className="text-foreground">{result.calculated_tdh}m</strong>
+                    </span>
+                    <span className="bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 px-2 py-0.5 rounded font-semibold">
+                      Q: <strong className="text-foreground">{result.exact_match?.calculated_flow_m3h || result.target_flow_m3h} m³/h</strong>
+                    </span>
+                    {result.power_mode === "FULL_SOLAR" && (
+                      <span className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded font-semibold hidden md:inline-block">
+                        PV: <strong className="text-foreground">{result.exact_match?.pvInfo?.totalArrayWatt || 0} Wp</strong>
+                      </span>
+                    )}
+                    <Button 
+                      size="sm" 
+                      onClick={() => setIsSaveDialogOpen(true)}
+                      className="h-7 text-[11px] font-bold ml-1 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                    >
+                      Save Proposal
+                    </Button>
+                  </div>
+                </div>
                 
                 {/* 4 Top KPI Cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="bg-primary/5 p-3.5 rounded-xl border border-primary/20 flex flex-col justify-between">
                     <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Design TDH</span>
                     <div>
-                      <span className="text-2xl font-bold text-primary font-mono">{result.calculated_tdh}</span>
+                      <span className="text-2xl font-bold text-primary font-mono tabular-nums tracking-tight">{result.calculated_tdh}</span>
                       <span className="text-xs text-muted-foreground ml-1">m</span>
                     </div>
                     <span className="text-[9px] text-muted-foreground mt-1">Static {result.static_lift}m + Loss {result.friction_loss}m</span>
@@ -2044,7 +2079,7 @@ export default function PumpSizingPage() {
                   <div className="bg-cyan-500/5 p-3.5 rounded-xl border border-cyan-500/20 flex flex-col justify-between">
                     <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Operating Flow</span>
                     <div>
-                      <span className="text-2xl font-bold text-cyan-600 font-mono">{result.exact_match?.calculated_flow_m3h || 0}</span>
+                      <span className="text-2xl font-bold text-cyan-600 font-mono tabular-nums tracking-tight">{result.exact_match?.calculated_flow_m3h || 0}</span>
                       <span className="text-xs text-muted-foreground ml-1">m³/h</span>
                     </div>
                     <span className="text-[9px] text-cyan-700 dark:text-cyan-400 mt-1">Target: {result.target_flow_m3h} m³/h</span>
@@ -2053,7 +2088,7 @@ export default function PumpSizingPage() {
                   <div className="bg-amber-500/5 p-3.5 rounded-xl border border-amber-500/20 flex flex-col justify-between">
                     <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Daily Output</span>
                     <div>
-                      <span className="text-2xl font-bold text-amber-600 font-mono">{result.exact_match?.daily_water_yield_m3 || 0}</span>
+                      <span className="text-2xl font-bold text-amber-600 font-mono tabular-nums tracking-tight">{result.exact_match?.daily_water_yield_m3 || 0}</span>
                       <span className="text-xs text-muted-foreground ml-1">m³/day</span>
                     </div>
                     <span className="text-[9px] text-amber-700 dark:text-amber-400 mt-1">Scaled for local NASA PSH</span>
@@ -2064,7 +2099,7 @@ export default function PumpSizingPage() {
                     <div>
                       {result.power_mode === "FULL_SOLAR" ? (
                         <>
-                          <span className="text-2xl font-bold text-emerald-600 font-mono">{result.exact_match?.pvInfo?.totalArrayWatt || 0}</span>
+                          <span className="text-2xl font-bold text-emerald-600 font-mono tabular-nums tracking-tight">{result.exact_match?.pvInfo?.totalArrayWatt || 0}</span>
                           <span className="text-xs text-muted-foreground ml-1">Wp</span>
                         </>
                       ) : (
@@ -2077,15 +2112,23 @@ export default function PumpSizingPage() {
                   </div>
                 </div>
 
-                {/* Candidate Pump Cards (Redbud & Difful) */}
+                {/* Candidate Pump Cards (Redbud & Difful) with Comparative Advantage Chips */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* REDBUD Option */}
                   {result.redbud_match && (
                     <Card
-                      className={`border transition-all cursor-pointer relative overflow-hidden shadow-sm hover:shadow-md hover:border-primary/50 ${
+                      tabIndex={0}
+                      role="button"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setResult((prev: any) => ({ ...prev, exact_match: prev.redbud_match }));
+                        }
+                      }}
+                      className={`border transition-all duration-200 cursor-pointer relative overflow-hidden shadow-sm hover:shadow-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
                         result.exact_match?.brand === "REDBUD"
-                          ? "border-primary ring-2 ring-primary/20 bg-primary/[0.01]"
-                          : "border-border bg-card"
+                          ? "border-primary ring-2 ring-primary/30 bg-primary/[0.02]"
+                          : "border-border bg-card hover:border-primary/40"
                       }`}
                       onClick={() => {
                         setResult((prev: any) => ({
@@ -2095,8 +2138,8 @@ export default function PumpSizingPage() {
                       }}
                     >
                       {result.exact_match?.brand === "REDBUD" && (
-                        <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[9px] font-bold px-2 py-0.5 rounded-bl">
-                          Winner Match
+                        <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[9px] font-bold px-2.5 py-0.5 rounded-bl shadow-sm">
+                          ★ Active Match
                         </div>
                       )}
                       <CardHeader className="pb-2 pt-4">
@@ -2105,6 +2148,9 @@ export default function PumpSizingPage() {
                             <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-mono">REDBUD</span>
                             <Badge variant="secondary" className="text-[9px] font-bold uppercase tracking-tight bg-primary/10 text-primary border-primary/20">
                               [{result.redbud_match.pumpType || pumpType} Pump]
+                            </Badge>
+                            <Badge className="text-[8px] font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+                              η ≥ 68% High Eff.
                             </Badge>
                           </div>
                           <Badge variant="outline" className="text-[9px] font-bold border-primary/20 text-primary">Score: {result.redbud_match.score}/100</Badge>
@@ -2118,23 +2164,23 @@ export default function PumpSizingPage() {
                       </CardHeader>
                       <CardContent className="space-y-3 pb-4">
                         <div className="grid grid-cols-3 gap-1.5 text-[10px] text-center font-mono">
-                          <div className="bg-muted p-1.5 rounded">
+                          <div className="bg-muted/60 p-1.5 rounded-md border border-border/40">
                             <span className="text-muted-foreground block text-[8px] uppercase">Power</span>
-                            <span className="font-bold text-foreground">{result.redbud_match.power}</span>
+                            <span className="font-bold text-foreground tabular-nums">{result.redbud_match.power}</span>
                           </div>
-                          <div className="bg-muted p-1.5 rounded">
+                          <div className="bg-muted/60 p-1.5 rounded-md border border-border/40">
                             <span className="text-muted-foreground block text-[8px] uppercase">Voltage</span>
-                            <span className="font-bold text-foreground">{result.redbud_match.voltage}</span>
+                            <span className="font-bold text-foreground tabular-nums">{result.redbud_match.voltage}</span>
                           </div>
-                          <div className="bg-muted p-1.5 rounded">
+                          <div className="bg-muted/60 p-1.5 rounded-md border border-border/40">
                             <span className="text-muted-foreground block text-[8px] uppercase">Daily Yield</span>
-                            <span className="font-bold text-foreground">{result.redbud_match.daily_water_yield_m3 || 0} m³</span>
+                            <span className="font-bold text-foreground tabular-nums">{result.redbud_match.daily_water_yield_m3 || 0} m³</span>
                           </div>
                         </div>
                         <div className="flex justify-between items-center pt-2">
                           <span className="text-[11px] text-muted-foreground">Suitability: <span className="font-bold text-emerald-600">{result.redbud_match.suitability}</span></span>
                           <Button size="sm" variant={result.exact_match?.brand === "REDBUD" ? "default" : "outline"} className="h-7 text-xs font-semibold">
-                            {result.exact_match?.brand === "REDBUD" ? "Active Selection" : "Select Brand"}
+                            {result.exact_match?.brand === "REDBUD" ? "Selected" : "Select Brand"}
                           </Button>
                         </div>
                       </CardContent>
@@ -2144,10 +2190,18 @@ export default function PumpSizingPage() {
                   {/* DIFFUL Option */}
                   {result.difful_match && (
                     <Card
-                      className={`border transition-all cursor-pointer relative overflow-hidden shadow-sm hover:shadow-md hover:border-primary/50 ${
+                      tabIndex={0}
+                      role="button"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setResult((prev: any) => ({ ...prev, exact_match: prev.difful_match }));
+                        }
+                      }}
+                      className={`border transition-all duration-200 cursor-pointer relative overflow-hidden shadow-sm hover:shadow-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
                         result.exact_match?.brand === "DIFFUL"
-                          ? "border-primary ring-2 ring-primary/20 bg-primary/[0.01]"
-                          : "border-border bg-card"
+                          ? "border-primary ring-2 ring-primary/30 bg-primary/[0.02]"
+                          : "border-border bg-card hover:border-primary/40"
                       }`}
                       onClick={() => {
                         setResult((prev: any) => ({
@@ -2157,8 +2211,8 @@ export default function PumpSizingPage() {
                       }}
                     >
                       {result.exact_match?.brand === "DIFFUL" && (
-                        <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[9px] font-bold px-2 py-0.5 rounded-bl">
-                          Winner Match
+                        <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[9px] font-bold px-2.5 py-0.5 rounded-bl shadow-sm">
+                          ★ Active Match
                         </div>
                       )}
                       <CardHeader className="pb-2 pt-4">
@@ -2167,6 +2221,9 @@ export default function PumpSizingPage() {
                             <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-mono">DIFFUL</span>
                             <Badge variant="secondary" className="text-[9px] font-bold uppercase tracking-tight bg-primary/10 text-primary border-primary/20">
                               [{result.difful_match.pumpType || pumpType} Pump]
+                            </Badge>
+                            <Badge className="text-[8px] font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+                              η ≥ 68% High Eff.
                             </Badge>
                           </div>
                           <Badge variant="outline" className="text-[9px] font-bold border-primary/20 text-primary">Score: {result.difful_match.score}/100</Badge>
@@ -2180,23 +2237,23 @@ export default function PumpSizingPage() {
                       </CardHeader>
                       <CardContent className="space-y-3 pb-4">
                         <div className="grid grid-cols-3 gap-1.5 text-[10px] text-center font-mono">
-                          <div className="bg-muted p-1.5 rounded">
+                          <div className="bg-muted/60 p-1.5 rounded-md border border-border/40">
                             <span className="text-muted-foreground block text-[8px] uppercase">Power</span>
-                            <span className="font-bold text-foreground">{result.difful_match.power}</span>
+                            <span className="font-bold text-foreground tabular-nums">{result.difful_match.power}</span>
                           </div>
-                          <div className="bg-muted p-1.5 rounded">
+                          <div className="bg-muted/60 p-1.5 rounded-md border border-border/40">
                             <span className="text-muted-foreground block text-[8px] uppercase">Voltage</span>
-                            <span className="font-bold text-foreground">{result.difful_match.voltage}</span>
+                            <span className="font-bold text-foreground tabular-nums">{result.difful_match.voltage}</span>
                           </div>
-                          <div className="bg-muted p-1.5 rounded">
+                          <div className="bg-muted/60 p-1.5 rounded-md border border-border/40">
                             <span className="text-muted-foreground block text-[8px] uppercase">Daily Yield</span>
-                            <span className="font-bold text-foreground">{result.difful_match.daily_water_yield_m3 || 0} m³</span>
+                            <span className="font-bold text-foreground tabular-nums">{result.difful_match.daily_water_yield_m3 || 0} m³</span>
                           </div>
                         </div>
                         <div className="flex justify-between items-center pt-2">
                           <span className="text-[11px] text-muted-foreground">Suitability: <span className="font-bold text-emerald-600">{result.difful_match.suitability}</span></span>
                           <Button size="sm" variant={result.exact_match?.brand === "DIFFUL" ? "default" : "outline"} className="h-7 text-xs font-semibold">
-                            {result.exact_match?.brand === "DIFFUL" ? "Active Selection" : "Select Brand"}
+                            {result.exact_match?.brand === "DIFFUL" ? "Selected" : "Select Brand"}
                           </Button>
                         </div>
                       </CardContent>

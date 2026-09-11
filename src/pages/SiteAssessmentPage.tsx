@@ -236,18 +236,23 @@ export default function SiteAssessmentPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold font-heading text-foreground">Customer Site Assessment</h1>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold font-heading text-foreground">Field Engineering Site Assessment</h2>
+              <Badge variant="outline" className="text-[10px] font-mono text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500/30">
+                ● Online
+              </Badge>
+            </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               Complete the technical field questionnaire for <strong>{clientName || "—"}</strong>
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleSaveProgress} disabled={saving} className="gap-1.5 text-sm">
+          <Button variant="outline" onClick={handleSaveProgress} disabled={saving} className="gap-1.5 text-xs sm:text-sm min-h-[40px] touch-manipulation focus-visible:ring-2 focus-visible:ring-primary">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Progress
           </Button>
-          <Button onClick={handleSubmitForTm} disabled={submitting} className="gap-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+          <Button onClick={handleSubmitForTm} disabled={submitting} className="gap-1.5 text-xs sm:text-sm min-h-[40px] touch-manipulation bg-emerald-600 hover:bg-emerald-700 text-white font-semibold focus-visible:ring-2 focus-visible:ring-emerald-500">
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Submit for TM Approval
           </Button>
@@ -268,19 +273,19 @@ export default function SiteAssessmentPage() {
           </div>
           <div className="bg-muted/40 rounded-lg p-2.5 border">
             <span className="text-muted-foreground block text-[10px] uppercase">Vertical Lift</span>
-            <span className="font-bold text-foreground">{proposal.verticalLift || "—"} m</span>
+            <span className="font-bold text-foreground tabular-nums">{proposal.verticalLift || "—"} m</span>
           </div>
           <div className="bg-muted/40 rounded-lg p-2.5 border">
             <span className="text-muted-foreground block text-[10px] uppercase">Pipe Length</span>
-            <span className="font-bold text-foreground">{proposal.pipeLength || "—"} m</span>
+            <span className="font-bold text-foreground tabular-nums">{proposal.pipeLength || "—"} m</span>
           </div>
           <div className="bg-muted/40 rounded-lg p-2.5 border">
             <span className="text-muted-foreground block text-[10px] uppercase">Daily Need</span>
-            <span className="font-bold text-foreground">{proposal.dailyWaterNeed || "—"} m³/day</span>
+            <span className="font-bold text-foreground tabular-nums">{proposal.dailyWaterNeed || "—"} m³/day</span>
           </div>
           <div className="bg-muted/40 rounded-lg p-2.5 border">
             <span className="text-muted-foreground block text-[10px] uppercase">Coordinates</span>
-            <span className="font-bold text-foreground font-mono text-[10px]">{proposal.latitude?.toFixed(4)}, {proposal.longitude?.toFixed(4)}</span>
+            <span className="font-bold text-foreground font-mono tabular-nums text-[10px]">{proposal.latitude?.toFixed(4)}, {proposal.longitude?.toFixed(4)}</span>
           </div>
         </CardContent>
       </Card>
@@ -308,7 +313,7 @@ export default function SiteAssessmentPage() {
           </div>
           <div>
             <Label className="text-xs font-semibold">Phone Number</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-background font-mono" />
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-background font-mono tabular-nums" />
           </div>
         </CardContent>
       </Card>
@@ -328,11 +333,11 @@ export default function SiteAssessmentPage() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="tabSiteWater" className="w-full">
-            <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full bg-muted/70 p-1.5 rounded-xl border">
-              <TabsTrigger value="tabSiteWater" className="text-xs font-bold py-2">1. Site & Water</TabsTrigger>
-              <TabsTrigger value="tabSolarLayout" className="text-xs font-bold py-2">2. Solar & Pipe</TabsTrigger>
-              <TabsTrigger value="tabSoilsCrops" className="text-xs font-bold py-2">3. Soil & Crops</TabsTrigger>
-              <TabsTrigger value="tabInstFin" className="text-xs font-bold py-2">4. Ops & Finance</TabsTrigger>
+            <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full bg-muted/70 p-1.5 rounded-xl border min-h-[44px]">
+              <TabsTrigger value="tabSiteWater" className="text-xs font-bold py-2.5 px-3 min-h-[38px] touch-manipulation">1. Site & Water</TabsTrigger>
+              <TabsTrigger value="tabSolarLayout" className="text-xs font-bold py-2.5 px-3 min-h-[38px] touch-manipulation">2. Solar & Pipe</TabsTrigger>
+              <TabsTrigger value="tabSoilsCrops" className="text-xs font-bold py-2.5 px-3 min-h-[38px] touch-manipulation">3. Soil & Crops</TabsTrigger>
+              <TabsTrigger value="tabInstFin" className="text-xs font-bold py-2.5 px-3 min-h-[38px] touch-manipulation">4. Ops & Finance</TabsTrigger>
             </TabsList>
 
             {/* TAB 1: SITE & WATER */}
