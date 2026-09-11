@@ -1459,28 +1459,6 @@ export default function PumpSizingPage() {
                   </div>
                 </div>
 
-                {/* Quick Presets Buttons */}
-                <div className="flex flex-col sm:flex-row gap-1.5 p-2 bg-muted/40 rounded-lg border border-border/60">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={loadSurfacePreset}
-                    className="flex-1 text-[11px] h-7 font-semibold bg-background hover:bg-primary/10 hover:text-primary text-foreground border-border/80"
-                  >
-                    ⚡ Surface Preset (H=12m, Q=23.2 L/s, 83.33m³/hr, 500m³/day, 19°C, η≥65%, 5.5kW)
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={loadSubmersiblePreset}
-                    className="flex-1 text-[11px] h-7 font-semibold bg-background hover:bg-primary/10 hover:text-primary text-foreground border-border/80"
-                  >
-                    ⚡ Submersible Preset (H=34m, Q=6.0 L/s, 21.0m³/hr, 129.6m³/day, 20°C, η≥65%, 3.3kW)
-                  </Button>
-                </div>
-
                 {/* Water Source Selection */}
                 <div className="space-y-1">
                   <Label className="text-xs font-medium text-foreground">Water Source</Label>
