@@ -244,6 +244,8 @@ export default function FinanceCenterPage() {
     }
   });
 
+  const [peachtreeSummary, setPeachtreeSummary] = useState<any | null>(null);
+
   const selectedEntity = "MM";
   const selectedEntityName = "Meseret Mare Solar";
 
@@ -263,6 +265,7 @@ export default function FinanceCenterPage() {
         analyticsData,
         vaultRes,
         syncedRes,
+        summaryRes,
       ] = await Promise.allSettled([
         financeCenterDB.getAll("bank-reconciliations"),
         financeCenterDB.getAll("building-rents"),
@@ -277,6 +280,7 @@ export default function FinanceCenterPage() {
         analyticsDB.dashboard(selectedEntity),
         peachtreeDB.getVault(),
         peachtreeDB.getSyncedData(),
+        peachtreeDB.getSummary(),
       ]);
 
       if (bankReconciliationsData.status === "fulfilled" && Array.isArray(bankReconciliationsData.value)) {
@@ -369,6 +373,9 @@ export default function FinanceCenterPage() {
             });
           });
         }
+      }
+      if (summaryRes.status === "fulfilled" && summaryRes.value) {
+        setPeachtreeSummary(summaryRes.value);
       }
     } catch {
       // Keep previous cached state intact
@@ -959,6 +966,7 @@ export default function FinanceCenterPage() {
           peachtreeCustomers={peachtreeCustomers}
           peachtreeVendors={peachtreeVendors}
           peachtreeInvoices={peachtreeInvoices}
+          peachtreeSummary={peachtreeSummary}
         />
       )}
 
@@ -991,18 +999,21 @@ export default function FinanceCenterPage() {
       {activeSection === "invoices" && (
         <SalesInvoicesWorkspace
           invoices={peachtreeInvoices}
+          summary={peachtreeSummary?.invoicing}
           onRefresh={loadFinanceCenterData}
         />
       )}
       {activeSection === "purchases" && (
         <PurchasesVendorAPWorkspace
           vendors={peachtreeVendors}
+          summary={peachtreeSummary?.payablesAP}
           onRefresh={loadFinanceCenterData}
         />
       )}
       {activeSection === "debtors" && (
         <DebtorsCreditWorkspace
           customers={peachtreeCustomers}
+          summary={peachtreeSummary?.receivablesAR}
           onRefresh={loadFinanceCenterData}
         />
       )}
@@ -1023,7 +1034,7 @@ export default function FinanceCenterPage() {
       {/* 5. FINANCIAL STATEMENTS */}
       {activeSection === "financials" && (
         canViewFullFinancials ? (
-          <FinancialStatementsModule journalEntries={journalEntries} />
+          <FinancialStatementsModule journalEntries={journalEntries} summary={peachtreeSummary} />
         ) : (
           <div className="py-16 text-center space-y-3 max-w-md mx-auto">
             <div className="p-3 bg-rose-500/10 text-rose-600 rounded-2xl w-fit mx-auto">

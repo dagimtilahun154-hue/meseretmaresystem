@@ -24,32 +24,27 @@ import { toast } from "sonner";
 
 interface SalesInvoicesWorkspaceProps {
   invoices?: any[];
+  summary?: any;
   onRefresh?: () => void;
 }
 
-export function SalesInvoicesWorkspace({ invoices = [], onRefresh }: SalesInvoicesWorkspaceProps) {
+export function SalesInvoicesWorkspace({ invoices = [], summary, onRefresh }: SalesInvoicesWorkspaceProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
 
-  const resolveInvoiceStatus = useCallback((inv: any, index?: number): "paid" | "overdue" | "pending" => {
+  const resolveInvoiceStatus = useCallback((inv: any): "paid" | "overdue" | "pending" => {
     const s = String(inv.status || "").toLowerCase();
-    if (s === "paid" || s === "settled") return "paid";
+    if (s === "paid" || s === "settled" || inv.isPaid || inv.paid) return "paid";
     if (s === "overdue") return "overdue";
     if (s === "pending") return "pending";
-
-    // If invoice carries legacy synced tag, use index distribution or date check
-    if (inv.isPaid || inv.paid || (typeof index === "number" && index % 3 === 0)) {
-      return "paid";
-    }
 
     const dateStr = inv.dueDate || inv.date;
     if (dateStr) {
       try {
         const dt = new Date(inv.dueDate || dateStr);
         const dueDate = inv.dueDate ? dt : new Date(dt.getTime() + 30 * 24 * 60 * 60 * 1000);
-        const now = new Date();
-        if (dueDate < now) {
+        if (dueDate < new Date()) {
           return "overdue";
         }
         return "pending";
@@ -73,12 +68,12 @@ export function SalesInvoicesWorkspace({ invoices = [], onRefresh }: SalesInvoic
 
   // Filter invoices
   const filteredInvoices = useMemo(() => {
-    return cleanInvoices.filter((inv: any, idx: number) => {
+    return cleanInvoices.filter((inv: any) => {
       const matchesSearch =
         String(inv.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         String(inv.customerName || inv.customer || "").toLowerCase().includes(searchQuery.toLowerCase());
 
-      const status = resolveInvoiceStatus(inv, idx);
+      const status = resolveInvoiceStatus(inv);
       const matchesStatus =
         statusFilter === "all" ||
         statusFilter === status;
@@ -87,28 +82,26 @@ export function SalesInvoicesWorkspace({ invoices = [], onRefresh }: SalesInvoic
     });
   }, [cleanInvoices, searchQuery, statusFilter, resolveInvoiceStatus]);
 
-  // Compute Invoicing KPIs strictly from live deduplicated records
-  const totalInvoiced = useMemo(() => {
-    return cleanInvoices.reduce((acc, inv) => acc + (Number(inv.total || inv.amount) || 0), 0);
-  }, [cleanInvoices]);
-
   const paidInvoicesList = useMemo(() => {
-    return cleanInvoices.filter((inv, idx) => resolveInvoiceStatus(inv, idx) === "paid");
+    return cleanInvoices.filter((inv) => resolveInvoiceStatus(inv) === "paid");
   }, [cleanInvoices, resolveInvoiceStatus]);
 
   const pendingInvoicesList = useMemo(() => {
-    return cleanInvoices.filter((inv, idx) => resolveInvoiceStatus(inv, idx) === "pending");
+    return cleanInvoices.filter((inv) => resolveInvoiceStatus(inv) === "pending");
   }, [cleanInvoices, resolveInvoiceStatus]);
 
   const overdueInvoicesList = useMemo(() => {
-    return cleanInvoices.filter((inv, idx) => resolveInvoiceStatus(inv, idx) === "overdue");
+    return cleanInvoices.filter((inv) => resolveInvoiceStatus(inv) === "overdue");
   }, [cleanInvoices, resolveInvoiceStatus]);
 
-  const totalPaid = useMemo(() => {
-    return paidInvoicesList.reduce((acc, inv) => acc + (Number(inv.total || inv.amount) || 0), 0);
-  }, [paidInvoicesList]);
-
-  const totalVatEstimated = totalInvoiced * 0.15; // 15% Ethiopian VAT
+  // Compute Invoicing KPIs strictly from authoritative backend summary when available
+  const totalInvoiced = summary?.totalInvoiced ?? cleanInvoices.reduce((acc, inv) => acc + (Number(inv.total || inv.amount) || 0), 0);
+  const totalPaid = summary?.totalPaid ?? paidInvoicesList.reduce((acc, inv) => acc + (Number(inv.total || inv.amount) || 0), 0);
+  const totalVatEstimated = summary?.totalVat ?? (totalInvoiced * 0.15);
+  const paidCount = summary?.paidCount ?? paidInvoicesList.length;
+  const overdueCount = summary?.overdueCount ?? overdueInvoicesList.length;
+  const pendingCount = summary?.pendingCount ?? pendingInvoicesList.length;
+  const totalInvoicesCount = summary?.invoicesCount ?? cleanInvoices.length;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -168,7 +161,7 @@ export function SalesInvoicesWorkspace({ invoices = [], onRefresh }: SalesInvoic
           <div className="text-lg sm:text-xl font-black text-foreground font-mono mt-1">
             {formatCurrency(totalInvoiced)}
           </div>
-          <p className="text-[11px] text-muted-foreground mt-0.5">{invoices.length} Total Issued Invoices</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{totalInvoicesCount} Total Issued Invoices</p>
         </Card>
 
         {/* Paid & Collected */}
@@ -180,7 +173,7 @@ export function SalesInvoicesWorkspace({ invoices = [], onRefresh }: SalesInvoic
           <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1">
             {formatCurrency(totalPaid)}
           </div>
-          <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">{paidInvoicesList.length} Invoices Settled</p>
+          <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">{paidCount} Invoices Settled</p>
         </Card>
 
         {/* Pending Invoices */}
@@ -190,7 +183,7 @@ export function SalesInvoicesWorkspace({ invoices = [], onRefresh }: SalesInvoic
             <Clock className="h-4 w-4 text-amber-500" />
           </div>
           <div className="text-lg sm:text-xl font-black text-amber-600 dark:text-amber-400 font-mono mt-1">
-            {pendingInvoicesList.length}
+            {pendingCount}
           </div>
           <p className="text-[11px] text-muted-foreground mt-0.5">Within 30-Day Payment Terms</p>
         </Card>
@@ -202,7 +195,7 @@ export function SalesInvoicesWorkspace({ invoices = [], onRefresh }: SalesInvoic
             <DollarSign className="h-4 w-4 text-rose-500" />
           </div>
           <div className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 font-mono mt-1">
-            {overdueInvoicesList.length}
+            {overdueCount}
           </div>
           <p className="text-[11px] text-rose-600 font-semibold mt-0.5">Maturity Past Due Date</p>
         </Card>

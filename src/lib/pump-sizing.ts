@@ -140,9 +140,10 @@ export function getFrictionLossPer100m(diameterInch: number): number {
 
 /**
  * Total Dynamic Head (TDH) calculation (Strict Page 210 / Annex A Standard)
- * TDH = Static Water Level + Dynamic Drawdown + Ground Elevation + Tank Height + (Effective Pipe Length * Friction Coefficient)
+ * Supports both Submersible Deep Well and Surface Centrifugal configurations.
  */
 export function calculateTDH(survey: {
+  pumpType?: "Submersible" | "Surface";
   staticWaterLevel?: number;
   dynamicDrawdown?: number;
   tankHeight?: number;
@@ -150,6 +151,9 @@ export function calculateTDH(survey: {
   pipeDistance?: number;
   dropPipeLength?: number;
   pipeDiameterInch?: number;
+  suctionLift?: number;
+  suctionPipeLength?: number;
+  suctionPipeDiameterInch?: number;
   waterSource?: string;
   fittings?: PipeFittings;
 }): {
@@ -159,6 +163,34 @@ export function calculateTDH(survey: {
   fittingsEquivalentLength: number;
   effectiveTotalPipeLength: number;
 } {
+  const isSurface = survey.pumpType === "Surface";
+  const fittingsEqLen = calculateFittingsEquivalentLength(survey.fittings);
+
+  if (isSurface) {
+    const suctionLift = Number(survey.suctionLift) || 0;
+    const dischargeElevation = Number(survey.tankHeight) || 0;
+    const groundElev = Number(survey.groundElevation) || 0;
+    const suctionLen = Number(survey.suctionPipeLength) || 6;
+    const deliveryLen = Number(survey.pipeDistance) || 50;
+    const suctionDiam = Number(survey.suctionPipeDiameterInch) || Number(survey.pipeDiameterInch) || 3.0;
+    const deliveryDiam = Number(survey.pipeDiameterInch) || 3.0;
+
+    const staticLift = suctionLift + dischargeElevation + groundElev;
+    const suctionFriction = (suctionLen / 100) * getFrictionLossPer100m(suctionDiam);
+    const deliveryFriction = ((deliveryLen + fittingsEqLen) / 100) * getFrictionLossPer100m(deliveryDiam);
+    const frictionLoss = Number((suctionFriction + deliveryFriction).toFixed(2));
+    const effectiveTotalPipeLength = suctionLen + deliveryLen + fittingsEqLen;
+    const tdh = Number((staticLift + frictionLoss).toFixed(2));
+
+    return {
+      tdh: Math.max(1, tdh),
+      staticLift: Number(staticLift.toFixed(2)),
+      frictionLoss,
+      fittingsEquivalentLength: fittingsEqLen,
+      effectiveTotalPipeLength: Number(effectiveTotalPipeLength.toFixed(2)),
+    };
+  }
+
   const staticLevel = Number(survey.staticWaterLevel) || 0;
   const drawdown = Number(survey.dynamicDrawdown) || 0;
   const tankElevation = Number(survey.tankHeight) || 0;
@@ -170,17 +202,14 @@ export function calculateTDH(survey: {
   // 1. Static Lift (Vertical component)
   const staticLift = staticLevel + drawdown + groundElev + tankElevation;
 
-  // 2. Pipe Fittings equivalent length (Page 210)
-  const fittingsEqLen = calculateFittingsEquivalentLength(survey.fittings);
-
-  // 3. Effective Total Pipe Length for friction
+  // 2. Effective Total Pipe Length for friction
   const effectiveTotalPipeLength = pipeLen + dropPipe + fittingsEqLen;
 
-  // 4. Friction Head Loss
+  // 3. Friction Head Loss
   const frictionPer100 = getFrictionLossPer100m(diameter);
   const frictionLoss = Number(((effectiveTotalPipeLength / 100) * frictionPer100).toFixed(2));
 
-  // 5. Total Dynamic Head
+  // 4. Total Dynamic Head
   const tdh = Number((staticLift + frictionLoss).toFixed(2));
 
   return {
@@ -190,6 +219,25 @@ export function calculateTDH(survey: {
     fittingsEquivalentLength: fittingsEqLen,
     effectiveTotalPipeLength: Number(effectiveTotalPipeLength.toFixed(2)),
   };
+}
+
+/**
+ * Calculates hydraulic water power in kW:
+ * P_hyd (kW) = (density * g * Q * H) / (3600 * 1000) = (Q_m3h * H_m) / 367.0
+ */
+export function calculateHydraulicPowerKw(flowM3h: number, headM: number): number {
+  if (flowM3h <= 0 || headM <= 0) return 0;
+  return Number(((flowM3h * headM) / 367.0).toFixed(2));
+}
+
+/**
+ * Calculates required shaft/motor power in kW given target efficiency (e.g. 65% = 0.65):
+ * P_shaft (kW) = P_hyd / efficiency
+ */
+export function calculateRequiredShaftPowerKw(flowM3h: number, headM: number, efficiency: number = 0.65): number {
+  const hydKw = calculateHydraulicPowerKw(flowM3h, headM);
+  if (hydKw <= 0 || efficiency <= 0) return 0;
+  return Number((hydKw / efficiency).toFixed(2));
 }
 
 /**

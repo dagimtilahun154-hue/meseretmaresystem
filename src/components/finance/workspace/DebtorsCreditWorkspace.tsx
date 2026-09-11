@@ -24,12 +24,14 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 
 interface DebtorsCreditWorkspaceProps {
   customers?: any[];
+  summary?: any;
   onRefresh?: () => void;
   onSelectCustomer?: (customer: any) => void;
 }
 
 export function DebtorsCreditWorkspace({
   customers = [],
+  summary,
   onRefresh,
   onSelectCustomer,
 }: DebtorsCreditWorkspaceProps) {
@@ -48,44 +50,17 @@ export function DebtorsCreditWorkspace({
     });
   }, [customers, searchQuery]);
 
-  // Compute AR Metrics strictly from live customer records
-  const totalAR = useMemo(() => {
-    return (customers || []).reduce((acc, c) => acc + (Number(c.balance) || 0), 0);
-  }, [customers]);
-
-  const debtorsCount = useMemo(() => {
-    return (customers || []).filter((c) => Number(c.balance) > 0).length;
-  }, [customers]);
-
-  const totalCreditLimit = useMemo(() => {
-    return (customers || []).reduce((acc, c) => acc + (Number(c.creditLimit) || 0), 0);
-  }, [customers]);
-
-  // Dynamic AR Aging analysis based on real balances
-  const arAgingData = useMemo(() => {
-    let current = 0;
-    let days30 = 0;
-    let days60 = 0;
-    let days90Plus = 0;
-
-    (customers || []).forEach((c) => {
-      const b = Number(c.balance) || 0;
-      if (b <= 0) return;
-      if (b < 20000) current += b;
-      else if (b < 60000) days30 += b;
-      else if (b < 150000) days60 += b;
-      else days90Plus += b;
-    });
-
-    return [
-      { name: "Current (0-30d)", amount: Math.round(current), color: "#10b981" },
-      { name: "31-60 Days", amount: Math.round(days30), color: "#3b82f6" },
-      { name: "61-90 Days", amount: Math.round(days60), color: "#f59e0b" },
-      { name: "90+ Days Overdue", amount: Math.round(days90Plus), color: "#ef4444" },
-    ];
-  }, [customers]);
-
-  const overdueRiskAmount = arAgingData[3].amount;
+  // Compute AR Metrics strictly from authoritative backend summary when available
+  const totalAR = summary?.totalReceivables ?? (customers || []).reduce((acc, c) => acc + (Number(c.balance) || 0), 0);
+  const debtorsCount = summary?.debtorsCount ?? (customers || []).filter((c) => Number(c.balance) > 0).length;
+  const totalCreditLimit = summary?.totalCreditLimit ?? (customers || []).reduce((acc, c) => acc + (Number(c.creditLimit) || 0), 0);
+  const arAgingData = summary?.arAging ?? [
+    { name: "Current (0-30d)", amount: 0, color: "#10b981" },
+    { name: "31-60 Days", amount: 0, color: "#3b82f6" },
+    { name: "61-90 Days", amount: 0, color: "#f59e0b" },
+    { name: "90+ Days Overdue", amount: 0, color: "#ef4444" },
+  ];
+  const overdueRiskAmount = summary?.overdueRiskAmount ?? (arAgingData[3]?.amount || 0);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">

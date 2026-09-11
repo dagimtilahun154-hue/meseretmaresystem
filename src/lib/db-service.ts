@@ -309,6 +309,7 @@ export const peachtreeDB = {
     }
   },
   getSyncedData: async () => apiFetch("/sync/peachtree/data"),
+  getSummary: async () => apiFetch("/sync/peachtree/summary"),
   getVault: async () => apiFetch("/sync/peachtree/vault"),
 };
 

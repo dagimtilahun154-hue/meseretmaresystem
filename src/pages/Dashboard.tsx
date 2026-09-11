@@ -261,16 +261,16 @@ export default function Dashboard() {
       return true;
     });
     const commercialSalesTotal = cleanRawInvoices.reduce((s: number, inv: any) => s + (Number(inv.total || inv.amount) || 0), 0);
-    const totalSales = commercialSalesTotal > 0 ? (commercialSalesTotal + posSalesTotal) : (toMoneyNumber(analytics?.stats?.totalSales) || 48191636.28);
+    const totalSales = commercialSalesTotal + posSalesTotal;
     
     const posProfit = sales.reduce((s, sale) => s + toMoneyNumber(sale.profit), 0);
     const totalProfit = posProfit > 0 ? (posProfit + totalSales * 0.5565) : Math.round(totalSales * 0.5565 * 100) / 100;
     const totalVat = Math.round(totalSales * 0.15 * 100) / 100;
-    const uniqueCustomers = rawCustomers.length > 0 ? rawCustomers.length : (new Set(sales.map((s) => s.customer.id)).size || 114);
+    const uniqueCustomers = rawCustomers.length > 0 ? rawCustomers.length : new Set(sales.map((s) => s.customer.id)).size;
 
     // Customer Receivables (Debtors / AR)
     const debtorsSum = rawCustomers.reduce((acc: number, c: any) => acc + (Number(c.balance || c.currentBalance) || 0), 0);
-    const customerReceivables = debtorsSum > 0 ? debtorsSum : 6365084.13;
+    const customerReceivables = debtorsSum;
 
     // Liquid Treasury & Cash/Bank Accounts
     const bankAccountsTotal = rawAccounts
@@ -299,17 +299,19 @@ export default function Dashboard() {
       return sum + (fw.workers || []).reduce((ws: number, w: any) => ws + toMoneyNumber(w.perDiem) * days, 0);
     }, 0);
 
-    const bankBalance = (bankAccountsTotal > 0 ? bankAccountsTotal : 63995.81) + posBankTotal + rentIncome;
+    const bankBalance = bankAccountsTotal + posBankTotal + rentIncome;
     const cfIncome = posBankTotal + posCashTotal + manualCashFlowIncome + rentIncome;
     const cfExpense = fieldWorkExpense + manualCashFlowExpense;
 
     const pendingRequests = analytics?.stats?.pendingRequests ?? 0;
     const loanOutstanding = customerReceivables;
 
-    // Payment method breakdown
-    const cashSales = 1450000 + posCashTotal;
-    const bankSales = 11250000 + posBankTotal;
-    const telebirrSales = 3850000;
+    // Payment method breakdown from real recorded transactions
+    const cashSales = posCashTotal;
+    const bankSales = posBankTotal;
+    const telebirrSales = normalizedFinancePayments
+      .filter(p => p.type === "received" && (p.method === "Telebirr" || p.method === "Mobile Money"))
+      .reduce((s, p) => s + toMoneyNumber(p.amount), 0);
     
     return { 
       totalSales, 

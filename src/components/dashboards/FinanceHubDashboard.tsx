@@ -27,20 +27,25 @@ export function FinanceHubDashboard() {
   const [hierarchyRequests, setHierarchyRequests] = useState<any[]>([]);
   const [cashFlow, setCashFlow] = useState<any[]>([]);
   const [peachtreeData, setPeachtreeData] = useState<any>({ invoices: [], customers: [], accounts: [] });
+  const [peachtreeSummary, setPeachtreeSummary] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
 
   const loadFinanceData = async () => {
     setLoading(true);
     try {
-      const [matchRes, vaultRes, reqsData, cashData, ptDataRes] = await Promise.all([
+      const [summaryRes, matchRes, vaultRes, reqsData, cashData, ptDataRes] = await Promise.all([
+        apiClient.get("/sync/peachtree/summary").catch(() => ({ data: null })),
         apiClient.get("/sync/peachtree/matches").catch(() => ({ data: { matches: [] } })),
         apiClient.get("/sync/peachtree/vault").catch(() => ({ data: { vaultInfo: null } })),
         hierarchyRequestsDB.getAll().catch(() => []),
         financeCenterDB.getAll("cash-flow").catch(() => []),
         apiClient.get("/sync/peachtree/data").catch(() => ({ data: null })),
       ]);
-      setMatches(matchRes.data.matches || []);
-      setVaultInfo(vaultRes.data.vaultInfo || null);
+      if (summaryRes?.data?.data) {
+        setPeachtreeSummary(summaryRes.data.data);
+      }
+      setMatches(matchRes.data?.matches || []);
+      setVaultInfo(vaultRes.data?.vaultInfo || null);
       setHierarchyRequests(Array.isArray(reqsData) ? reqsData : []);
       setCashFlow(Array.isArray(cashData) ? cashData : []);
       if (ptDataRes.data) {
@@ -129,18 +134,27 @@ export function FinanceHubDashboard() {
   }, [todaySales, cashFlow]);
 
   const totalCommercialInvoiced = useMemo(() => {
-    return (peachtreeData.invoices || []).reduce((acc: number, inv: any) => acc + (Number(inv.total || inv.amount) || 0), 0) || 19582562.45;
-  }, [peachtreeData.invoices]);
+    if (peachtreeSummary?.invoicing?.totalInvoiced !== undefined) {
+      return Number(peachtreeSummary.invoicing.totalInvoiced);
+    }
+    return (peachtreeData.invoices || []).reduce((acc: number, inv: any) => acc + (Number(inv.total || inv.amount) || 0), 0);
+  }, [peachtreeSummary, peachtreeData.invoices]);
 
   const totalReceivablesAR = useMemo(() => {
-    return (peachtreeData.customers || []).reduce((acc: number, c: any) => acc + (Number(c.balance) || 0), 0) || 6365084.13;
-  }, [peachtreeData.customers]);
+    if (peachtreeSummary?.receivablesAR?.totalReceivables !== undefined) {
+      return Number(peachtreeSummary.receivablesAR.totalReceivables);
+    }
+    return (peachtreeData.customers || []).reduce((acc: number, c: any) => acc + (Number(c.balance) || 0), 0);
+  }, [peachtreeSummary, peachtreeData.customers]);
 
   const totalBankLiquidity = useMemo(() => {
+    if (peachtreeSummary?.treasury?.liquidAccountsTotal !== undefined) {
+      return Number(peachtreeSummary.treasury.liquidAccountsTotal);
+    }
     return (peachtreeData.accounts || [])
       .filter((a: any) => String(a.id || a.code || "").startsWith("11"))
-      .reduce((acc: number, a: any) => acc + (Number(a.balance || a.openingBalance) || 0), 0) || 613545.81;
-  }, [peachtreeData.accounts]);
+      .reduce((acc: number, a: any) => acc + (Number(a.balance || a.openingBalance) || 0), 0);
+  }, [peachtreeSummary, peachtreeData.accounts]);
 
   const pendingPayrollRequests = useMemo(() => {
     return hierarchyRequests.filter(
@@ -158,15 +172,15 @@ export function FinanceHubDashboard() {
       key: "today_revenue",
       label: "Today's Inflow",
       value: todayRevenue > 0 ? formatCurrency(todayRevenue) : formatCurrency(totalCommercialInvoiced),
-      subtext: todayRevenue > 0 ? `${todaySales.length} Transactions Today` : "Peachtree Commercial Billed",
+      subtext: todayRevenue > 0 ? `${todaySales.length} Transactions Today` : "Peachtree Commercial Invoiced",
       icon: TrendingUp,
       gradientClass: "stat-gradient-sales",
-      badge: todayRevenue > 0 ? "Today" : "Commercial AR",
+      badge: todayRevenue > 0 ? "Today" : "Commercial Billed",
     },
     {
       key: "commercial_invoices",
       label: "Commercial Invoices",
-      value: `${(peachtreeData.invoices || []).length || 202} Invoices`,
+      value: `${peachtreeSummary?.invoicing?.totalCount ?? (peachtreeData.invoices || []).length} Invoices`,
       subtext: "Synced Peachtree Ledger",
       icon: ShoppingCart,
       gradientClass: "stat-gradient-products",
@@ -176,7 +190,7 @@ export function FinanceHubDashboard() {
       key: "customer_receivables",
       label: "Customer Receivables",
       value: formatCurrency(totalReceivablesAR),
-      subtext: `${(peachtreeData.customers || []).length || 114} Account Debtors`,
+      subtext: `${peachtreeSummary?.receivablesAR?.activeDebtorsCount ?? (peachtreeData.customers || []).length} Account Debtors`,
       icon: Users,
       gradientClass: "stat-gradient-profit",
       badge: "Debtors",

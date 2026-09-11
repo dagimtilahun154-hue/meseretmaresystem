@@ -454,15 +454,32 @@ export default function SiteAssessmentPage() {
                 </div>
               </div>
 
-              {/* Section 7: Solar Pump Requirement */}
+              {/* Section 7: Solar Pump Requirement & Technical Questionnaire */}
               <div className="space-y-3 bg-muted/20 p-4 rounded-xl border">
-                <h4 className="font-bold text-xs uppercase tracking-wider text-primary">Section 7: Solar Pump Requirement</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-primary">Section 7: Solar Pump Requirement & Questionnaire</h4>
+                  <Badge variant="outline" className="text-[10px] font-mono">Design Standard η ≥ 65%</Badge>
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <Label className="text-[10px] font-semibold">Pump Technology</Label>
+                    {sel(
+                      dc.solarRequirement.proposedPumpType || "submersible pump",
+                      (v) => setDc({...dc, solarRequirement: {...dc.solarRequirement, proposedPumpType: v}}),
+                      ["submersible pump", "surface centrifugal pump", "solar surface pump"]
+                    )}
+                  </div>
+                  <div><Label className="text-[10px] font-semibold">Total Dynamic Head H (m)</Label><Input value={dc.solarRequirement.totalPumpingHead} onChange={(e) => setDc({...dc, solarRequirement: {...dc.solarRequirement, totalPumpingHead: e.target.value}})} className="bg-primary/5 border-primary/30 font-mono font-semibold" /></div>
                   <div><Label className="text-[10px] font-semibold">Daily Water Demand (m³)</Label><Input value={dc.solarRequirement.dailyWaterDemand} onChange={(e) => setDc({...dc, solarRequirement: {...dc.solarRequirement, dailyWaterDemand: e.target.value}})} className="bg-primary/5 border-primary/30 font-mono font-semibold" /></div>
-                  <div><Label className="text-[10px] font-semibold">Total Pumping Head (m)</Label><Input value={dc.solarRequirement.totalPumpingHead} onChange={(e) => setDc({...dc, solarRequirement: {...dc.solarRequirement, totalPumpingHead: e.target.value}})} className="bg-primary/5 border-primary/30 font-mono font-semibold" /></div>
-                  <div><Label className="text-[10px] font-semibold">Proposed Pump</Label><Input value={dc.solarRequirement.proposedPumpCapacity} onChange={(e) => setDc({...dc, solarRequirement: {...dc.solarRequirement, proposedPumpCapacity: e.target.value}})} className="bg-primary/5 border-primary/30 font-mono font-semibold" /></div>
-                  <div><Label className="text-[10px] font-semibold">Proposed PV Capacity</Label><Input value={dc.solarRequirement.proposedPvCapacity} onChange={(e) => setDc({...dc, solarRequirement: {...dc.solarRequirement, proposedPvCapacity: e.target.value}})} className="bg-background border-border font-mono" /></div>
-                  <div><Label className="text-[10px] font-semibold">Pumping Hours / Day</Label><Input value={dc.solarRequirement.pumpingHoursPerDay} onChange={(e) => setDc({...dc, solarRequirement: {...dc.solarRequirement, pumpingHoursPerDay: e.target.value}})} className="bg-background border-border font-mono" /></div>
+                  <div><Label className="text-[10px] font-semibold">Hourly Requirement (m³/h)</Label><Input value={dc.solarRequirement.requiredFlowRate || (parseFloat(dc.solarRequirement.dailyWaterDemand || "0") / 5.5).toFixed(2)} onChange={(e) => setDc({...dc, solarRequirement: {...dc.solarRequirement, requiredFlowRate: e.target.value}})} className="bg-background border-border font-mono" /></div>
+                  
+                  <div><Label className="text-[10px] font-semibold">Discharge Rate Q (L/s)</Label><Input value={dc.solarRequirement.dischargeRateLps || (parseFloat(dc.solarRequirement.requiredFlowRate || "0") / 3.6).toFixed(2)} onChange={(e) => setDc({...dc, solarRequirement: {...dc.solarRequirement, dischargeRateLps: e.target.value}})} className="bg-background border-border font-mono" /></div>
+                  <div><Label className="text-[10px] font-semibold">Water Temp (°C)</Label><Input value={dc.solarRequirement.waterTempC || "20"} onChange={(e) => setDc({...dc, solarRequirement: {...dc.solarRequirement, waterTempC: e.target.value}})} className="bg-background border-border font-mono" /></div>
+                  <div><Label className="text-[10px] font-semibold">Pump Efficiency η (%)</Label><Input value={dc.solarRequirement.pumpEfficiency || "65"} onChange={(e) => setDc({...dc, solarRequirement: {...dc.solarRequirement, pumpEfficiency: e.target.value}})} className="bg-background border-border font-mono" /></div>
+                  <div><Label className="text-[10px] font-semibold">Min Pump Power (kW)</Label><Input value={dc.solarRequirement.minPumpKw || "5.5"} onChange={(e) => setDc({...dc, solarRequirement: {...dc.solarRequirement, minPumpKw: e.target.value}})} className="bg-background border-border font-mono" /></div>
+
+                  <div className="col-span-2"><Label className="text-[10px] font-semibold">Proposed Pump Model</Label><Input value={dc.solarRequirement.proposedPumpCapacity} onChange={(e) => setDc({...dc, solarRequirement: {...dc.solarRequirement, proposedPumpCapacity: e.target.value}})} className="bg-primary/5 border-primary/30 font-mono font-semibold" /></div>
+                  <div><Label className="text-[10px] font-semibold">Proposed PV Array</Label><Input value={dc.solarRequirement.proposedPvCapacity} onChange={(e) => setDc({...dc, solarRequirement: {...dc.solarRequirement, proposedPvCapacity: e.target.value}})} className="bg-background border-border font-mono" /></div>
                   <div><Label className="text-[10px] font-semibold">Technical Feasibility</Label>{sel(dc.solarRequirement.technicalFeasibility, (v) => setDc({...dc, solarRequirement: {...dc.solarRequirement, technicalFeasibility: v}}), ["High", "Medium", "Low"])}</div>
                 </div>
               </div>

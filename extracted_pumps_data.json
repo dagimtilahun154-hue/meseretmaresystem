@@ -177,7 +177,8 @@
           "head": 30,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SDC3.5/50-48/400",
@@ -300,7 +301,8 @@
           "head": 50,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SDC3.5/70-72/600",
@@ -423,7 +425,8 @@
           "head": 70,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SDC3.5/90-96/750",
@@ -546,7 +549,8 @@
           "head": 90,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SDC3.5/120-144/1100",
@@ -669,7 +673,8 @@
           "head": 120,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SDC4.5/130-192/1500",
@@ -792,7 +797,8 @@
           "head": 130,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SDC4.5/190-280/2200",
@@ -915,7 +921,8 @@
           "head": 190,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SDC7.5/150-280/2200",
@@ -1038,7 +1045,8 @@
           "head": 150,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SDC10.0/170-385/3000",
@@ -1161,7 +1169,8 @@
           "head": 170,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SPC3.0/30-24/300",
@@ -1284,7 +1293,8 @@
           "head": 30,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SPC3.5/50-48/400",
@@ -1407,7 +1417,8 @@
           "head": 50,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SPC3.5/80-72/600",
@@ -1530,7 +1541,8 @@
           "head": 80,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SPC3.0/100-96/750",
@@ -1653,7 +1665,8 @@
           "head": 100,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SPC3.0/140-144/1100",
@@ -1776,7 +1789,8 @@
           "head": 140,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SPC6.0/130-192/1500",
@@ -1899,7 +1913,8 @@
           "head": 130,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SPC6.0/190-280/2200",
@@ -2022,7 +2037,8 @@
           "head": 190,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SPC6.5/260-385/3000",
@@ -2145,7 +2161,8 @@
           "head": 260,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "2RSS1.2/45-24/180",
@@ -2268,7 +2285,8 @@
           "head": 45,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "2RSS1.2/60-24/250",
@@ -2391,7 +2409,8 @@
           "head": 60,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "2RSS1.5/90-48/400",
@@ -2514,7 +2533,8 @@
           "head": 90,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "2RSS1.5/120-72/600",
@@ -2637,7 +2657,8 @@
           "head": 120,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "2RSC1.5/35-24/250",
@@ -2760,7 +2781,8 @@
           "head": 35,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "2RSC1.5/60-48/400",
@@ -2883,7 +2905,8 @@
           "head": 60,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "2RSC1.5/85-72/600",
@@ -3006,7 +3029,8 @@
           "head": 85,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "3QGC1.8/80-48/400",
@@ -3129,7 +3153,8 @@
           "head": 80,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "3QGC2.0/100-72/600",
@@ -3252,7 +3277,8 @@
           "head": 100,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4QGC2.5/120-72/600",
@@ -3375,7 +3401,8 @@
           "head": 120,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "JTCPJW5/38-D48/500",
@@ -3482,7 +3509,8 @@
           "head": 38,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "JTCPJW5/83-D48/750",
@@ -3589,7 +3617,8 @@
           "head": 83,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "JTCPJW8.0/70-D72/1000",
@@ -3696,7 +3725,8 @@
           "head": 70,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "JTCPJW12/48-D72/1000",
@@ -3803,7 +3833,8 @@
           "head": 48,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "JTCHM5/38-D48/500",
@@ -3910,7 +3941,8 @@
           "head": 38,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "JTCHM8.0/70-D72/1000",
@@ -4017,7 +4049,8 @@
           "head": 70,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "JTCPW5/83-D48/750",
@@ -4124,7 +4157,8 @@
           "head": 83,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "JTCPW8/70-D72/1000",
@@ -4231,7 +4265,8 @@
           "head": 70,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "3SDM2/11-0.25",
@@ -4338,7 +4373,8 @@
           "head": 44,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "3SDM2/15-0.37",
@@ -4445,7 +4481,8 @@
           "head": 60,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "3SDM2.5/21-0.55",
@@ -4552,7 +4589,8 @@
           "head": 84,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "3.5SDM3/11-0.37",
@@ -4659,7 +4697,8 @@
           "head": 45,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "3.5SDM3/15-0.55",
@@ -4766,7 +4805,8 @@
           "head": 61,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SDM3/9-0.37",
@@ -4873,7 +4913,8 @@
           "head": 63,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SDM3/12-0.55",
@@ -4980,7 +5021,8 @@
           "head": 84,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SDM3/16-0.75",
@@ -5087,7 +5129,8 @@
           "head": 112,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SDM6/10-0.75",
@@ -5194,7 +5237,8 @@
           "head": 67,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "4SDM6/14-1.1",
@@ -5301,7 +5345,8 @@
           "head": 94,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "QB60",
@@ -5384,7 +5429,8 @@
           "head": 35,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "QB70",
@@ -5467,7 +5513,8 @@
           "head": 50,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "QB80",
@@ -5550,7 +5597,8 @@
           "head": 60,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "CPM130",
@@ -5633,7 +5681,8 @@
           "head": 18,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "CPM158",
@@ -5716,7 +5765,8 @@
           "head": 30,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "CPM190",
@@ -5799,7 +5849,8 @@
           "head": 36,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "JET100",
@@ -5882,7 +5933,8 @@
           "head": 45,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "JET150",
@@ -5965,7 +6017,8 @@
           "head": 55,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "QDX1.5-17-0.37",
@@ -6048,7 +6101,8 @@
           "head": 17,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "QDX3-20-0.55",
@@ -6131,7 +6185,8 @@
           "head": 20,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "QDX10-10-0.55",
@@ -6214,7 +6269,8 @@
           "head": 10,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "WQ10-10-0.75",
@@ -6297,7 +6353,8 @@
           "head": 10,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "WQ15-15-1.5",
@@ -6380,7 +6437,8 @@
           "head": 15,
           "flow": 0.0
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS3-80-1.5",
@@ -6398,7 +6456,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 8.0,
       "maxHead": 96.0,
       "outletSize": "1.5\"",
@@ -6495,7 +6553,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS3-112-2.2",
@@ -6513,7 +6572,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 8.0,
       "maxHead": 134.0,
       "outletSize": "1.5\"",
@@ -6610,7 +6669,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS3-160-3",
@@ -6628,7 +6688,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 8.0,
       "maxHead": 191.0,
       "outletSize": "1.5\"",
@@ -6725,7 +6785,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS3-208-4",
@@ -6743,7 +6804,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 8.0,
       "maxHead": 248.0,
       "outletSize": "1.5\"",
@@ -6840,7 +6901,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS3-272-5.5",
@@ -6858,7 +6920,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 8.0,
       "maxHead": 325.0,
       "outletSize": "1.5\"",
@@ -6955,7 +7017,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS3-368-7.5",
@@ -6973,7 +7036,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 8.0,
       "maxHead": 439.0,
       "outletSize": "1.5\"",
@@ -7070,7 +7133,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS6-60-1.5",
@@ -7088,7 +7152,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 12.0,
       "maxHead": 85.0,
       "outletSize": "1.5\"",
@@ -7185,7 +7249,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS6-90-2.2",
@@ -7203,7 +7268,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 12.0,
       "maxHead": 128.0,
       "outletSize": "1.5\"",
@@ -7300,7 +7365,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS6-120-3",
@@ -7318,7 +7384,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 12.0,
       "maxHead": 170.0,
       "outletSize": "1.5\"",
@@ -7415,7 +7481,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS6-165-4",
@@ -7433,7 +7500,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 12.0,
       "maxHead": 234.0,
       "outletSize": "1.5\"",
@@ -7530,7 +7597,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS6-225-5.5",
@@ -7548,7 +7616,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 12.0,
       "maxHead": 320.0,
       "outletSize": "1.5\"",
@@ -7645,7 +7713,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS6-285-7.5",
@@ -7663,7 +7732,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 12.0,
       "maxHead": 405.0,
       "outletSize": "1.5\"",
@@ -7760,7 +7829,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS6-390-11",
@@ -7778,7 +7848,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 12.0,
       "maxHead": 554.0,
       "outletSize": "1.5\"",
@@ -7875,7 +7945,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS10-37-1.5",
@@ -7893,7 +7964,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 16.0,
       "maxHead": 66.0,
       "outletSize": "2\"",
@@ -7990,7 +8061,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS10-62-2.2",
@@ -8008,7 +8080,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 16.0,
       "maxHead": 110.0,
       "outletSize": "2\"",
@@ -8105,7 +8177,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS10-75-3",
@@ -8123,7 +8196,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 16.0,
       "maxHead": 132.0,
       "outletSize": "2\"",
@@ -8220,7 +8293,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS10-100-4",
@@ -8238,7 +8312,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 16.0,
       "maxHead": 176.0,
       "outletSize": "2\"",
@@ -8335,7 +8409,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS10-137-5.5",
@@ -8353,7 +8428,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 16.0,
       "maxHead": 242.0,
       "outletSize": "2\"",
@@ -8450,7 +8525,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS10-186-7.5",
@@ -8468,7 +8544,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 16.0,
       "maxHead": 330.0,
       "outletSize": "2\"",
@@ -8565,7 +8641,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS10-248-11",
@@ -8583,7 +8660,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 16.0,
       "maxHead": 440.0,
       "outletSize": "2\"",
@@ -8680,7 +8757,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS10-335-15",
@@ -8698,7 +8776,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 16.0,
       "maxHead": 594.0,
       "outletSize": "2\"",
@@ -8795,7 +8873,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS15-25-1.5",
@@ -8813,7 +8892,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 26.0,
       "maxHead": 39.0,
       "outletSize": "2\"",
@@ -8910,7 +8989,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS15-38-2.2",
@@ -8928,7 +9008,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 26.0,
       "maxHead": 59.0,
       "outletSize": "2\"",
@@ -9025,7 +9105,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS15-51-3",
@@ -9043,7 +9124,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 26.0,
       "maxHead": 78.0,
       "outletSize": "2\"",
@@ -9140,7 +9221,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS15-76-4",
@@ -9158,7 +9240,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 26.0,
       "maxHead": 117.0,
       "outletSize": "2\"",
@@ -9255,7 +9337,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS15-102-5.5",
@@ -9273,7 +9356,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 26.0,
       "maxHead": 156.0,
       "outletSize": "2\"",
@@ -9370,7 +9453,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS15-127-7.5",
@@ -9388,7 +9472,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 26.0,
       "maxHead": 195.0,
       "outletSize": "2\"",
@@ -9485,7 +9569,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS15-190-11",
@@ -9503,7 +9588,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 26.0,
       "maxHead": 293.0,
       "outletSize": "2\"",
@@ -9600,7 +9685,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS15-254-15",
@@ -9618,7 +9704,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 26.0,
       "maxHead": 371.0,
       "outletSize": "2\"",
@@ -9715,7 +9801,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS15-280-18.5",
@@ -9733,7 +9820,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 26.0,
       "maxHead": 430.0,
       "outletSize": "2\"",
@@ -9830,7 +9917,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS15-305-22",
@@ -9848,7 +9936,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 26.0,
       "maxHead": 469.0,
       "outletSize": "2\"",
@@ -9945,7 +10033,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS20-24-2.2",
@@ -9963,7 +10052,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 30.0,
       "maxHead": 39.0,
       "outletSize": "3\"",
@@ -10060,7 +10149,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS20-36-3",
@@ -10078,7 +10168,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 30.0,
       "maxHead": 59.0,
       "outletSize": "3\"",
@@ -10175,7 +10265,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS20-48-4",
@@ -10193,7 +10284,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 30.0,
       "maxHead": 79.0,
       "outletSize": "3\"",
@@ -10290,7 +10381,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS20-72-5.5",
@@ -10308,7 +10400,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 30.0,
       "maxHead": 118.0,
       "outletSize": "3\"",
@@ -10405,7 +10497,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS20-96-7.5",
@@ -10423,7 +10516,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 30.0,
       "maxHead": 158.0,
       "outletSize": "3\"",
@@ -10520,7 +10613,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS20-132-11",
@@ -10538,7 +10632,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 30.0,
       "maxHead": 217.0,
       "outletSize": "3\"",
@@ -10635,7 +10729,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS20-180-15",
@@ -10653,7 +10748,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 30.0,
       "maxHead": 296.0,
       "outletSize": "3\"",
@@ -10750,7 +10845,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS20-204-18.5",
@@ -10768,7 +10864,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 30.0,
       "maxHead": 335.0,
       "outletSize": "3\"",
@@ -10865,7 +10961,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS20-228-22",
@@ -10883,7 +10980,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 30.0,
       "maxHead": 375.0,
       "outletSize": "3\"",
@@ -10980,7 +11077,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS30-20-3",
@@ -10998,7 +11096,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 42.0,
       "maxHead": 35.0,
       "outletSize": "3\"",
@@ -11095,7 +11193,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS30-30-4",
@@ -11113,7 +11212,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 42.0,
       "maxHead": 53.0,
       "outletSize": "3\"",
@@ -11210,7 +11309,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS30-50-5.5",
@@ -11228,7 +11328,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 42.0,
       "maxHead": 88.0,
       "outletSize": "3\"",
@@ -11325,7 +11425,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS30-60-7.5",
@@ -11343,7 +11444,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 42.0,
       "maxHead": 106.0,
       "outletSize": "3\"",
@@ -11440,7 +11541,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS30-90-11",
@@ -11458,7 +11560,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 42.0,
       "maxHead": 158.0,
       "outletSize": "3\"",
@@ -11555,7 +11657,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS30-120-15",
@@ -11573,7 +11676,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 42.0,
       "maxHead": 211.0,
       "outletSize": "3\"",
@@ -11670,7 +11773,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS30-140-18.5",
@@ -11688,7 +11792,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 42.0,
       "maxHead": 246.0,
       "outletSize": "3\"",
@@ -11785,7 +11889,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-4SDGS30-150-22",
@@ -11803,7 +11908,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 42.0,
       "maxHead": 264.0,
       "outletSize": "3\"",
@@ -11900,7 +12005,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SQB2-35-24V-300W",
@@ -11918,7 +12024,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 2.0,
       "maxHead": 35.0,
       "outletSize": "1\"",
@@ -12019,7 +12125,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SQB2-50-48V-500W",
@@ -12037,7 +12144,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 2.0,
       "maxHead": 50.0,
       "outletSize": "1\"",
@@ -12138,7 +12245,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SQB2-65-72V-750W",
@@ -12156,7 +12264,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 2.0,
       "maxHead": 65.0,
       "outletSize": "1\"",
@@ -12257,7 +12365,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SCPM4.3-28-48V-550W-1",
@@ -12275,7 +12384,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 4.3,
       "maxHead": 28.0,
       "outletSize": "1\"",
@@ -12376,7 +12485,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SCPM16-22-72V-750W-1.5",
@@ -12394,7 +12504,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 16.0,
       "maxHead": 22.0,
       "outletSize": "1.5\"",
@@ -12495,7 +12605,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SCPM23-19-72V-750W-2",
@@ -12513,7 +12624,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 23.0,
       "maxHead": 19.0,
       "outletSize": "2\"",
@@ -12614,7 +12725,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SCPM24-23-96V-1100W-2",
@@ -12632,7 +12744,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 24.0,
       "maxHead": 23.0,
       "outletSize": "2\"",
@@ -12733,7 +12845,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SCPM45-22-96V-1500W-3",
@@ -12751,7 +12864,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 45.0,
       "maxHead": 22.0,
       "outletSize": "3\"",
@@ -12852,7 +12965,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SCPM66-22-280V-2200W-4",
@@ -12870,7 +12984,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 66.0,
       "maxHead": 22.0,
       "outletSize": "4\"",
@@ -12971,7 +13085,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SCPM80-26-380V-3000W-5",
@@ -12989,7 +13104,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 80.0,
       "maxHead": 26.0,
       "outletSize": "5\"",
@@ -13090,7 +13205,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-ZJHD4.5-15-48V-550W-1",
@@ -13108,7 +13224,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 4.5,
       "maxHead": 15.0,
       "outletSize": "1\"",
@@ -13209,7 +13325,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-ZJHD7-20-48V-750W-1",
@@ -13227,7 +13344,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 7.0,
       "maxHead": 20.0,
       "outletSize": "1\"",
@@ -13328,7 +13445,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-ZJHD15-10-48V-750W-2",
@@ -13346,7 +13464,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 15.0,
       "maxHead": 10.0,
       "outletSize": "2\"",
@@ -13447,7 +13565,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-ZJHD20-16-72V-1100W-2",
@@ -13465,7 +13584,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 20.0,
       "maxHead": 16.0,
       "outletSize": "2\"",
@@ -13566,7 +13685,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-ZJHD23-20-96V-1500W-2",
@@ -13584,7 +13704,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 23.0,
       "maxHead": 20.0,
       "outletSize": "2\"",
@@ -13685,7 +13805,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-ZJHD26-10-48V-750W-3",
@@ -13703,7 +13824,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 26.0,
       "maxHead": 10.0,
       "outletSize": "3\"",
@@ -13804,7 +13925,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-ZJHD33-15-72V-1100W-3",
@@ -13822,7 +13944,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 33.0,
       "maxHead": 15.0,
       "outletSize": "3\"",
@@ -13923,7 +14045,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-ZJHD36-17-96V-1500W-3",
@@ -13941,7 +14064,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 36.0,
       "maxHead": 17.0,
       "outletSize": "3\"",
@@ -14042,7 +14165,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-ZJHD44-13-72V-1100W-4",
@@ -14060,7 +14184,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 44.0,
       "maxHead": 13.0,
       "outletSize": "4\"",
@@ -14161,7 +14285,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-ZJHD48-16-96V-1500W-4",
@@ -14179,7 +14304,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 48.0,
       "maxHead": 16.0,
       "outletSize": "4\"",
@@ -14280,7 +14405,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-ZJHD54-21-280V-2200W-4",
@@ -14298,7 +14424,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 54.0,
       "maxHead": 21.0,
       "outletSize": "4\"",
@@ -14399,7 +14525,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-ZJHD63-19-280V-2200W-4",
@@ -14417,7 +14544,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 63.0,
       "maxHead": 19.0,
       "outletSize": "4\"",
@@ -14518,7 +14645,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SQDX5-25-48V-500W-1",
@@ -14536,7 +14664,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 5.0,
       "maxHead": 25.0,
       "outletSize": "1\"",
@@ -14645,7 +14773,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SQDX6-31-48V-750W-1",
@@ -14663,7 +14792,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 6.0,
       "maxHead": 31.0,
       "outletSize": "1\"",
@@ -14772,7 +14901,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SQDX12-28-48V-750W-1.5",
@@ -14790,7 +14920,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 12.0,
       "maxHead": 28.0,
       "outletSize": "1.5\"",
@@ -14899,7 +15029,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SQDX15-26-72V-750W-2",
@@ -14917,7 +15048,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 15.0,
       "maxHead": 26.0,
       "outletSize": "2\"",
@@ -15026,7 +15157,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SQDX42-11-120V-1100W-2.5",
@@ -15044,7 +15176,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 42.0,
       "maxHead": 11.0,
       "outletSize": "2.5\"",
@@ -15153,7 +15285,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-SQDX57-12-96V-1500W-3",
@@ -15171,7 +15304,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 57.0,
       "maxHead": 12.0,
       "outletSize": "3\"",
@@ -15280,7 +15413,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-2SDC3-35-24V-300W",
@@ -15298,7 +15432,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 3.0,
       "maxHead": 35.0,
       "outletSize": "3/4\"",
@@ -15407,7 +15541,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-2SDC3-50-48V-450W",
@@ -15425,7 +15560,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 3.0,
       "maxHead": 50.0,
       "outletSize": "3/4\"",
@@ -15534,7 +15669,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-2SDC3-65-48V-550W",
@@ -15552,7 +15688,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 3.0,
       "maxHead": 65.0,
       "outletSize": "3/4\"",
@@ -15661,7 +15797,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-2SDC3-80-48V-750W",
@@ -15679,7 +15816,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 3.0,
       "maxHead": 80.0,
       "outletSize": "3/4\"",
@@ -15788,7 +15925,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-2SDC3-35-220V-300W",
@@ -15806,7 +15944,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 3.0,
       "maxHead": 35.0,
       "outletSize": "3/4\"",
@@ -15907,7 +16045,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-2SDC3-50-220V-450W",
@@ -15925,7 +16064,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 3.0,
       "maxHead": 50.0,
       "outletSize": "3/4\"",
@@ -16026,7 +16165,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-2SDC3-65-220V-550W",
@@ -16044,7 +16184,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 3.0,
       "maxHead": 65.0,
       "outletSize": "3/4\"",
@@ -16145,7 +16285,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "PUMP-CH-2SDC3-80-220V-750W",
@@ -16163,7 +16304,7 @@
       "technicalDataTitle": "Technical Parameters",
       "hydraulicCurveTitle": "Hydraulic Performance Curve / Brochure Page",
       "hydraulicCurveImage": "/uploads/chinese_pdf_rendered/page_2.png",
-      "sourceUrl": "陆地泵汽油机泵太阳能系列.pdf",
+      "sourceUrl": "\u9646\u5730\u6cf5\u6c7d\u6cb9\u673a\u6cf5\u592a\u9633\u80fd\u7cfb\u5217.pdf",
       "maxFlow": 3.0,
       "maxHead": 80.0,
       "outletSize": "3/4\"",
@@ -16264,7 +16405,8 @@
           "price": 30,
           "cost": 15
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "PBG15-2-130",
@@ -16292,7 +16434,7 @@
         },
         {
           "parameter": "Max Flow Rate",
-          "value": "2.2 m³/h"
+          "value": "2.2 m\u00b3/h"
         },
         {
           "parameter": "Max Head Lift",
@@ -16349,7 +16491,8 @@
           "price": 25,
           "cost": 12
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "PBG20-4-130",
@@ -16377,7 +16520,7 @@
         },
         {
           "parameter": "Max Flow Rate",
-          "value": "4 m³/h"
+          "value": "4 m\u00b3/h"
         },
         {
           "parameter": "Max Head Lift",
@@ -16434,7 +16577,8 @@
           "price": 25,
           "cost": 12
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "PBG25-4-130",
@@ -16462,7 +16606,7 @@
         },
         {
           "parameter": "Max Flow Rate",
-          "value": "4.2 m³/h"
+          "value": "4.2 m\u00b3/h"
         },
         {
           "parameter": "Max Head Lift",
@@ -16519,7 +16663,8 @@
           "price": 25,
           "cost": 12
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "model": "PBG32-4-130",
@@ -16547,7 +16692,7 @@
         },
         {
           "parameter": "Max Flow Rate",
-          "value": "5.5 m³/h"
+          "value": "5.5 m\u00b3/h"
         },
         {
           "parameter": "Max Head Lift",
@@ -16604,7 +16749,8 @@
           "price": 25,
           "cost": 12
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "difful-4dgs3-100-2200",
@@ -16614,11 +16760,11 @@
       "secondCategory": "Deep Well Submersible Pump",
       "power": "2200W",
       "voltage": "DC 80V-420V",
-      "description": "6000rpm High Speed Solar Submersible Deep Well Pump with 3m³/h rated flow and 100m rated head.",
+      "description": "6000rpm High Speed Solar Submersible Deep Well Pump with 3m\u00b3/h rated flow and 100m rated head.",
       "image": "/uploads/submersible-pump.jpg",
       "controllerImage": "/uploads/submersible-controller.jpg",
       "panelImage": "/uploads/solar-panel.jpg",
-      "introductionTitle": "6000rpm High Speed Deep Well Pump with 3m³/h Rated Flow",
+      "introductionTitle": "6000rpm High Speed Deep Well Pump with 3m\u00b3/h Rated Flow",
       "technicalDataTitle": "6000rpm High Speed Deep Well Pump Technical Data",
       "hydraulicCurveTitle": "Hydraulic Performance Curves",
       "hydraulicCurveImage": "/uploads/6000rpm-hydraulic-curve.png",
@@ -16684,13 +16830,13 @@
       ],
       "equipment": [
         {
-          "name": "Pump – 2200W",
+          "name": "Pump \u2013 2200W",
           "quantity": 1,
           "unit": "Piece",
           "price": 35000
         },
         {
-          "name": "Pump Controller – 2200W",
+          "name": "Pump Controller \u2013 2200W",
           "quantity": 1,
           "unit": "Piece",
           "price": 8000
@@ -16708,13 +16854,13 @@
           "price": 2500
         },
         {
-          "name": "HDPE Pipe – 1.5 inch",
+          "name": "HDPE Pipe \u2013 1.5 inch",
           "quantity": 1,
           "unit": "Roll",
           "price": 3000
         },
         {
-          "name": "Foot Valve – 4 inch",
+          "name": "Foot Valve \u2013 4 inch",
           "quantity": 1,
           "unit": "Piece",
           "price": 800
@@ -16725,7 +16871,8 @@
           "unit": "Piece",
           "price": 600
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "difful-4dgs8-40-2200",
@@ -16735,11 +16882,11 @@
       "secondCategory": "Deep Well Submersible Pump",
       "power": "2200W",
       "voltage": "DC 80V-420V",
-      "description": "High speed solar submersible deep well pump with 8m³/h rated flow and 40m rated head.",
+      "description": "High speed solar submersible deep well pump with 8m\u00b3/h rated flow and 40m rated head.",
       "image": "/uploads/submersible-pump.jpg",
       "controllerImage": "/uploads/submersible-controller.jpg",
       "panelImage": "/uploads/solar-panel.jpg",
-      "introductionTitle": "6000rpm High Speed Deep Well Pump with 8m³/h Rated Flow",
+      "introductionTitle": "6000rpm High Speed Deep Well Pump with 8m\u00b3/h Rated Flow",
       "technicalDataTitle": "Technical Data",
       "hydraulicCurveTitle": "Hydraulic Performance Curves",
       "hydraulicCurveImage": "/uploads/6000rpm-8-hydraulic-curve.png",
@@ -16793,13 +16940,13 @@
       ],
       "equipment": [
         {
-          "name": "Pump – 2200W High Flow",
+          "name": "Pump \u2013 2200W High Flow",
           "quantity": 1,
           "unit": "Piece",
           "price": 38000
         },
         {
-          "name": "Pump Controller – 2200W",
+          "name": "Pump Controller \u2013 2200W",
           "quantity": 1,
           "unit": "Piece",
           "price": 8000
@@ -16811,7 +16958,7 @@
           "price": 6500
         },
         {
-          "name": "HDPE Pipe – 2 inch",
+          "name": "HDPE Pipe \u2013 2 inch",
           "quantity": 1,
           "unit": "Roll",
           "price": 4000
@@ -16822,7 +16969,8 @@
           "unit": "Piece",
           "price": 600
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "difful-4dgs15-31-3000",
@@ -16832,7 +16980,7 @@
       "secondCategory": "Deep Well Submersible Pump",
       "power": "3000W",
       "voltage": "DC 120V-500V",
-      "description": "High speed solar submersible deep well pump with 15m³/h rated flow and 31m rated head.",
+      "description": "High speed solar submersible deep well pump with 15m\u00b3/h rated flow and 31m rated head.",
       "image": "/uploads/submersible-pump.jpg",
       "controllerImage": "/uploads/submersible-controller.jpg",
       "panelImage": "/uploads/solar-panel.jpg",
@@ -16877,13 +17025,13 @@
       ],
       "equipment": [
         {
-          "name": "Pump – 3000W High Flow",
+          "name": "Pump \u2013 3000W High Flow",
           "quantity": 1,
           "unit": "Piece",
           "price": 45000
         },
         {
-          "name": "Pump Controller – 3000W",
+          "name": "Pump Controller \u2013 3000W",
           "quantity": 1,
           "unit": "Piece",
           "price": 10000
@@ -16894,7 +17042,8 @@
           "unit": "Piece",
           "price": 6500
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "difful-4dgs20-28-3000",
@@ -16904,7 +17053,7 @@
       "secondCategory": "Deep Well Submersible Pump",
       "power": "3000W",
       "voltage": "DC 120V-500V",
-      "description": "High speed solar submersible deep well pump with 20m³/h rated flow and 28m rated head.",
+      "description": "High speed solar submersible deep well pump with 20m\u00b3/h rated flow and 28m rated head.",
       "image": "/uploads/submersible-pump.jpg",
       "sourceUrl": "https://www.diffulpump.com/",
       "maxFlow": 28,
@@ -16945,13 +17094,13 @@
       ],
       "equipment": [
         {
-          "name": "Pump – 3000W Ultra Flow",
+          "name": "Pump \u2013 3000W Ultra Flow",
           "quantity": 1,
           "unit": "Piece",
           "price": 47000
         },
         {
-          "name": "Pump Controller – 3000W",
+          "name": "Pump Controller \u2013 3000W",
           "quantity": 1,
           "unit": "Piece",
           "price": 10000
@@ -16962,7 +17111,8 @@
           "unit": "Piece",
           "price": 6500
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "difful-4dpc6-56-750",
@@ -17039,13 +17189,13 @@
       ],
       "equipment": [
         {
-          "name": "Pump – 750W",
+          "name": "Pump \u2013 750W",
           "quantity": 1,
           "unit": "Piece",
           "price": 12000
         },
         {
-          "name": "Pump Controller – 750W",
+          "name": "Pump Controller \u2013 750W",
           "quantity": 1,
           "unit": "Piece",
           "price": 4500
@@ -17056,7 +17206,8 @@
           "unit": "Piece",
           "price": 6500
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "difful-4dpc9-45-750",
@@ -17113,13 +17264,13 @@
       ],
       "equipment": [
         {
-          "name": "Pump – 750W High Flow",
+          "name": "Pump \u2013 750W High Flow",
           "quantity": 1,
           "unit": "Piece",
           "price": 13500
         },
         {
-          "name": "Pump Controller – 750W",
+          "name": "Pump Controller \u2013 750W",
           "quantity": 1,
           "unit": "Piece",
           "price": 4500
@@ -17130,7 +17281,8 @@
           "unit": "Piece",
           "price": 6500
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "difful-dcpm6-24-550",
@@ -17204,7 +17356,8 @@
           "unit": "Piece",
           "price": 6500
         }
-      ]
+      ],
+      "pumpType": "Submersible"
     },
     {
       "id": "difful-dcpm21-14-750",
@@ -17257,6 +17410,954 @@
           "quantity": 3,
           "unit": "Piece",
           "price": 6500
+        }
+      ],
+      "pumpType": "Submersible"
+    },
+    {
+      "id": "PUMP-DIFFUL-DCPM50",
+      "model": "DCPM50-17-110-1500",
+      "brand": "DIFFUL",
+      "pumpType": "Surface",
+      "firstCategory": "Difful DC Solar Surface Pumps",
+      "secondCategory": "DCPM Series (Solar Centrifugal)",
+      "power": "1500W",
+      "voltage": "110V",
+      "description": "Difful 1.5kW DC Brushless Solar Centrifugal Surface Pump for river, canal, and pond irrigation.",
+      "maxFlow": 50.0,
+      "maxHead": 17,
+      "outletSize": "3\"",
+      "price": 24000,
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 50.0
+        },
+        {
+          "head": 5,
+          "flow": 45.0
+        },
+        {
+          "head": 10,
+          "flow": 38.0
+        },
+        {
+          "head": 14,
+          "flow": 24.0
+        },
+        {
+          "head": 17,
+          "flow": 0.0
+        }
+      ],
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-DCPM50-17-110-1500",
+          "name": "DIFFUL DCPM50-17-110-1500 Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 16800.0,
+          "cost": 10800.0
+        },
+        {
+          "productId": "INV-CTRL-DCPM50-17-110-1500",
+          "name": "DIFFUL MPPT Solar Pump Controller",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 7200.0,
+          "cost": 4320.0
+        }
+      ],
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "DIFFUL"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Surface"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "3\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "50.0 m3/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "17 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "1500W"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "110V"
+        }
+      ]
+    },
+    {
+      "id": "PUMP-DIFFUL-DCPM65",
+      "model": "DCPM65-20-150-2200",
+      "brand": "DIFFUL",
+      "pumpType": "Surface",
+      "firstCategory": "Difful DC Solar Surface Pumps",
+      "secondCategory": "DCPM Series (Solar Centrifugal)",
+      "power": "2200W",
+      "voltage": "150V",
+      "description": "Difful 2.2kW DC Solar Centrifugal Surface Pump for high volume low-lift transfer and irrigation.",
+      "maxFlow": 65.0,
+      "maxHead": 20,
+      "outletSize": "3\"",
+      "price": 32000,
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 65.0
+        },
+        {
+          "head": 6,
+          "flow": 58.0
+        },
+        {
+          "head": 12,
+          "flow": 46.0
+        },
+        {
+          "head": 16,
+          "flow": 28.0
+        },
+        {
+          "head": 20,
+          "flow": 0.0
+        }
+      ],
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-DCPM65-20-150-2200",
+          "name": "DIFFUL DCPM65-20-150-2200 Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 22400.0,
+          "cost": 14400.0
+        },
+        {
+          "productId": "INV-CTRL-DCPM65-20-150-2200",
+          "name": "DIFFUL MPPT Solar Pump Controller",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 9600.0,
+          "cost": 5760.0
+        }
+      ],
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "DIFFUL"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Surface"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "3\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "65.0 m3/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "20 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "2200W"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "150V"
+        }
+      ]
+    },
+    {
+      "id": "PUMP-DIFFUL-DCPM80",
+      "model": "DCPM80-22-200-3000",
+      "brand": "DIFFUL",
+      "pumpType": "Surface",
+      "firstCategory": "Difful AC/DC Solar Surface Pumps",
+      "secondCategory": "DCPM Series (Solar Centrifugal)",
+      "power": "3000W",
+      "voltage": "200-380V",
+      "description": "Difful 3.0kW Solar Surface Centrifugal Booster & Irrigation Pump.",
+      "maxFlow": 80.0,
+      "maxHead": 22,
+      "outletSize": "4\"",
+      "price": 42000,
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 80.0
+        },
+        {
+          "head": 8,
+          "flow": 70.0
+        },
+        {
+          "head": 14,
+          "flow": 55.0
+        },
+        {
+          "head": 18,
+          "flow": 32.0
+        },
+        {
+          "head": 22,
+          "flow": 0.0
+        }
+      ],
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-DCPM80-22-200-3000",
+          "name": "DIFFUL DCPM80-22-200-3000 Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 29399.999999999996,
+          "cost": 18900.0
+        },
+        {
+          "productId": "INV-CTRL-DCPM80-22-200-3000",
+          "name": "DIFFUL MPPT Solar Pump Controller",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 12600.0,
+          "cost": 7560.0
+        }
+      ],
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "DIFFUL"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Surface"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "4\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "80.0 m3/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "22 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "3000W"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "200-380V"
+        }
+      ]
+    },
+    {
+      "id": "PUMP-DIFFUL-DFSU100",
+      "model": "DFSU100-28-380-5500",
+      "brand": "DIFFUL",
+      "pumpType": "Surface",
+      "firstCategory": "Difful AC/DC Solar Surface Pumps",
+      "secondCategory": "DFSU High-Flow Centrifugal Series",
+      "power": "5.5kW",
+      "voltage": "380V",
+      "description": "Difful 5.5kW Heavy-Duty Solar Surface Centrifugal Pump. Delivers 83.3 m3/h (23.2 L/s) at 12m Total Dynamic Head with >68% wire-to-water efficiency.",
+      "maxFlow": 100.0,
+      "maxHead": 28,
+      "outletSize": "4\"",
+      "price": 58000,
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 100.0
+        },
+        {
+          "head": 8,
+          "flow": 92.0
+        },
+        {
+          "head": 12,
+          "flow": 83.5
+        },
+        {
+          "head": 16,
+          "flow": 72.0
+        },
+        {
+          "head": 22,
+          "flow": 48.0
+        },
+        {
+          "head": 28,
+          "flow": 0.0
+        }
+      ],
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-DFSU100-28-380-5500",
+          "name": "DIFFUL DFSU100-28-380-5500 Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 40600.0,
+          "cost": 26100.0
+        },
+        {
+          "productId": "INV-CTRL-DFSU100-28-380-5500",
+          "name": "DIFFUL MPPT Solar Pump Controller",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 17400.0,
+          "cost": 10440.0
+        }
+      ],
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "DIFFUL"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Surface"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "4\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "100.0 m3/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "28 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "5.5kW"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "380V"
+        }
+      ]
+    },
+    {
+      "id": "PUMP-DIFFUL-DFSU120",
+      "model": "DFSU120-35-380-7500",
+      "brand": "DIFFUL",
+      "pumpType": "Surface",
+      "firstCategory": "Difful AC/DC Solar Surface Pumps",
+      "secondCategory": "DFSU High-Flow Centrifugal Series",
+      "power": "7.5kW",
+      "voltage": "380V",
+      "description": "Difful 7.5kW Industrial Solar Surface Centrifugal Pump for commercial farming clusters.",
+      "maxFlow": 120.0,
+      "maxHead": 35,
+      "outletSize": "4\"",
+      "price": 72000,
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 120.0
+        },
+        {
+          "head": 10,
+          "flow": 110.0
+        },
+        {
+          "head": 18,
+          "flow": 95.0
+        },
+        {
+          "head": 25,
+          "flow": 75.0
+        },
+        {
+          "head": 35,
+          "flow": 0.0
+        }
+      ],
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-DFSU120-35-380-7500",
+          "name": "DIFFUL DFSU120-35-380-7500 Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 50400.0,
+          "cost": 32400.0
+        },
+        {
+          "productId": "INV-CTRL-DFSU120-35-380-7500",
+          "name": "DIFFUL MPPT Solar Pump Controller",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 21600.0,
+          "cost": 12960.0
+        }
+      ],
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "DIFFUL"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Surface"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "4\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "120.0 m3/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "35 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "7.5kW"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "380V"
+        }
+      ]
+    },
+    {
+      "id": "PUMP-REDBUD-SCPM45",
+      "model": "SCPM45-16-110-1500",
+      "brand": "REDBUD",
+      "pumpType": "Surface",
+      "firstCategory": "Redbud Solar Surface Pumps",
+      "secondCategory": "SCPM Series (Centrifugal Surface)",
+      "power": "1500W",
+      "voltage": "110V",
+      "description": "Redbud 1.5kW DC Brushless Solar Surface Centrifugal Pump.",
+      "maxFlow": 45.0,
+      "maxHead": 16,
+      "outletSize": "3\"",
+      "price": 23500,
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 45.0
+        },
+        {
+          "head": 5,
+          "flow": 40.0
+        },
+        {
+          "head": 10,
+          "flow": 32.0
+        },
+        {
+          "head": 14,
+          "flow": 18.0
+        },
+        {
+          "head": 16,
+          "flow": 0.0
+        }
+      ],
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-SCPM45-16-110-1500",
+          "name": "REDBUD SCPM45-16-110-1500 Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 16450.0,
+          "cost": 10575.0
+        },
+        {
+          "productId": "INV-CTRL-SCPM45-16-110-1500",
+          "name": "REDBUD MPPT Solar Pump Controller",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 7050.0,
+          "cost": 4230.0
+        }
+      ],
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "REDBUD"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Surface"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "3\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "45.0 m3/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "16 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "1500W"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "110V"
+        }
+      ]
+    },
+    {
+      "id": "PUMP-REDBUD-SCPM60",
+      "model": "SCPM60-18-150-2200",
+      "brand": "REDBUD",
+      "pumpType": "Surface",
+      "firstCategory": "Redbud Solar Surface Pumps",
+      "secondCategory": "SCPM Series (Centrifugal Surface)",
+      "power": "2200W",
+      "voltage": "150V",
+      "description": "Redbud 2.2kW Solar Surface Centrifugal Irrigation Pump.",
+      "maxFlow": 60.0,
+      "maxHead": 18,
+      "outletSize": "3\"",
+      "price": 31000,
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 60.0
+        },
+        {
+          "head": 6,
+          "flow": 54.0
+        },
+        {
+          "head": 11,
+          "flow": 42.0
+        },
+        {
+          "head": 15,
+          "flow": 25.0
+        },
+        {
+          "head": 18,
+          "flow": 0.0
+        }
+      ],
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-SCPM60-18-150-2200",
+          "name": "REDBUD SCPM60-18-150-2200 Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 21700.0,
+          "cost": 13950.0
+        },
+        {
+          "productId": "INV-CTRL-SCPM60-18-150-2200",
+          "name": "REDBUD MPPT Solar Pump Controller",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 9300.0,
+          "cost": 5580.0
+        }
+      ],
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "REDBUD"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Surface"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "3\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "60.0 m3/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "18 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "2200W"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "150V"
+        }
+      ]
+    },
+    {
+      "id": "PUMP-REDBUD-SCM100",
+      "model": "SCM100-25-380-5500",
+      "brand": "REDBUD",
+      "pumpType": "Surface",
+      "firstCategory": "Redbud Solar Surface Pumps",
+      "secondCategory": "SCM High-Capacity Surface Series",
+      "power": "5.5kW",
+      "voltage": "380V",
+      "description": "Redbud 5.5kW Solar Centrifugal Surface Pump. Engineered for 12m head @ 83.33 m3/h (23.2 L/s) discharge capacity at >68% efficiency.",
+      "maxFlow": 100.0,
+      "maxHead": 25,
+      "outletSize": "4\"",
+      "price": 56000,
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 100.0
+        },
+        {
+          "head": 6,
+          "flow": 94.0
+        },
+        {
+          "head": 12,
+          "flow": 83.33
+        },
+        {
+          "head": 18,
+          "flow": 64.0
+        },
+        {
+          "head": 25,
+          "flow": 0.0
+        }
+      ],
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-SCM100-25-380-5500",
+          "name": "REDBUD SCM100-25-380-5500 Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 39200.0,
+          "cost": 25200.0
+        },
+        {
+          "productId": "INV-CTRL-SCM100-25-380-5500",
+          "name": "REDBUD MPPT Solar Pump Controller",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 16800.0,
+          "cost": 10080.0
+        }
+      ],
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "REDBUD"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Surface"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "4\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "100.0 m3/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "25 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "5.5kW"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "380V"
+        }
+      ]
+    },
+    {
+      "id": "PUMP-REDBUD-SCM120",
+      "model": "SCM120-32-380-7500",
+      "brand": "REDBUD",
+      "pumpType": "Surface",
+      "firstCategory": "Redbud Solar Surface Pumps",
+      "secondCategory": "SCM High-Capacity Surface Series",
+      "power": "7.5kW",
+      "voltage": "380V",
+      "description": "Redbud 7.5kW Solar Centrifugal Surface Pump for massive flood and furrow irrigation.",
+      "maxFlow": 120.0,
+      "maxHead": 32,
+      "outletSize": "4\"",
+      "price": 69000,
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 120.0
+        },
+        {
+          "head": 10,
+          "flow": 108.0
+        },
+        {
+          "head": 18,
+          "flow": 92.0
+        },
+        {
+          "head": 24,
+          "flow": 70.0
+        },
+        {
+          "head": 32,
+          "flow": 0.0
+        }
+      ],
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-SCM120-32-380-7500",
+          "name": "REDBUD SCM120-32-380-7500 Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 48300.0,
+          "cost": 31050.0
+        },
+        {
+          "productId": "INV-CTRL-SCM120-32-380-7500",
+          "name": "REDBUD MPPT Solar Pump Controller",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 20700.0,
+          "cost": 12420.0
+        }
+      ],
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "REDBUD"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Surface"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "4\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "120.0 m3/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "32 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "7.5kW"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "380V"
+        }
+      ]
+    },
+    {
+      "id": "PUMP-REDBUD-4SDC20-55",
+      "model": "4SDC20-55-220-3300",
+      "brand": "REDBUD",
+      "pumpType": "Submersible",
+      "firstCategory": "Redbud DC Solar Submersible Pumps",
+      "secondCategory": "4SDC High-Discharge Series",
+      "power": "3.3kW",
+      "voltage": "220V",
+      "description": "Redbud 3.3kW 4\" Solar Submersible Borehole Pump. Delivers 21.0 m3/h (6.0 L/s) at 34m Total Dynamic Head with 68% pump efficiency.",
+      "maxFlow": 25.0,
+      "maxHead": 55,
+      "outletSize": "2\"",
+      "price": 38000,
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 25.0
+        },
+        {
+          "head": 15,
+          "flow": 24.2
+        },
+        {
+          "head": 25,
+          "flow": 23.0
+        },
+        {
+          "head": 34,
+          "flow": 21.0
+        },
+        {
+          "head": 45,
+          "flow": 14.0
+        },
+        {
+          "head": 55,
+          "flow": 0.0
+        }
+      ],
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-4SDC20-55-220-3300",
+          "name": "REDBUD 4SDC20-55-220-3300 Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 26600.0,
+          "cost": 17100.0
+        },
+        {
+          "productId": "INV-CTRL-4SDC20-55-220-3300",
+          "name": "REDBUD MPPT Solar Pump Controller",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 11400.0,
+          "cost": 6840.0
+        }
+      ],
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "REDBUD"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Submersible"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "2\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "25.0 m3/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "55 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "3.3kW"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "220V"
+        }
+      ]
+    },
+    {
+      "id": "PUMP-DIFFUL-4DSC22-55",
+      "model": "4DSC22-55-220-3300",
+      "brand": "DIFFUL",
+      "pumpType": "Submersible",
+      "firstCategory": "Difful DC Solar Submersible Pumps",
+      "secondCategory": "4DSC Stainless Steel Impeller Series",
+      "power": "3.3kW",
+      "voltage": "220V",
+      "description": "Difful 3.3kW 4\" Submersible Deep Well Pump. Delivers 21.2 m3/h (5.9 L/s) at 34m Head Lift with 67% efficiency.",
+      "maxFlow": 25.0,
+      "maxHead": 55,
+      "outletSize": "2\"",
+      "price": 39500,
+      "performanceData": [
+        {
+          "head": 0,
+          "flow": 25.0
+        },
+        {
+          "head": 15,
+          "flow": 24.0
+        },
+        {
+          "head": 25,
+          "flow": 22.8
+        },
+        {
+          "head": 34,
+          "flow": 21.2
+        },
+        {
+          "head": 45,
+          "flow": 13.5
+        },
+        {
+          "head": 55,
+          "flow": 0.0
+        }
+      ],
+      "equipment": [
+        {
+          "productId": "INV-MOTOR-4DSC22-55-220-3300",
+          "name": "DIFFUL 4DSC22-55-220-3300 Motor Unit",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 27650.0,
+          "cost": 17775.0
+        },
+        {
+          "productId": "INV-CTRL-4DSC22-55-220-3300",
+          "name": "DIFFUL MPPT Solar Pump Controller",
+          "quantity": 1,
+          "unit": "Piece",
+          "price": 11850.0,
+          "cost": 7110.0
+        }
+      ],
+      "technicalData": [
+        {
+          "parameter": "Brand",
+          "value": "DIFFUL"
+        },
+        {
+          "parameter": "Pump Type",
+          "value": "Submersible"
+        },
+        {
+          "parameter": "Outlet Size",
+          "value": "2\""
+        },
+        {
+          "parameter": "Max Flow Rate",
+          "value": "25.0 m3/h"
+        },
+        {
+          "parameter": "Max Head Lift",
+          "value": "55 m"
+        },
+        {
+          "parameter": "Power Input",
+          "value": "3.3kW"
+        },
+        {
+          "parameter": "Working Voltage",
+          "value": "220V"
         }
       ]
     }

@@ -24,10 +24,11 @@ import { toast } from "sonner";
 
 interface PurchasesVendorAPWorkspaceProps {
   vendors?: any[];
+  summary?: any;
   onRefresh?: () => void;
 }
 
-export function PurchasesVendorAPWorkspace({ vendors = [], onRefresh }: PurchasesVendorAPWorkspaceProps) {
+export function PurchasesVendorAPWorkspace({ vendors = [], summary, onRefresh }: PurchasesVendorAPWorkspaceProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedVendor, setSelectedVendor] = useState<any | null>(null);
 
@@ -42,18 +43,10 @@ export function PurchasesVendorAPWorkspace({ vendors = [], onRefresh }: Purchase
     });
   }, [vendors, searchQuery]);
 
-  // Compute AP KPIs strictly from live vendor data
-  const totalAP = useMemo(() => {
-    return (vendors || []).reduce((acc, v) => acc + (Number(v.balance) || 0), 0);
-  }, [vendors]);
-
-  const suppliersWithBalance = useMemo(() => {
-    return (vendors || []).filter((v) => Number(v.balance) > 0).length;
-  }, [vendors]);
-
-  const totalCreditLimit = useMemo(() => {
-    return (vendors || []).reduce((acc, v) => acc + (Number(v.creditLimit) || 0), 0);
-  }, [vendors]);
+  // Compute AP KPIs strictly from authoritative backend summary when available
+  const totalAP = summary?.totalPayables ?? (vendors || []).reduce((acc, v) => acc + (Number(v.balance) || 0), 0);
+  const suppliersWithBalance = summary?.suppliersWithBalance ?? (vendors || []).filter((v) => Number(v.balance) > 0).length;
+  const totalCreditLimit = summary?.totalVendorCreditLimit ?? (vendors || []).reduce((acc, v) => acc + (Number(v.creditLimit) || 0), 0);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">

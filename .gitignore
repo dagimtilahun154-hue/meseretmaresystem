@@ -40,3 +40,12 @@ backend/.env
 
 
 .vercel
+*.spec
+*.db
+build/
+build32/
+tools/**/build/
+tools/**/build32/
+tools/**/__pycache__/
+__pycache__/
+tools/**/agent_state.json

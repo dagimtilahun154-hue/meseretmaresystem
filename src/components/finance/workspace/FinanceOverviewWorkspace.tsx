@@ -63,6 +63,7 @@ interface FinanceOverviewWorkspaceProps {
   peachtreeCustomers?: any[];
   peachtreeVendors?: any[];
   peachtreeInvoices?: any[];
+  peachtreeSummary?: any;
 }
 
 // Custom Glassmorphism Tooltip for 12-Month Financial Performance
@@ -140,12 +141,16 @@ export function FinanceOverviewWorkspace({
   bankDistributionData = [],
   peachtreeCustomers = [],
   peachtreeVendors = [],
-  peachtreeInvoices = [],
+  peachtreeSummary,
 }: FinanceOverviewWorkspaceProps) {
   const navigate = useNavigate();
   const [lastSyncTime, setLastSyncTime] = useState<string>("");
 
   useEffect(() => {
+    if (peachtreeSummary?.lastSyncTime) {
+      setLastSyncTime(peachtreeSummary.lastSyncTime);
+      return;
+    }
     peachtreeDB
       .getVault()
       .then((res) => {
@@ -154,135 +159,69 @@ export function FinanceOverviewWorkspace({
         }
       })
       .catch(() => {});
-  }, []);
+  }, [peachtreeSummary]);
 
-  // Compute live AR from peachtreeCustomers if available
+  // 1. Authoritative Receivables (AR)
   const computedAR = useMemo(() => {
+    if (peachtreeSummary?.receivablesAR?.totalReceivables !== undefined) {
+      return Number(peachtreeSummary.receivablesAR.totalReceivables);
+    }
     if (peachtreeCustomers.length > 0) {
       return peachtreeCustomers.reduce((acc, c) => acc + (Number(c.balance) || 0), 0);
     }
-    if (dashboardAnalytics?.stats?.totalReceivables || dashboardAnalytics?.totalReceivables) {
-      return Number(dashboardAnalytics?.stats?.totalReceivables || dashboardAnalytics?.totalReceivables);
-    }
     return 0;
-  }, [dashboardAnalytics, peachtreeCustomers]);
+  }, [peachtreeSummary, peachtreeCustomers]);
 
-  // Compute live AP from peachtreeVendors if available
+  // 2. Authoritative Payables (AP)
   const computedAP = useMemo(() => {
+    if (peachtreeSummary?.payablesAP?.totalPayables !== undefined) {
+      return Number(peachtreeSummary.payablesAP.totalPayables);
+    }
     if (peachtreeVendors.length > 0) {
       return peachtreeVendors.reduce((acc, v) => acc + (Number(v.balance) || 0), 0);
     }
-    if (dashboardAnalytics?.stats?.totalPayables || dashboardAnalytics?.totalPayables) {
-      return Number(dashboardAnalytics?.stats?.totalPayables || dashboardAnalytics?.totalPayables);
-    }
-    return totalLoans || 0;
-  }, [dashboardAnalytics, peachtreeVendors, totalLoans]);
+    return 0;
+  }, [peachtreeSummary, peachtreeVendors]);
 
-  // Compute live Revenue from peachtreeInvoices if available
+  // 3. Authoritative Revenue / Total Invoiced
   const computedRevenue = useMemo(() => {
-    if (peachtreeInvoices && peachtreeInvoices.length > 0) {
+    if (peachtreeSummary?.invoicing?.totalInvoiced !== undefined) {
+      return Number(peachtreeSummary.invoicing.totalInvoiced);
+    }
+    if (peachtreeInvoices.length > 0) {
       return peachtreeInvoices.reduce((acc, inv) => acc + (Number(inv.total || inv.amount) || 0), 0);
     }
-    try {
-      const saved = localStorage.getItem("pt_synced_invoices");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.reduce((acc, inv) => acc + (Number(inv.total || inv.amount) || 0), 0);
-        }
-      }
-    } catch {}
-    if (dashboardAnalytics?.stats?.totalSales || dashboardAnalytics?.totalSales) {
-      return Number(dashboardAnalytics?.stats?.totalSales || dashboardAnalytics?.totalSales);
-    }
-    if (cfIncome > 0) return cfIncome;
     return 0;
-  }, [peachtreeInvoices, dashboardAnalytics, cfIncome]);
+  }, [peachtreeSummary, peachtreeInvoices]);
 
-  // Dynamic 6-Month Financial Performance Timeline strictly from authentic Peachtree General Ledger
+  // 4. Authoritative 6-Month Timeline from server
   const monthlyFinancialData = useMemo(() => {
-    // Exact Peachtree YTD Figures:
-    // Total Revenue: 11,736,447.79
-    // Cost of Sales: 5,994,419.40
-    // Gross Profit: 5,742,028.39
-    // Expenses: 5,177,626.38
-    // Net Income: 564,402.01
-    return [
-      {
-        month: "Period 1 (Jan)",
-        revenue: 1420000,
-        cogs: 720000,
-        grossProfit: 700000,
-        expenses: 630000,
-        netIncome: 70000,
-      },
-      {
-        month: "Period 2 (Feb)",
-        revenue: 1850000,
-        cogs: 940000,
-        grossProfit: 910000,
-        expenses: 820000,
-        netIncome: 90000,
-      },
-      {
-        month: "Period 3 (Mar)",
-        revenue: 2150000,
-        cogs: 1090000,
-        grossProfit: 1060000,
-        expenses: 955000,
-        netIncome: 105000,
-      },
-      {
-        month: "Period 4 (Apr)",
-        revenue: 1980000,
-        cogs: 1010000,
-        grossProfit: 970000,
-        expenses: 875000,
-        netIncome: 95000,
-      },
-      {
-        month: "Period 5 (May)",
-        revenue: 2186447,
-        cogs: 1114419,
-        grossProfit: 1072028,
-        expenses: 967626,
-        netIncome: 104402,
-      },
-      {
-        month: "Period 6 (Jun/YTD)",
-        revenue: 2150000,
-        cogs: 1120000,
-        grossProfit: 1030000,
-        expenses: 930000,
-        netIncome: 100000,
-      },
-    ];
-  }, []);
+    if (Array.isArray(peachtreeSummary?.monthlyTimeline) && peachtreeSummary.monthlyTimeline.length > 0) {
+      return peachtreeSummary.monthlyTimeline;
+    }
+    return [];
+  }, [peachtreeSummary]);
 
-  // Real Liquid Assets
+  // 5. Authoritative Liquid Assets
   const grandTotalLiquidity = useMemo(() => {
+    if (peachtreeSummary?.treasury?.totalLiquidAssets !== undefined) {
+      return Number(peachtreeSummary.treasury.totalLiquidAssets);
+    }
     const rawSum = Number(totalBankBalance || 0) + Number(cashBalance || 0) + Number(telebirrBalance || 0);
     if (rawSum > 0) return rawSum;
-    if (bankDistributionData && bankDistributionData.length > 0) {
-      return bankDistributionData.reduce((acc, b) => acc + (Number(b.balance) || 0), 0);
-    }
-    return 24885000; // Meseret Mare Peachtree Treasury baseline
-  }, [totalBankBalance, cashBalance, telebirrBalance, bankDistributionData]);
+    return 0;
+  }, [peachtreeSummary, totalBankBalance, cashBalance, telebirrBalance]);
 
-  // Real Banking List from live props
+  // 6. Authoritative Bank Accounts List
   const liveBankingList = useMemo(() => {
+    if (Array.isArray(peachtreeSummary?.treasury?.accounts) && peachtreeSummary.treasury.accounts.length > 0) {
+      return peachtreeSummary.treasury.accounts;
+    }
     if (bankDistributionData && bankDistributionData.length > 0) {
       return bankDistributionData;
     }
-    return [
-      { name: "Commercial Bank of Ethiopia", balance: 12450000, color: "#9333ea", code: "CBE" },
-      { name: "Awash Bank", balance: 4820000, color: "#3b82f6", code: "AWASH" },
-      { name: "Cooperative Bank of Oromia", balance: 3150000, color: "#ea580c", code: "COOP" },
-      { name: "Dashen Bank", balance: 2100000, color: "#0284c7", code: "DASHEN" },
-      { name: "Bank of Abyssinia", balance: 1800000, color: "#d97706", code: "BOA" },
-      { name: "Petty Cash & Safe", balance: 565000, color: "#10b981", code: "CASH" },
-    ];
-  }, [bankDistributionData]);
+    return [];
+  }, [peachtreeSummary, bankDistributionData]);
 
   const totalAR = computedAR;
   const totalAP = computedAP;

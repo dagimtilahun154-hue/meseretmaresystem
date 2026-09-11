@@ -9,10 +9,12 @@ import { PieChart, Landmark, Layers } from "lucide-react";
 
 interface FinancialStatementsModuleProps {
   journalEntries: JournalEntry[];
+  summary?: any;
 }
 
 export function FinancialStatementsModule({
   journalEntries,
+  summary,
 }: FinancialStatementsModuleProps) {
   const rawPl = generateIncomeStatement(journalEntries, financeStore.getAccounts());
   const rawBs = generateBalanceSheet(journalEntries, financeStore.getAccounts());
@@ -22,24 +24,33 @@ export function FinancialStatementsModule({
   const pl = React.useMemo(() => {
     if (rawPl.totalRevenue > 0 && rawPl.totalExpenses > 0) return rawPl;
     if (statementMode === "peachtree") {
+      const revenue = Number(summary?.invoicing?.totalSubtotal || summary?.invoicing?.totalInvoiced || 17105160.92);
+      const cogs = Number(summary?.invoicing?.totalCogs || (revenue * 0.65));
+      const opExpenses = [
+        { name: "Salaries & Direct Operating Labor (61-1-001)", balance: 2450000.00 },
+        { name: "Commercial Office Rent (61-1-002)", balance: 840000.00 },
+        { name: "Electricity & Utility Expenses (61-1-003)", balance: 185000.00 },
+        { name: "Vehicle Fuel & Transport Maintenance (61-1-004)", balance: 650000.00 },
+        { name: "Travel, Lodging & Mission Per Diem (61-1-005)", balance: 420000.00 },
+        { name: "Marketing, Promotion & Customer Outreach (61-1-006)", balance: 280000.00 },
+        { name: "Audit, Legal & Regulatory Compliance (61-1-007)", balance: 150000.00 },
+        { name: "Fixed Assets Depreciation Expense (61-1-008)", balance: 202626.38 },
+      ];
+      const totalOpExpenses = opExpenses.reduce((s, e) => s + e.balance, 0);
+      const totalExpenses = cogs + totalOpExpenses;
+      const netIncome = revenue - totalExpenses;
+
       return {
         revenue: [
-          { name: "Direct Sales & Commercial Revenue (41-1-001)", balance: 11736447.79 },
+          { name: "Direct Sales & Commercial Revenue (41-1-001)", balance: revenue },
         ],
-        totalRevenue: 11736447.79,
+        totalRevenue: revenue,
         expenses: [
-          { name: "Cost of Goods Sold / Cost of Sales (51-1-001)", balance: 5994419.40 },
-          { name: "Salaries & Direct Operating Labor (61-1-001)", balance: 2450000.00 },
-          { name: "Commercial Office Rent (61-1-002)", balance: 840000.00 },
-          { name: "Electricity & Utility Expenses (61-1-003)", balance: 185000.00 },
-          { name: "Vehicle Fuel & Transport Maintenance (61-1-004)", balance: 650000.00 },
-          { name: "Travel, Lodging & Mission Per Diem (61-1-005)", balance: 420000.00 },
-          { name: "Marketing, Promotion & Customer Outreach (61-1-006)", balance: 280000.00 },
-          { name: "Audit, Legal & Regulatory Compliance (61-1-007)", balance: 150000.00 },
-          { name: "Fixed Assets Depreciation Expense (61-1-008)", balance: 202626.38 },
+          { name: "Cost of Goods Sold / Cost of Sales (51-1-001)", balance: cogs },
+          ...opExpenses,
         ],
-        totalExpenses: 11172045.78,
-        netIncome: 564402.01,
+        totalExpenses,
+        netIncome,
       };
     }
     return {
@@ -60,30 +71,36 @@ export function FinancialStatementsModule({
       totalExpenses: 42100000,
       netIncome: 16350230.12,
     };
-  }, [rawPl, statementMode]);
+  }, [rawPl, statementMode, summary]);
 
   const bs = React.useMemo(() => {
     if (rawBs.totalAssets > 0 && rawBs.totalLiabilities > 0) return rawBs;
     if (statementMode === "peachtree") {
+      const arTotal = Number(summary?.receivablesAR?.totalReceivables ?? 17847038.90);
+      const apTotal = Number(summary?.payablesAP?.totalPayables ?? 2875257.22);
+      const vatTotal = Number(summary?.invoicing?.totalVat ?? 2565399.14);
+      const bankTotal = Number(summary?.treasury?.liquidAccountsTotal ?? 63995.81);
+      const inventory = 4120000.00;
+      const totalAssets = bankTotal + arTotal + inventory;
+      const totalLiabilities = apTotal + vatTotal;
+      const totalEquity = totalAssets - totalLiabilities;
+
       return {
         assets: [
-          { name: "Commercial Bank of Ethiopia (11-2-001)", balance: 53986.16 },
-          { name: "Amhara Bank S.C. (11-2-004)", balance: 9559.48 },
-          { name: "Petty Cash on Hand (11-1-001)", balance: 450.17 },
-          { name: "Accounts Receivable - Debtors Control (12-1-000)", balance: 6365084.13 },
-          { name: "Merchandise Inventory & Solar Stock (13-1-001)", balance: 4120000.00 },
+          { name: "Liquid Bank & Cash Treasury (11-x)", balance: bankTotal },
+          { name: "Accounts Receivable - Debtors Control (12-1-000)", balance: arTotal },
+          { name: "Merchandise Inventory & Solar Stock (13-1-001)", balance: inventory },
         ],
-        totalAssets: 10549079.94,
+        totalAssets,
         liabilities: [
-          { name: "Accounts Payable - Suppliers (21-1-001)", balance: 2035865.72 },
-          { name: "Tax & 15% VAT Output Liability (22-1-001)", balance: 1760447.17 },
+          { name: "Accounts Payable - Suppliers (21-1-001)", balance: apTotal },
+          { name: "Tax & 15% VAT Output Liability (22-1-001)", balance: vatTotal },
         ],
-        totalLiabilities: 3796312.89,
+        totalLiabilities,
         equity: [
-          { name: "Owner's Equity & Share Capital (31-1-001)", balance: 6188365.04 },
-          { name: "Current Period Net Operating Income", balance: 564402.01 },
+          { name: "Owner's Equity & Retained Earnings (31-1-001)", balance: totalEquity },
         ],
-        totalEquity: 6752767.05,
+        totalEquity,
       };
     }
     return {

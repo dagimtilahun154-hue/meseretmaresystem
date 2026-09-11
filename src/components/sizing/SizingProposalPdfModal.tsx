@@ -21,9 +21,11 @@ export function SizingProposalPdfModal({ proposal, open, onOpenChange }: SizingP
 
   const clientName = proposal.clientName || proposal.customerName || "Valued Client";
   const phone = proposal.phoneNumber || proposal.phone || "+251 911 000 000";
-  const location = proposal.location || "Ethiopia";
+  const location = proposal.location || proposal.address || "Ethiopia";
   const date = proposal.createdAt ? new Date(proposal.createdAt).toLocaleDateString() : new Date().toLocaleDateString();
   const pumpModel = proposal.selectedPumpModel || proposal.pumpModel || "Solar Flow Premium Pump System";
+  const isSurface = proposal.pumpType === "Surface" || pumpModel.includes("SCM") || pumpModel.includes("DFSU") || pumpModel.includes("DCPM") || pumpModel.includes("SCPM") || (proposal.waterSource && (proposal.waterSource.includes("River") || proposal.waterSource.includes("Pond")));
+  const pumpTypeLabel = isSurface ? "Surface Pump" : "Submersible Pump";
   const dailyWater = proposal.dailyWaterNeed || proposal.waterRequirement || 50;
   const headLift = proposal.headLift || proposal.verticalLift || 100;
   const wattage = proposal.solarWattage || proposal.panelPower || 1200;
@@ -75,20 +77,21 @@ export function SizingProposalPdfModal({ proposal, open, onOpenChange }: SizingP
                 title: "HYDRAULIC & WATER DEMAND SPECIFICATIONS",
                 fields: [
                   { label: "Daily Water Demand", value: `${dailyWater} m³/day` },
-                  { label: "Total Dynamic Lift", value: `${headLift} Meters` },
+                  { label: "Total Dynamic Head (H)", value: `${headLift} Meters` },
                   { label: "Peak Solar Hours", value: "5.5 Peak Hours/Day" },
-                  { label: "Hourly Flow Demand", value: `${(dailyWater / 5.5).toFixed(1)} m³/hr` },
-                  { label: "Pumping System", value: pumpModel },
+                  { label: "Hourly Flow Demand (Q)", value: `${(dailyWater / 5.5).toFixed(1)} m³/hr (${((dailyWater / 5.5) / 3.6).toFixed(2)} L/s)` },
+                  { label: "Pumping Technology", value: `[${pumpTypeLabel}] ${pumpModel}` },
+                  { label: "Efficiency Rating", value: "η ≥ 65% (High Efficiency)" },
                 ]
               },
               tableData: {
                 title: "EQUIPMENT BILL OF MATERIALS (BOM)",
                 headers: ["EQUIPMENT ITEM", "SPECIFICATION", "QTY", "WARRANTY"],
                 rows: [
-                  ["Solar Pump & Motor Unit", pumpModel, "1 Unit", "2 Years Replacement"],
+                  [`Solar ${pumpTypeLabel} & Motor Unit`, `${pumpModel} [${pumpTypeLabel}]`, "1 Unit", "2 Years Replacement"],
                   ["Solar PV Panel Array", `${wattage}W Monocrystalline PV`, "1 Array", "10 Years Performance"],
                   ["MPPT Smart Controller", inverter, "1 Unit", "2 Years Replacement"],
-                  ["Mounting Structure & Cables", "Galvanized Frame & Submersible Cable", "1 Set", "1 Year Guarantee"],
+                  ["Mounting Structure & Piping", isSurface ? "Galvanized Frame, Suction Hose & Foot Valve" : "Galvanized Frame, Submersible Cable & Well Head", "1 Set", "1 Year Guarantee"],
                 ]
               },
               financials: {
@@ -195,8 +198,15 @@ export function SizingProposalPdfModal({ proposal, open, onOpenChange }: SizingP
               </thead>
               <tbody className="divide-y divide-slate-200">
                 <tr className="bg-slate-50 font-bold">
-                  <td className="p-3 text-slate-900">Solar Submersible / Surface Pump</td>
-                  <td className="p-3 text-amber-700">{pumpModel}</td>
+                  <td className="p-3 text-slate-900">
+                    Solar {pumpTypeLabel} & Motor
+                  </td>
+                  <td className="p-3 text-amber-700 flex items-center gap-1.5 flex-wrap">
+                    <span>{pumpModel}</span>
+                    <Badge variant="outline" className="text-[9px] font-mono text-primary border-primary/30 py-0">
+                      [{pumpTypeLabel}]
+                    </Badge>
+                  </td>
                   <td className="p-3 text-center">1 Unit</td>
                   <td className="p-3 text-right text-emerald-700">2 Years Full Replacement</td>
                 </tr>
@@ -214,7 +224,12 @@ export function SizingProposalPdfModal({ proposal, open, onOpenChange }: SizingP
                 </tr>
                 <tr>
                   <td className="p-3 font-semibold text-slate-800">Mounting Structure & Accessories</td>
-                  <td className="p-3 text-slate-700">Galvanized Steel Frame, Submersible Cable, MC4 & Well Head</td>
+                  <td className="p-3 text-slate-700">
+                    {isSurface 
+                      ? "Galvanized Base Frame, Spiral Suction Hose, Foot Valve, Strainer & Pressure Gauge"
+                      : "Galvanized Steel Frame, Flat Submersible Drop Cable, Sanitary Wellhead & Stainless Wire"
+                    }
+                  </td>
                   <td className="p-3 text-center">1 Full Set</td>
                   <td className="p-3 text-right text-emerald-700">1 Year Installation Guarantee</td>
                 </tr>

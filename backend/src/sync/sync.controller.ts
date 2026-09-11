@@ -59,6 +59,12 @@ export class SyncController {
   }
 
   @Public()
+  @Get("peachtree/summary")
+  getPeachtreeSummary() {
+    return this.syncService.getPeachtreeFinancialSummary();
+  }
+
+  @Public()
   @Get("peachtree/data")
   getSyncedPeachtreeData() {
     return this.syncService.getSyncedPeachtreeData();

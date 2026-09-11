@@ -99,10 +99,10 @@ export function GMHubDashboard(props: GMHubDashboardProps) {
   const filteredTx = props.filteredTx ?? sales;
 
   // Unified Top KPI Cards calculated dynamically from live database records
-  const liquidTreasury = Number(props.stats?.bankBalance ?? 63995.81);
-  const peachtreeGrossRevenue = Number(props.stats?.totalSales ?? totalPosRevenue ?? 48191636.28);
-  const customerDebtors = Number(props.stats?.customerReceivables ?? props.stats?.loanOutstanding ?? 6365084.13);
-  const totalInvoicesCount = Number(props.stats?.totalInvoicesCount || 236);
+  const liquidTreasury = Number(props.stats?.bankBalance ?? 0);
+  const peachtreeGrossRevenue = Number(props.stats?.totalSales ?? totalPosRevenue ?? 0);
+  const customerDebtors = Number(props.stats?.customerReceivables ?? props.stats?.loanOutstanding ?? 0);
+  const totalInvoicesCount = Number(props.stats?.totalInvoicesCount ?? 0);
 
   const topKpiCards = [
     {
@@ -118,7 +118,7 @@ export function GMHubDashboard(props: GMHubDashboardProps) {
       key: "sales",
       label: "Total Sales Revenue",
       value: formatCurrency(peachtreeGrossRevenue),
-      subtext: `${totalInvoicesCount} Commercial Invoices`,
+      subtext: totalInvoicesCount > 0 ? `${totalInvoicesCount} Commercial Invoices` : "Commercial Invoices",
       icon: DollarSign,
       gradientClass: "stat-gradient-sales",
       badge: "Revenue",
@@ -127,7 +127,7 @@ export function GMHubDashboard(props: GMHubDashboardProps) {
       key: "ar",
       label: "Customer Receivables",
       value: formatCurrency(customerDebtors),
-      subtext: "114 Commercial Debtors",
+      subtext: customerDebtors > 0 ? "Commercial Debtors" : "No Debtors Outstanding",
       icon: Users,
       gradientClass: "stat-gradient-customers",
       badge: "Receivables",
@@ -153,9 +153,9 @@ export function GMHubDashboard(props: GMHubDashboardProps) {
   ];
 
   // Payment Channels Breakdown calculated dynamically from live payment channels
-  const cashTotal = Number(props.stats?.cashSales ?? 1450000);
-  const bankTotal = Number(props.stats?.bankSales ?? 11250000);
-  const telebirrTotal = Number(props.stats?.telebirrSales ?? 3850000);
+  const cashTotal = Number(props.stats?.cashSales ?? 0);
+  const bankTotal = Number(props.stats?.bankSales ?? 0);
+  const telebirrTotal = Number(props.stats?.telebirrSales ?? 0);
   const totalLiquid = cashTotal + bankTotal + telebirrTotal;
 
   const paymentBreakdown = [

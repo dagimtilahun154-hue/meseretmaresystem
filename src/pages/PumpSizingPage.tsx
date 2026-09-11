@@ -120,15 +120,30 @@ export default function PumpSizingPage() {
   const [powerMode, setPowerMode] = useState<"FULL_SOLAR" | "PUMP_ONLY">("FULL_SOLAR");
   const [panelUnitWatt, setPanelUnitWatt] = useState<number>(550);
 
-  // Detailed Hydraulic & Borehole Parameters
+  // Pump Type Configuration: Surface vs Submersible
+  const [pumpType, setPumpType] = useState<"Submersible" | "Surface">("Submersible");
+
+  // Detailed Hydraulic, Surface & Borehole Parameters
   const [waterSourceType, setWaterSourceType] = useState<string>("Borehole");
-  const [staticWaterLevel, setStaticWaterLevel] = useState<string>("35");
-  const [dynamicDrawdown, setDynamicDrawdown] = useState<string>("10");
-  const [tankElevation, setTankElevation] = useState<string>("5");
+  const [staticWaterLevel, setStaticWaterLevel] = useState<string>("24");
+  const [dynamicDrawdown, setDynamicDrawdown] = useState<string>("6");
+  const [tankElevation, setTankElevation] = useState<string>("4");
   const [groundElevation, setGroundElevation] = useState<string>("0");
   const [dropPipeLength, setDropPipeLength] = useState<string>("0");
   const [pipeLength, setPipeLength] = useState<string>("60");
-  const [pipeDiameter, setPipeDiameter] = useState<string>("1.25");
+  const [pipeDiameter, setPipeDiameter] = useState<string>("2.0");
+
+  // Surface-Specific Parameters (Suction line & lift)
+  const [suctionLift, setSuctionLift] = useState<string>("3");
+  const [suctionPipeLength, setSuctionPipeLength] = useState<string>("6");
+  const [suctionPipeDiameter, setSuctionPipeDiameter] = useState<string>("3.0");
+
+  // Technical Questionnaire Parameters (Page 208 / Annex A & Questionnaire Standards)
+  const [dischargeFlowLps, setDischargeFlowLps] = useState<string>("6.0");
+  const [hourlyWaterReq, setHourlyWaterReq] = useState<string>("21.0");
+  const [waterTemperatureC, setWaterTemperatureC] = useState<string>("20");
+  const [pumpEfficiencyPercent, setPumpEfficiencyPercent] = useState<string>("65");
+  const [minPumpKw, setMinPumpKw] = useState<string>("3.3");
 
   // Pipe Fittings (Page 210 Standard)
   const [elbows90, setElbows90] = useState<string>("3");
@@ -141,12 +156,51 @@ export default function PumpSizingPage() {
   const [showAdvancedHydraulics, setShowAdvancedHydraulics] = useState<boolean>(false);
   
   // Water Requirement & Quick Demand Helpers
-  const [dailyWaterNeed, setDailyWaterNeed] = useState<string>("20");
+  const [dailyWaterNeed, setDailyWaterNeed] = useState<string>("129.6");
   const [demandHelperType, setDemandHelperType] = useState<"DIRECT" | "IRRIGATION" | "LIVESTOCK" | "DOMESTIC">("DIRECT");
   const [farmHectares, setFarmHectares] = useState<string>("1");
   const [cropTypeRate, setCropTypeRate] = useState<number>(35); // m3/ha/day
   const [cattleCount, setCattleCount] = useState<string>("50");
   const [peopleCount, setPeopleCount] = useState<string>("100");
+
+  // Engineering Presets Loaders
+  const loadSurfacePreset = () => {
+    setPumpType("Surface");
+    setWaterSourceType("River / Stream");
+    setWaterSource("River / Stream");
+    setStaticWaterLevel("0");
+    setDynamicDrawdown("0");
+    setSuctionLift("3");
+    setTankElevation("9");
+    setPipeLength("50");
+    setPipeDiameter("3.0");
+    setSuctionPipeDiameter("3.0");
+    setDischargeFlowLps("23.2");
+    setHourlyWaterReq("83.33");
+    setDailyWaterNeed("500");
+    setWaterTemperatureC("19");
+    setPumpEfficiencyPercent("65");
+    setMinPumpKw("5.5");
+    toast.success("Loaded Surface Pump Preset: H=12m, Q=23.2 L/s (83.33 m³/h), 500 m³/day, 19°C, ≥5.5 kW, η≥65%");
+  };
+
+  const loadSubmersiblePreset = () => {
+    setPumpType("Submersible");
+    setWaterSourceType("Borehole");
+    setWaterSource("Borehole");
+    setStaticWaterLevel("24");
+    setDynamicDrawdown("6");
+    setTankElevation("4");
+    setPipeLength("60");
+    setPipeDiameter("2.0");
+    setDischargeFlowLps("6.0");
+    setHourlyWaterReq("21.0");
+    setDailyWaterNeed("129.6");
+    setWaterTemperatureC("20");
+    setPumpEfficiencyPercent("65");
+    setMinPumpKw("3.3");
+    toast.success("Loaded Hand-Dug Submersible Preset: H=34m, Q=6.0 L/s (21.0 m³/h), 129.6 m³/day, 20°C, ≥3.3 kW, η≥65%");
+  };
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -634,21 +688,31 @@ export default function PumpSizingPage() {
   };
 
   // Helper to build 4-group categorized Bill of Materials
-  const buildCategorizedBOM = (pump: any, selectedPowerMode: "FULL_SOLAR" | "PUMP_ONLY", selectedPanelWatt: number, depthMeters: number, mainlineLen: number, pDiameter: string) => {
+  const buildCategorizedBOM = (
+    pump: any, 
+    selectedPowerMode: "FULL_SOLAR" | "PUMP_ONLY", 
+    selectedPanelWatt: number, 
+    depthMeters: number, 
+    mainlineLen: number, 
+    pDiameter: string,
+    currentPumpType: "Submersible" | "Surface" = "Submersible"
+  ) => {
     const pumpWatts = parsePowerWatts(pump?.power);
     const effectivePanelWatt = selectedPanelWatt && selectedPanelWatt > 0 ? selectedPanelWatt : (pumpWatts >= 3500 ? 650 : 550);
     const pvInfo = calculateSolarArrayRequirements(pumpWatts, effectivePanelWatt, 1.30);
     const cableInfo = sizeSubmersibleCable(pumpWatts, 220, depthMeters + 20);
 
-    const pumpPrice = pump?.sellPrice || (pumpWatts >= 2200 ? 38000 : pumpWatts >= 1500 ? 28000 : 19000);
+    const pumpPrice = pump?.sellPrice || (pumpWatts >= 5000 ? 58000 : pumpWatts >= 2200 ? 38000 : pumpWatts >= 1500 ? 28000 : 19000);
     const controllerPrice = Math.round(pumpPrice * 0.30);
 
-    // Group 1: Submersible Pump & Motor Unit
+    const isSurface = currentPumpType === "Surface" || pump?.pumpType === "Surface";
+
+    // Group 1: Pump & Motor Unit
     const pumpItems = [
       { 
-        name: `${pump?.brand || 'Solar'} High-Efficiency Submersible Pump & Brushless DC/AC Motor (${pump?.power || '1500W'}, Outlet: ${pump?.outletSize || pDiameter + '"'})`, 
+        name: `${pump?.brand || 'Solar'} High-Efficiency ${isSurface ? 'Solar Surface Centrifugal' : 'Submersible'} Pump & Motor (${pump?.power || (isSurface ? '5.5kW' : '1500W')}, Outlet: ${pump?.outletSize || pDiameter + '"'})`, 
         category: "Pump & Motor Unit", 
-        productId: pump?.id || "PUMP-CORE", 
+        productId: pump?.id || (isSurface ? "PUMP-SURFACE-CORE" : "PUMP-SUB-CORE"), 
         quantity: 1, 
         unit: "Set", 
         price: pumpPrice 
@@ -658,7 +722,7 @@ export default function PumpSizingPage() {
     // Group 2: Intelligent MPPT Inverter & Controller
     const controllerItems = [
       { 
-        name: `Intelligent MPPT Solar Pump Inverter/Controller with Dry-Run & Full Water Detection (Voc < 430V, ${pump?.power || '1500W'})`, 
+        name: `Intelligent MPPT Solar ${isSurface ? 'Surface Drive' : 'Pump Inverter'}/Controller with Dry-Run & Thermal Overload Protection (Voc < 430V, ${pump?.power || (isSurface ? '5.5kW' : '1500W')})`, 
         category: "MPPT Controller", 
         productId: "CTRL-MPPT", 
         quantity: 1, 
@@ -703,9 +767,49 @@ export default function PumpSizingPage() {
       }
     ] : [];
 
-
-    // Group 4: Piping & Wellhead Accessories
-    const accessoryItems = [
+    // Group 4: Piping & Installation Accessories
+    const accessoryItems = isSurface ? [
+      { 
+        name: `Heavy Brass Foot Valve with Stainless Steel Debris Strainer (${pDiameter}")`, 
+        category: "Suction & Piping Accessories", 
+        productId: `FOOT-VALVE-${pDiameter}`, 
+        quantity: 1, 
+        unit: "Piece", 
+        price: 3200 
+      },
+      { 
+        name: `Heavy-Duty Anti-Collapse Spiral Suction Hose Assembly (${pDiameter}" x 10m PN10 with Couplers)`, 
+        category: "Suction & Piping Accessories", 
+        productId: `HOSE-SUCTION-${pDiameter}`, 
+        quantity: 1, 
+        unit: "Set", 
+        price: 4800 
+      },
+      { 
+        name: `HDPE PN16 Delivery Pipe – ${pDiameter}" Continuous High Pressure Mainline`, 
+        category: "Suction & Piping Accessories", 
+        productId: `HDPE-PIPE-${pDiameter}`, 
+        quantity: Math.max(50, Math.ceil(mainlineLen)), 
+        unit: "Meters", 
+        price: pDiameter === '4' ? 240 : pDiameter === '3' ? 190 : pDiameter === '2' ? 160 : 130 
+      },
+      { 
+        name: `Galvanized Steel Surface Pump Mounting Base Frame with Anti-Vibration Dampers`, 
+        category: "Suction & Piping Accessories", 
+        productId: "FRAME-SURF-BASE", 
+        quantity: 1, 
+        unit: "Set", 
+        price: 3600 
+      },
+      { 
+        name: `Surface Pump Priming Port, Air Release Valve & Pressure Gauge Kit`, 
+        category: "Suction & Piping Accessories", 
+        productId: "KIT-PRIMING-GAUGE", 
+        quantity: 1, 
+        unit: "Kit", 
+        price: 2400 
+      }
+    ] : [
       { 
         name: `Submersible Drop Cable ${cableInfo.recommendedSizeMm2} (Flat 3-Core Waterproof Copper)`, 
         category: "Well & Piping Accessories", 
@@ -780,21 +884,27 @@ export default function PumpSizingPage() {
       return;
     }
 
+    const isSurface = pumpType === "Surface";
     const staticLevel = parseFloat(staticWaterLevel) || 0;
     const drawdown = parseFloat(dynamicDrawdown) || 0;
     const tankHeight = parseFloat(tankElevation) || 0;
     const groundElev = parseFloat(groundElevation) || 0;
     const dropPipe = parseFloat(dropPipeLength) || 0;
-    const length = parseFloat(pipeLength) || 0;
-    const diameter = parseFloat(pipeDiameter) || 1.25;
-    const need = parseFloat(dailyWaterNeed) || 20;
+    const length = parseFloat(pipeLength) || (isSurface ? 50 : 60);
+    const diameter = parseFloat(pipeDiameter) || (isSurface ? 3.0 : 2.0);
+    const need = parseFloat(dailyWaterNeed) || (isSurface ? 500 : 129.6);
+
+    const sLift = parseFloat(suctionLift) || 3.0;
+    const sPipeLen = parseFloat(suctionPipeLength) || 6.0;
+    const sPipeDiam = parseFloat(suctionPipeDiameter) || diameter;
 
     const numElbows = parseInt(elbows90) || 0;
     const numGateValves = parseInt(gateValves) || 0;
     const numCheckValves = parseInt(checkValves) || 0;
 
-    // 1. Rigorous Page 210 TDH Calculation with Fittings Equivalent Length
+    // 1. Rigorous Page 210 TDH Calculation with Surface vs Submersible support
     const tdhResult = calculateTDH({
+      pumpType,
       staticWaterLevel: staticLevel,
       dynamicDrawdown: drawdown,
       tankHeight: tankHeight,
@@ -802,6 +912,9 @@ export default function PumpSizingPage() {
       pipeDistance: length,
       dropPipeLength: dropPipe,
       pipeDiameterInch: diameter,
+      suctionLift: sLift,
+      suctionPipeLength: sPipeLen,
+      suctionPipeDiameterInch: sPipeDiam,
       waterSource: waterSourceType,
       fittings: {
         elbows90: numElbows,
@@ -827,13 +940,26 @@ export default function PumpSizingPage() {
       : [5.95, 6.34, 6.49, 6.71, 6.45, 5.84, 5.35, 5.37, 5.94, 6.20, 6.08, 5.76];
 
     const avgIns = Number((insolationList.reduce((a, b) => a + b, 0) / 12).toFixed(2));
-    const reqFlowM3h = calculateRequiredFlow(need, avgIns);
+    
+    // Determine Target Flow: if explicitly provided in hourly/discharge, use it, otherwise derive from daily need / PSH
+    const parsedHourly = parseFloat(hourlyWaterReq);
+    const parsedLps = parseFloat(dischargeFlowLps);
+    const targetHourlyFlow = parsedHourly > 0 ? parsedHourly : (parsedLps > 0 ? Number((parsedLps * 3.6).toFixed(2)) : calculateRequiredFlow(need, avgIns));
+    const reqFlowM3h = targetHourlyFlow;
+
+    const minimumAllowedKw = parseFloat(minPumpKw) || (isSurface ? 5.5 : 3.3);
+    const targetEfficiencyMin = (parseFloat(pumpEfficiencyPercent) || 65) / 100;
 
     setLoading(true);
     try {
-      // Filter Redbud and Difful candidate pumps from database
-      const redbudPumps = (allPumps || []).filter((p: any) => (p.brand || "").toUpperCase() === "REDBUD");
-      const diffulPumps = (allPumps || []).filter((p: any) => (p.brand || "").toUpperCase() === "DIFFUL");
+      // Filter Redbud and Difful candidate pumps matching the selected pumpType (Surface vs Submersible)
+      const candidatePumps = (allPumps || []).filter((p: any) => {
+        const pType = p.pumpType || (p.model?.includes("SCM") || p.model?.includes("SCPM") || p.model?.includes("DCPM") || p.model?.includes("DFSU") || p.model?.includes("DFSN") ? "Surface" : "Submersible");
+        return pType.toLowerCase() === pumpType.toLowerCase();
+      });
+
+      const redbudPumps = candidatePumps.filter((p: any) => (p.brand || "").toUpperCase() === "REDBUD");
+      const diffulPumps = candidatePumps.filter((p: any) => (p.brand || "").toUpperCase() === "DIFFUL");
 
       const findBestPump = (pList: any[]) => {
         const matched = pList
@@ -841,11 +967,9 @@ export default function PumpSizingPage() {
             let perf = typeof pump.performanceData === "string" ? JSON.parse(pump.performanceData) : pump.performanceData;
             if (!perf || perf.length === 0) return { pump, flowAtHead: 0, diff: 999, score: 0 };
             
-            // Strictly compute maxHead from manufacturer data
             const maxHead = pump.maxHead || Math.max(...perf.map((d: any) => d.head));
             let flowAtHead = 0;
             
-            // Hard clamp: if TDH exceeds maxHead, pump cannot deliver
             if (calculatedTdh <= maxHead) {
               const sortedPts = [...perf].sort((a: any, b: any) => a.head - b.head);
               for (let i = 0; i < sortedPts.length - 1; i++) {
@@ -859,9 +983,26 @@ export default function PumpSizingPage() {
                 flowAtHead = sortedPts[0].flow;
               }
             }
+
+            const pumpWatts = parsePowerWatts(pump.power);
+            const pumpKw = pumpWatts / 1000;
+            
+            // Calculate hydraulic water power & pump efficiency
+            const hydPowerKw = calculateHydraulicPowerKw(flowAtHead, calculatedTdh);
+            const efficiency = pumpKw > 0 ? hydPowerKw / pumpKw : 0.65;
+
             const diff = Math.abs(flowAtHead - reqFlowM3h);
-            const score = flowAtHead > 0 ? Math.max(10, Math.min(99, Math.round(95 - diff * 12))) : 0;
-            return { pump, flowAtHead, maxHead, diff, score };
+            let score = flowAtHead > 0 ? Math.max(10, Math.min(99, Math.round(96 - diff * 2.5))) : 0;
+            
+            // Bonus if power satisfies requested minimum kW
+            if (pumpKw >= minimumAllowedKw * 0.95) {
+              score = Math.min(99, score + 5);
+            }
+            if (efficiency >= targetEfficiencyMin) {
+              score = Math.min(99, score + 3);
+            }
+
+            return { pump, flowAtHead, maxHead, diff, score, efficiency, pumpKw };
           })
           .filter((item: any) => item.flowAtHead > 0)
           .sort((a: any, b: any) => b.score - a.score);
@@ -875,8 +1016,9 @@ export default function PumpSizingPage() {
       const buildMatchPayload = (bestItem: any, brandName: string) => {
         if (!bestItem) {
           return { 
-            model: `No Matching ${brandName} Model Found`, 
+            model: `No Matching ${brandName} ${pumpType} Model Found`, 
             brand: brandName, 
+            pumpType,
             power: "N/A", 
             performanceData: [], 
             score: 0, 
@@ -886,11 +1028,10 @@ export default function PumpSizingPage() {
           };
         }
 
-        const bom = buildCategorizedBOM(bestItem.pump, powerMode, panelUnitWatt, staticLevel, length, pipeDiameter);
+        const bom = buildCategorizedBOM(bestItem.pump, powerMode, panelUnitWatt, staticLevel, length, diameter, pumpType);
         const flowAtHead = Number(bestItem.flowAtHead.toFixed(2));
         
-        // Extract pump power in kW for the standard Excel formula
-        let powerKw = 2.2;
+        let powerKw = bestItem.pumpKw || 5.5;
         if (typeof bestItem.pump.power === "string") {
           const numMatch = bestItem.pump.power.match(/([0-9.]+)\s*(KW|HP|W)?/i);
           if (numMatch) {
@@ -902,7 +1043,7 @@ export default function PumpSizingPage() {
           }
         }
 
-        // 12-Month Production Schedule using exact Excel Formula
+        // 12-Month Production Schedule using exact Formula
         const prodSchedule = calculate12MonthProductionSchedule(powerKw, calculatedTdh, insolationList, need);
         const dailyYield = Number((prodSchedule.averageDailyProductionM3 || (flowAtHead * avgIns * 0.9)).toFixed(2));
 
@@ -917,10 +1058,13 @@ export default function PumpSizingPage() {
 
         return {
           ...bestItem.pump,
+          pumpType,
           score: bestItem.score,
           suitability: "Suitable",
           calculated_flow_m3h: flowAtHead,
+          calculated_flow_lps: Number((flowAtHead / 3.6).toFixed(2)),
           daily_water_yield_m3: dailyYield,
+          operating_efficiency_percent: Number(((bestItem.efficiency || 0.68) * 100).toFixed(1)),
           monthly_yields: prodSchedule.monthlySchedule.map(m => m.dailyProductionM3),
           production_schedule: prodSchedule,
           daily_profile: dailyProfile,
@@ -938,6 +1082,7 @@ export default function PumpSizingPage() {
       const winner = (rMatch.score || 0) >= (dMatch.score || 0) ? rMatch : dMatch;
 
       const sizingResult = {
+        pump_type: pumpType,
         redbud_match: rMatch,
         difful_match: dMatch,
         exact_match: winner,
@@ -948,9 +1093,13 @@ export default function PumpSizingPage() {
         effective_pipe_length: totalEffectivePipe,
         power_mode: powerMode,
         target_flow_m3h: reqFlowM3h,
+        target_flow_lps: Number((reqFlowM3h / 3.6).toFixed(2)),
         daily_need_m3: need,
+        water_temperature_c: parseFloat(waterTemperatureC) || 20,
+        pump_efficiency_threshold: targetEfficiencyMin * 100,
+        minimum_kw_applied: minimumAllowedKw,
         environmental_derating: envDerating,
-        ai_reasoning: `Sized for ${calculatedTdh}m TDH (Static: ${staticLift}m + Friction: ${frictionLoss}m including ${fittingsEqLen}m fittings Leq) at ${reqFlowM3h} m³/h. Selected ${winner.brand} ${winner.model} (${winner.power}) with ${winner.score}/100 match score.${powerMode === 'FULL_SOLAR' ? ` Recommended PV Array: ${winner.pvInfo?.totalArrayWatt}W (${winner.pvInfo?.panelCount} × ${winner.pvInfo?.moduleWattage || 550}W modules in ${winner.pvInfo?.stringConfig}).` : ' Operating in Pump/Controller only mode.'}`,
+        ai_reasoning: `Sized for ${pumpType} Pump Application at ${calculatedTdh}m TDH (Static: ${staticLift}m + Friction: ${frictionLoss}m) at ${reqFlowM3h} m³/h (${Number((reqFlowM3h / 3.6).toFixed(1))} L/s). Selected ${winner.brand} [${pumpType} Pump] ${winner.model} (${winner.power}) with ${winner.score}/100 match score and ≥${targetEfficiencyMin * 100}% efficiency rating.${powerMode === 'FULL_SOLAR' ? ` Recommended PV Array: ${winner.pvInfo?.totalArrayWatt}W (${winner.pvInfo?.panelCount} × ${winner.pvInfo?.moduleWattage || 550}W modules).` : ' Operating in Pump/Controller only mode.'}`,
         climate_data: {
           sol_insolation: insolationList,
           temperature: [20, 21, 22, 22, 21, 20, 19, 19, 20, 21, 21, 20]
@@ -958,7 +1107,7 @@ export default function PumpSizingPage() {
       };
 
       setResult(sizingResult);
-      toast.success(`Pump Sizing calculated: ${winner.brand} ${winner.model} (${winner.score}% Match)`);
+      toast.success(`${pumpType} Pump Sizing calculated: ${winner.brand} [${pumpType}] ${winner.model} (${winner.score}% Match)`);
     } catch (e: any) {
       console.error(e);
       toast.error("Error calculating pump sizing: " + e.message);
@@ -1240,7 +1389,7 @@ export default function PumpSizingPage() {
               </CardContent>
             </Card>
 
-            {/* STEP 3: Hydraulic & Borehole Breakdown */}
+            {/* STEP 3: Hydraulic, Wellhead & Technical Questionnaire */}
             <Card className="border border-border/80 shadow-sm bg-card">
               <CardHeader className="pb-3 border-b border-border/40">
                 <div className="flex justify-between items-center">
@@ -1248,15 +1397,91 @@ export default function PumpSizingPage() {
                     <span className="text-[11px] font-mono font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">03</span>
                     <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                       <AnimatedWaterIcon className="h-4 w-4 text-cyan-500" />
-                      Hydraulics & Wellhead
+                      Hydraulic Specs & Sizing Mode
                     </CardTitle>
                   </div>
-                  <span className="text-xs font-mono font-semibold text-cyan-600 dark:text-cyan-400">
-                    TDH: {(Number(staticWaterLevel || 0) + Number(dynamicDrawdown || 0) + Number(tankElevation || 0) + (Number(pipeLength || 0) / 100) * getFrictionLossPer100m(Number(pipeDiameter || 1.25))).toFixed(1)}m
-                  </span>
+                  <Badge variant="outline" className="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 border-cyan-500/30">
+                    TDH: {pumpType === "Surface" 
+                      ? (Number(suctionLift || 0) + Number(tankElevation || 0) + ((Number(pipeLength || 0) + Number(suctionPipeLength || 0)) / 100) * getFrictionLossPer100m(Number(pipeDiameter || 3.0))).toFixed(1)
+                      : (Number(staticWaterLevel || 0) + Number(dynamicDrawdown || 0) + Number(tankElevation || 0) + (Number(pipeLength || 0) / 100) * getFrictionLossPer100m(Number(pipeDiameter || 2.0))).toFixed(1)
+                    }m
+                  </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3 pt-3">
+              <CardContent className="space-y-4 pt-3">
+                {/* 1. Pump Type Choice: Surface vs Submersible */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-foreground">Select Pumping Technology</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPumpType("Submersible");
+                        if (waterSourceType === "River / Stream") setWaterSourceType("Borehole");
+                      }}
+                      className={`p-2.5 rounded-lg border text-left transition-all flex items-center gap-2.5 ${
+                        pumpType === "Submersible"
+                          ? "border-primary bg-primary/10 ring-1 ring-primary/40 shadow-sm"
+                          : "border-border bg-card hover:bg-muted/40"
+                      }`}
+                    >
+                      <AnimatedPumpIcon className={`h-5 w-5 shrink-0 ${pumpType === "Submersible" ? "text-primary" : "text-muted-foreground"}`} />
+                      <div>
+                        <p className="text-xs font-bold text-foreground flex items-center gap-1">
+                          Submersible Pump
+                          {pumpType === "Submersible" && <Check className="h-3 w-3 text-primary" />}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">Deep well / Borehole</p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPumpType("Surface");
+                        if (waterSourceType === "Borehole") setWaterSourceType("River / Stream");
+                      }}
+                      className={`p-2.5 rounded-lg border text-left transition-all flex items-center gap-2.5 ${
+                        pumpType === "Surface"
+                          ? "border-primary bg-primary/10 ring-1 ring-primary/40 shadow-sm"
+                          : "border-border bg-card hover:bg-muted/40"
+                      }`}
+                    >
+                      <AnimatedWaterIcon className={`h-5 w-5 shrink-0 ${pumpType === "Surface" ? "text-primary" : "text-muted-foreground"}`} />
+                      <div>
+                        <p className="text-xs font-bold text-foreground flex items-center gap-1">
+                          Surface Pump
+                          {pumpType === "Surface" && <Check className="h-3 w-3 text-primary" />}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">River / Pond / Suction</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Presets Buttons */}
+                <div className="flex flex-col sm:flex-row gap-1.5 p-2 bg-muted/40 rounded-lg border border-border/60">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={loadSurfacePreset}
+                    className="flex-1 text-[11px] h-7 font-semibold bg-background hover:bg-primary/10 hover:text-primary text-foreground border-border/80"
+                  >
+                    ⚡ Surface Preset (12m, 23.2L/s, 5.5kW)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={loadSubmersiblePreset}
+                    className="flex-1 text-[11px] h-7 font-semibold bg-background hover:bg-primary/10 hover:text-primary text-foreground border-border/80"
+                  >
+                    ⚡ Submersible Preset (34m, 6L/s, 3.3kW)
+                  </Button>
+                </div>
+
+                {/* Water Source Selection */}
                 <div className="space-y-1">
                   <Label className="text-xs font-medium text-foreground">Water Source</Label>
                   <select
@@ -1267,72 +1492,232 @@ export default function PumpSizingPage() {
                     }}
                     className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs focus-visible:outline-none"
                   >
-                    <option value="Borehole">Deep Borehole / Tube Well</option>
-                    <option value="River / Stream">River / Continuous Stream</option>
-                    <option value="Open Pond">Open Reservoir / Pond</option>
-                    <option value="Shallow Well">Hand-Dug Shallow Well</option>
-                    <option value="Storage Tank">Ground Storage Cistern</option>
+                    {pumpType === "Surface" ? (
+                      <>
+                        <option value="River / Stream">River / Continuous Stream</option>
+                        <option value="Open Pond">Open Reservoir / Canal / Pond</option>
+                        <option value="Storage Tank">Ground Surface Tank / Sump</option>
+                        <option value="Shallow Well">Hand-Dug Shallow Well (with suction)</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Borehole">Deep Borehole / Tube Well</option>
+                        <option value="Shallow Well">Hand-Dug Well</option>
+                        <option value="Open Well">Open Well / Sump</option>
+                        <option value="Storage Tank">Underground Storage Cistern</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Static Level (m)</Label>
-                    <Input
-                      type="number"
-                      placeholder="35"
-                      value={staticWaterLevel}
-                      onChange={(e) => setStaticWaterLevel(e.target.value)}
-                      className="h-8 text-xs font-mono"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Drawdown (m)</Label>
-                    <Input
-                      type="number"
-                      placeholder="10"
-                      value={dynamicDrawdown}
-                      onChange={(e) => setDynamicDrawdown(e.target.value)}
-                      className="h-8 text-xs font-mono"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Tank Height (m)</Label>
-                    <Input
-                      type="number"
-                      placeholder="5"
-                      value={tankElevation}
-                      onChange={(e) => setTankElevation(e.target.value)}
-                      className="h-8 text-xs font-mono"
-                    />
-                  </div>
-                </div>
+                {/* Dynamic Hydraulic Inputs: Surface vs Submersible */}
+                {pumpType === "Surface" ? (
+                  <div className="space-y-2.5 p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-cyan-700 dark:text-cyan-400 uppercase tracking-wide">Surface Suction & Delivery Lift</span>
+                      <Badge variant="outline" className="text-[9px] font-mono bg-background">Suction Limit ≤7m</Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Suction Lift (m)</Label>
+                        <Input
+                          type="number"
+                          placeholder="3"
+                          value={suctionLift}
+                          onChange={(e) => setSuctionLift(e.target.value)}
+                          className="h-8 text-xs font-mono bg-background"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Suction Pipe (m)</Label>
+                        <Input
+                          type="number"
+                          placeholder="6"
+                          value={suctionPipeLength}
+                          onChange={(e) => setSuctionPipeLength(e.target.value)}
+                          className="h-8 text-xs font-mono bg-background"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Delivery Lift (m)</Label>
+                        <Input
+                          type="number"
+                          placeholder="9"
+                          value={tankElevation}
+                          onChange={(e) => setTankElevation(e.target.value)}
+                          className="h-8 text-xs font-mono bg-background"
+                        />
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/40">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Pipeline Length (m)</Label>
-                    <Input
-                      type="number"
-                      placeholder="60"
-                      value={pipeLength}
-                      onChange={(e) => setPipeLength(e.target.value)}
-                      className="h-8 text-xs font-mono"
-                    />
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-cyan-500/20">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Delivery Pipe (m)</Label>
+                        <Input
+                          type="number"
+                          placeholder="50"
+                          value={pipeLength}
+                          onChange={(e) => setPipeLength(e.target.value)}
+                          className="h-8 text-xs font-mono bg-background"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Pipe Diameter</Label>
+                        <select
+                          value={pipeDiameter}
+                          onChange={(e) => {
+                            setPipeDiameter(e.target.value);
+                            setSuctionPipeDiameter(e.target.value);
+                          }}
+                          className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus-visible:outline-none"
+                        >
+                          <option value="2.0">2.0" (DN50)</option>
+                          <option value="2.5">2.5" (DN65)</option>
+                          <option value="3.0">3.0" (DN80 - High Flow)</option>
+                          <option value="4.0">4.0" (DN100 - Large Canal)</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Pipe Diameter</Label>
-                    <select
-                      value={pipeDiameter}
-                      onChange={(e) => setPipeDiameter(e.target.value)}
-                      className="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs focus-visible:outline-none"
-                    >
-                      <option value="1.0">1.0" (DN25)</option>
-                      <option value="1.25">1.25" (DN32 - Recommended)</option>
-                      <option value="1.5">1.5" (DN40)</option>
-                      <option value="2.0">2.0" (DN50)</option>
-                      <option value="2.5">2.5" (DN65)</option>
-                      <option value="3.0">3.0" (DN80)</option>
-                    </select>
+                ) : (
+                  <div className="space-y-2.5">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[11px] text-muted-foreground">Static Level (m)</Label>
+                        <Input
+                          type="number"
+                          placeholder="24"
+                          value={staticWaterLevel}
+                          onChange={(e) => setStaticWaterLevel(e.target.value)}
+                          className="h-8 text-xs font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px] text-muted-foreground">Drawdown (m)</Label>
+                        <Input
+                          type="number"
+                          placeholder="6"
+                          value={dynamicDrawdown}
+                          onChange={(e) => setDynamicDrawdown(e.target.value)}
+                          className="h-8 text-xs font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px] text-muted-foreground">Tank Height (m)</Label>
+                        <Input
+                          type="number"
+                          placeholder="4"
+                          value={tankElevation}
+                          onChange={(e) => setTankElevation(e.target.value)}
+                          className="h-8 text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/40">
+                      <div className="space-y-1">
+                        <Label className="text-[11px] text-muted-foreground">Pipeline Length (m)</Label>
+                        <Input
+                          type="number"
+                          placeholder="60"
+                          value={pipeLength}
+                          onChange={(e) => setPipeLength(e.target.value)}
+                          className="h-8 text-xs font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px] text-muted-foreground">Pipe Diameter</Label>
+                        <select
+                          value={pipeDiameter}
+                          onChange={(e) => setPipeDiameter(e.target.value)}
+                          className="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs focus-visible:outline-none"
+                        >
+                          <option value="1.0">1.0" (DN25)</option>
+                          <option value="1.25">1.25" (DN32)</option>
+                          <option value="1.5">1.5" (DN40)</option>
+                          <option value="2.0">2.0" (DN50 - Standard)</option>
+                          <option value="2.5">2.5" (DN65)</option>
+                          <option value="3.0">3.0" (DN80)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TECHNICAL QUESTIONNAIRE INPUTS */}
+                <div className="p-3 bg-muted/40 rounded-lg border border-border/70 space-y-2.5">
+                  <div className="flex items-center justify-between pb-1 border-b border-border/40">
+                    <span className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-primary" /> Technical Questionnaire & Target Capacity
+                    </span>
+                    <Badge variant="outline" className="text-[9px] font-mono text-primary bg-background">
+                      {pumpType} Criteria
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground font-medium">Discharge Q (L/s)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={dischargeFlowLps}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDischargeFlowLps(val);
+                          const num = parseFloat(val);
+                          if (!isNaN(num) && num > 0) {
+                            setHourlyWaterReq((num * 3.6).toFixed(2));
+                          }
+                        }}
+                        className="h-7 text-xs font-mono bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground font-medium">Hourly Req (m³/hr)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={hourlyWaterReq}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setHourlyWaterReq(val);
+                          const num = parseFloat(val);
+                          if (!isNaN(num) && num > 0) {
+                            setDischargeFlowLps((num / 3.6).toFixed(2));
+                          }
+                        }}
+                        className="h-7 text-xs font-mono bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground font-medium">Water Temp (°C)</Label>
+                      <Input
+                        type="number"
+                        value={waterTemperatureC}
+                        onChange={(e) => setWaterTemperatureC(e.target.value)}
+                        className="h-7 text-xs font-mono bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground font-medium">Pump Eff. η (≥%)</Label>
+                      <Input
+                        type="number"
+                        value={pumpEfficiencyPercent}
+                        onChange={(e) => setPumpEfficiencyPercent(e.target.value)}
+                        className="h-7 text-xs font-mono bg-background"
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label className="text-[10px] text-muted-foreground font-medium">Min Pump Power (kW)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={minPumpKw}
+                        onChange={(e) => setMinPumpKw(e.target.value)}
+                        className="h-7 text-xs font-mono bg-background"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1685,13 +2070,20 @@ export default function PumpSizingPage() {
                       )}
                       <CardHeader className="pb-2 pt-4">
                         <div className="flex justify-between items-start">
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-mono">REDBUD OPTION</span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-mono">REDBUD</span>
+                            <Badge variant="secondary" className="text-[9px] font-bold uppercase tracking-tight bg-primary/10 text-primary border-primary/20">
+                              [{result.redbud_match.pumpType || pumpType} Pump]
+                            </Badge>
+                          </div>
                           <Badge variant="outline" className="text-[9px] font-bold border-primary/20 text-primary">Score: {result.redbud_match.score}/100</Badge>
                         </div>
                         <CardTitle className="text-base font-bold font-heading mt-1 text-foreground">
                           {result.redbud_match.model}
                         </CardTitle>
-                        <CardDescription className="text-xs text-muted-foreground">{result.redbud_match.firstCategory || 'Solar Submersible'}</CardDescription>
+                        <CardDescription className="text-xs text-muted-foreground">
+                          {result.redbud_match.firstCategory || (pumpType === "Surface" ? "Solar Surface Centrifugal" : "Solar Submersible")}
+                        </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-3 pb-4">
                         <div className="grid grid-cols-3 gap-1.5 text-[10px] text-center font-mono">
@@ -1740,13 +2132,20 @@ export default function PumpSizingPage() {
                       )}
                       <CardHeader className="pb-2 pt-4">
                         <div className="flex justify-between items-start">
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-mono">DIFFUL OPTION</span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-mono">DIFFUL</span>
+                            <Badge variant="secondary" className="text-[9px] font-bold uppercase tracking-tight bg-primary/10 text-primary border-primary/20">
+                              [{result.difful_match.pumpType || pumpType} Pump]
+                            </Badge>
+                          </div>
                           <Badge variant="outline" className="text-[9px] font-bold border-primary/20 text-primary">Score: {result.difful_match.score}/100</Badge>
                         </div>
                         <CardTitle className="text-base font-bold font-heading mt-1 text-foreground">
                           {result.difful_match.model}
                         </CardTitle>
-                        <CardDescription className="text-xs text-muted-foreground">{result.difful_match.firstCategory || 'Solar Submersible'}</CardDescription>
+                        <CardDescription className="text-xs text-muted-foreground">
+                          {result.difful_match.firstCategory || (pumpType === "Surface" ? "Solar Surface Centrifugal" : "Solar Submersible")}
+                        </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-3 pb-4">
                         <div className="grid grid-cols-3 gap-1.5 text-[10px] text-center font-mono">
@@ -1779,11 +2178,23 @@ export default function PumpSizingPage() {
                   <Card className="border border-border shadow-md overflow-hidden">
                     <div className="bg-muted/50 p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                       <div>
-                        <span className="text-[10px] bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Active System Specification</span>
-                        <h2 className="text-2xl font-bold font-heading mt-1 text-foreground">
-                          {result.exact_match.model} <span className="text-muted-foreground text-sm font-normal">[{result.exact_match.brand}]</span>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                            Active System Specification
+                          </span>
+                          <Badge className="bg-primary text-primary-foreground font-mono text-[10px] uppercase font-bold">
+                            [{result.exact_match.pumpType || pumpType} Pump]
+                          </Badge>
+                        </div>
+                        <h2 className="text-2xl font-bold font-heading mt-1 text-foreground flex items-center gap-2 flex-wrap">
+                          {result.exact_match.model} 
+                          <span className="text-muted-foreground text-sm font-semibold">
+                            [{result.exact_match.brand} • {result.exact_match.pumpType || pumpType} Pump]
+                          </span>
                         </h2>
-                        <p className="text-xs text-muted-foreground">{result.exact_match.firstCategory || result.exact_match.secondCategory || 'Solar Submersible Pump'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {result.exact_match.firstCategory || result.exact_match.secondCategory || (pumpType === "Surface" ? "Solar Surface Centrifugal Pump" : "Solar Submersible Pump")}
+                        </p>
                       </div>
                       <div className="flex flex-wrap gap-2 items-center">
                         <Badge className="bg-slate-800 text-white hover:bg-slate-800/90 font-mono">{result.exact_match.power}</Badge>
@@ -2413,12 +2824,26 @@ export default function PumpSizingPage() {
                     </CardHeader>
                     
                     <CardContent className="pt-4 pb-4 space-y-4 flex-1">
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] font-medium border-b pb-3">
-                        <div className="text-muted-foreground">Pump Model: <span className="text-foreground font-semibold block">{p.selectedPumpModel}</span></div>
-                        <div className="text-muted-foreground">Water Source: <span className="text-foreground font-semibold block">{p.waterSource || "Borehole"}</span></div>
-                        <div className="text-muted-foreground">Daily Need: <span className="text-foreground font-semibold font-mono block">{Number(p.dailyWaterNeed)} m³</span></div>
-                        <div className="text-muted-foreground">Head & Lift: <span className="text-foreground font-semibold font-mono block">{Number(p.verticalLift || 0)}m Lift / {Number(p.pipeLength || 0)}m Pipe</span></div>
-                      </div>
+                      {(() => {
+                        const isSurf = p.selectedPumpModel?.includes("SCM") || p.selectedPumpModel?.includes("SCPM") || p.selectedPumpModel?.includes("DCPM") || p.selectedPumpModel?.includes("DFSU") || p.selectedPumpModel?.includes("DFSN") || (p.waterSource && (p.waterSource.includes("River") || p.waterSource.includes("Pond")));
+                        const pType = isSurf ? "Surface" : "Submersible";
+                        return (
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] font-medium border-b pb-3">
+                            <div className="text-muted-foreground">
+                              Pump Model: 
+                              <span className="text-foreground font-semibold flex items-center gap-1 mt-0.5 flex-wrap">
+                                {p.selectedPumpModel}
+                                <Badge variant="outline" className="text-[9px] font-mono py-0 px-1 text-primary border-primary/30">
+                                  [{pType} Pump]
+                                </Badge>
+                              </span>
+                            </div>
+                            <div className="text-muted-foreground">Water Source: <span className="text-foreground font-semibold block">{p.waterSource || "Borehole"}</span></div>
+                            <div className="text-muted-foreground">Daily Need: <span className="text-foreground font-semibold font-mono block">{Number(p.dailyWaterNeed)} m³</span></div>
+                            <div className="text-muted-foreground">Head & Lift: <span className="text-foreground font-semibold font-mono block">{Number(p.verticalLift || 0)}m Lift / {Number(p.pipeLength || 0)}m Pipe</span></div>
+                          </div>
+                        );
+                      })()}
 
                       {p.totalPrice && (
                         <div className="space-y-0.5 text-[11px]">

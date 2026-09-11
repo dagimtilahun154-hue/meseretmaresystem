@@ -127,6 +127,7 @@ export default function PeachtreePage({ initialTab = "customers" }: PeachtreePag
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [currentTab, setCurrentTab] = useState(initialTab);
+  const [summary, setSummary] = useState<any | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -160,10 +161,15 @@ export default function PeachtreePage({ initialTab = "customers" }: PeachtreePag
   const loadData = async () => {
     setLoading(true);
     try {
-      const [response, vaultRes] = await Promise.allSettled([
+      const [response, vaultRes, summaryRes] = await Promise.allSettled([
         peachtreeDB.getSyncedData(),
         peachtreeDB.getVault(),
+        peachtreeDB.getSummary(),
       ]);
+
+      if (summaryRes.status === "fulfilled" && summaryRes.value?.data) {
+        setSummary(summaryRes.value.data);
+      }
 
       let incomingCustomers: Customer[] = [];
       let incomingVendors: Vendor[] = [];
@@ -306,17 +312,31 @@ export default function PeachtreePage({ initialTab = "customers" }: PeachtreePag
 
   // Summary Metrics
   const totalReceivables = useMemo(() => {
-    const sum = (data?.customers || []).reduce((acc, c) => acc + cleanMoneyNumber(c.balance), 0);
-    return sum > 0 ? sum : 6365084.13;
-  }, [data?.customers]);
+    if (summary?.receivablesAR?.totalReceivables !== undefined) {
+      return Number(summary.receivablesAR.totalReceivables);
+    }
+    return (data?.customers || []).reduce((acc, c) => acc + cleanMoneyNumber(c.balance), 0);
+  }, [summary, data?.customers]);
 
   const totalPayables = useMemo(() => {
-    const sum = (data?.vendors || []).reduce((acc, v) => acc + cleanMoneyNumber(v.balance), 0);
-    return sum > 0 ? sum : 589714.17;
-  }, [data?.vendors]);
+    if (summary?.payablesAP?.totalPayables !== undefined) {
+      return Number(summary.payablesAP.totalPayables);
+    }
+    return (data?.vendors || []).reduce((acc, v) => acc + cleanMoneyNumber(v.balance), 0);
+  }, [summary, data?.vendors]);
 
   // AR Aging Breakdown (Categorized cleanly without numerical distortion)
   const arAgingData = useMemo(() => {
+    if (summary?.receivablesAR?.aging) {
+      const ag = summary.receivablesAR.aging;
+      return [
+        { name: "Current (0-30d)", amount: Math.round(Number(ag.current0_30) || 0), color: "#10b981" },
+        { name: "31-60 Days", amount: Math.round(Number(ag.days31_60) || 0), color: "#3b82f6" },
+        { name: "61-90 Days", amount: Math.round(Number(ag.days61_90) || 0), color: "#f59e0b" },
+        { name: "90+ Days Overdue", amount: Math.round(Number(ag.days90Plus) || 0), color: "#ef4444" },
+      ];
+    }
+
     let current = 0;
     let days30 = 0;
     let days60 = 0;
@@ -331,20 +351,13 @@ export default function PeachtreePage({ initialTab = "customers" }: PeachtreePag
       else days90Plus += b;
     });
 
-    if (current + days30 + days60 + days90Plus === 0) {
-      current = 1250000;
-      days30 = 1038409;
-      days60 = 1961245;
-      days90Plus = 2115430;
-    }
-
     return [
       { name: "Current (0-30d)", amount: Math.round(current), color: "#10b981" },
       { name: "31-60 Days", amount: Math.round(days30), color: "#3b82f6" },
       { name: "61-90 Days", amount: Math.round(days60), color: "#f59e0b" },
       { name: "90+ Days Overdue", amount: Math.round(days90Plus), color: "#ef4444" },
     ];
-  }, [data?.customers]);
+  }, [summary, data?.customers]);
 
   // Top 5 Debtors Chart
   const topDebtorsData = useMemo(() => {
