@@ -1419,7 +1419,7 @@ export default function PumpSizingPage() {
                         setPumpType("Submersible");
                         if (waterSourceType === "River / Stream") setWaterSourceType("Borehole");
                       }}
-                      className={`p-2.5 rounded-lg border text-left transition-all flex items-center gap-2.5 ${
+                      className={`p-2.5 rounded-lg border text-left transition-all duration-150 flex items-center gap-2.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none active:scale-[0.99] ${
                         pumpType === "Submersible"
                           ? "border-primary bg-primary/10 ring-1 ring-primary/40 shadow-sm"
                           : "border-border bg-card hover:bg-muted/40"
@@ -1441,7 +1441,7 @@ export default function PumpSizingPage() {
                         setPumpType("Surface");
                         if (waterSourceType === "Borehole") setWaterSourceType("River / Stream");
                       }}
-                      className={`p-2.5 rounded-lg border text-left transition-all flex items-center gap-2.5 ${
+                      className={`p-2.5 rounded-lg border text-left transition-all duration-150 flex items-center gap-2.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none active:scale-[0.99] ${
                         pumpType === "Surface"
                           ? "border-primary bg-primary/10 ring-1 ring-primary/40 shadow-sm"
                           : "border-border bg-card hover:bg-muted/40"
@@ -1634,7 +1634,7 @@ export default function PumpSizingPage() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                    <div className="space-y-1 bg-background p-2 rounded border border-border/50">
+                    <div className="space-y-1 bg-background p-2 rounded-lg border border-border/60 transition-colors focus-within:border-primary/60">
                       <Label className="text-[11px] text-foreground font-semibold">Total Dynamic Head (H) =</Label>
                       <div className="flex items-center gap-1">
                         <Input
@@ -1644,12 +1644,12 @@ export default function PumpSizingPage() {
                             ? (Number(suctionLift || 0) + Number(tankElevation || 0) + ((Number(pipeLength || 0) + Number(suctionPipeLength || 0)) / 100) * getFrictionLossPer100m(Number(pipeDiameter || 3.0))).toFixed(1)
                             : (Number(staticWaterLevel || 0) + Number(dynamicDrawdown || 0) + Number(tankElevation || 0) + (Number(pipeLength || 0) / 100) * getFrictionLossPer100m(Number(pipeDiameter || 2.0))).toFixed(1)
                           } m`}
-                          className="h-7 text-xs font-mono font-bold bg-muted/40"
+                          className="h-7 text-xs font-mono font-bold tabular-nums tracking-tight bg-muted/40"
                         />
                       </div>
                     </div>
 
-                    <div className="space-y-1 bg-background p-2 rounded border border-border/50">
+                    <div className="space-y-1 bg-background p-2 rounded-lg border border-border/60 transition-colors focus-within:border-primary/60">
                       <Label className="text-[11px] text-foreground font-semibold">Discharge rate capacity (Q) =</Label>
                       <div className="flex items-center gap-1">
                         <Input
@@ -1665,13 +1665,13 @@ export default function PumpSizingPage() {
                               setHourlyWaterReq((num * 3.6).toFixed(2));
                             }
                           }}
-                          className="h-7 text-xs font-mono font-bold bg-background flex-1"
+                          className="h-7 text-xs font-mono font-bold tabular-nums tracking-tight bg-background flex-1 focus-visible:ring-1 focus-visible:ring-primary"
                         />
-                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">L/s</span>
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0 font-medium">L/s</span>
                       </div>
                     </div>
 
-                    <div className="space-y-1 bg-background p-2 rounded border border-border/50">
+                    <div className="space-y-1 bg-background p-2 rounded-lg border border-border/60 transition-colors focus-within:border-primary/60">
                       <Label className="text-[11px] text-foreground font-semibold">Hourly water requirement =</Label>
                       <div className="flex items-center gap-1">
                         <Input
@@ -1687,13 +1687,13 @@ export default function PumpSizingPage() {
                               setDischargeFlowLps((num / 3.6).toFixed(2));
                             }
                           }}
-                          className="h-7 text-xs font-mono font-bold bg-background flex-1"
+                          className="h-7 text-xs font-mono font-bold tabular-nums tracking-tight bg-background flex-1 focus-visible:ring-1 focus-visible:ring-primary"
                         />
-                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">m³/hr</span>
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0 font-medium">m³/hr</span>
                       </div>
                     </div>
 
-                    <div className="space-y-1 bg-background p-2 rounded border border-border/50">
+                    <div className="space-y-1 bg-background p-2 rounded-lg border border-border/60 transition-colors focus-within:border-primary/60">
                       <Label className="text-[11px] text-foreground font-semibold">Minimum Day Demand =</Label>
                       <div className="flex items-center gap-1">
                         <Input
@@ -1701,13 +1701,13 @@ export default function PumpSizingPage() {
                           placeholder="500"
                           value={dailyWaterNeed}
                           onChange={(e) => setDailyWaterNeed(e.target.value)}
-                          className="h-7 text-xs font-mono font-bold bg-background flex-1"
+                          className="h-7 text-xs font-mono font-bold tabular-nums tracking-tight bg-background flex-1 focus-visible:ring-1 focus-visible:ring-primary"
                         />
-                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">m³/day</span>
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0 font-medium">m³/day</span>
                       </div>
                     </div>
 
-                    <div className="space-y-1 bg-background p-2 rounded border border-border/50">
+                    <div className="space-y-1 bg-background p-2 rounded-lg border border-border/60 transition-colors focus-within:border-primary/60">
                       <Label className="text-[11px] text-foreground font-semibold">Water tempertaure =</Label>
                       <div className="flex items-center gap-1">
                         <Input
@@ -1715,13 +1715,13 @@ export default function PumpSizingPage() {
                           placeholder="19"
                           value={waterTemperatureC}
                           onChange={(e) => setWaterTemperatureC(e.target.value)}
-                          className="h-7 text-xs font-mono font-bold bg-background flex-1"
+                          className="h-7 text-xs font-mono font-bold tabular-nums tracking-tight bg-background flex-1 focus-visible:ring-1 focus-visible:ring-primary"
                         />
-                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">°C</span>
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0 font-medium">°C</span>
                       </div>
                     </div>
 
-                    <div className="space-y-1 bg-background p-2 rounded border border-border/50">
+                    <div className="space-y-1 bg-background p-2 rounded-lg border border-border/60 transition-colors focus-within:border-primary/60">
                       <Label className="text-[11px] text-foreground font-semibold">Pump efficiency (η) ≥</Label>
                       <div className="flex items-center gap-1">
                         <Input
@@ -1729,13 +1729,13 @@ export default function PumpSizingPage() {
                           placeholder="65"
                           value={pumpEfficiencyPercent}
                           onChange={(e) => setPumpEfficiencyPercent(e.target.value)}
-                          className="h-7 text-xs font-mono font-bold bg-background flex-1"
+                          className="h-7 text-xs font-mono font-bold tabular-nums tracking-tight bg-background flex-1 focus-visible:ring-1 focus-visible:ring-primary"
                         />
-                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">%</span>
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0 font-medium">%</span>
                       </div>
                     </div>
 
-                    <div className="space-y-1 bg-background p-2 rounded border border-border/50 sm:col-span-2">
+                    <div className="space-y-1 bg-background p-2 rounded-lg border border-border/60 transition-colors focus-within:border-primary/60 sm:col-span-2">
                       <Label className="text-[11px] text-foreground font-semibold">minimum Pump Kw =</Label>
                       <div className="flex items-center gap-1">
                         <Input
@@ -1744,9 +1744,9 @@ export default function PumpSizingPage() {
                           placeholder="5.5"
                           value={minPumpKw}
                           onChange={(e) => setMinPumpKw(e.target.value)}
-                          className="h-7 text-xs font-mono font-bold bg-background flex-1"
+                          className="h-7 text-xs font-mono font-bold tabular-nums tracking-tight bg-background flex-1 focus-visible:ring-1 focus-visible:ring-primary"
                         />
-                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">kW</span>
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0 font-medium">kW</span>
                       </div>
                     </div>
                   </div>

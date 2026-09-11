@@ -34,8 +34,16 @@ export function StatCardGrid({
         return (
           <Card
             key={c.key}
+            tabIndex={onToggleCard ? 0 : undefined}
+            role={onToggleCard ? "button" : undefined}
+            onKeyDown={(e) => {
+              if (onToggleCard && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                onToggleCard(c.key);
+              }
+            }}
             onClick={() => onToggleCard && onToggleCard(c.key)}
-            className={`cursor-pointer transition-all hover:scale-[1.02] border-0 shadow-md ${
+            className={`cursor-pointer transition-all hover:scale-[1.02] border-0 shadow-md focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:outline-none ${
               c.gradientClass || "bg-card"
             } text-white relative overflow-hidden group`}
           >
@@ -50,7 +58,7 @@ export function StatCardGrid({
               </div>
 
               <div>
-                <div className="text-lg font-black tracking-tight mb-0.5">{c.value}</div>
+                <div className="text-lg font-black tracking-tight tabular-nums mb-0.5">{c.value}</div>
                 {c.subtext && (
                   <div className="flex items-center justify-between text-[10px] opacity-80 pt-0.5">
                     <span className="truncate">{c.subtext}</span>
