@@ -285,11 +285,11 @@ export function FinanceHubDashboard() {
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className="font-bold text-emerald-700 dark:text-emerald-400 block text-xs">
+                    <div className="text-right font-mono tabular-nums">
+                      <span className="font-bold text-emerald-700 dark:text-emerald-400 block text-xs tracking-tight">
                         +{formatCurrency(amount)}
                       </span>
-                      <Badge variant="outline" className={`text-[9px] ${isPaid ? "bg-green-50 text-green-700 border-green-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                      <Badge variant="outline" className={`text-[9px] font-sans ${isPaid ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" : "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30"}`}>
                         {isPaid ? "Settled" : "Invoiced"}
                       </Badge>
                     </div>

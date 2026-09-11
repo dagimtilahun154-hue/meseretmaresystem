@@ -151,32 +151,53 @@ export function SizingProposalPdfModal({ proposal, open, onOpenChange }: SizingP
             </div>
           </div>
 
+          {/* Executive Summary Callout Box */}
+          <div className="p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge className="bg-emerald-600 text-white font-mono text-[9px] uppercase font-bold">
+                  ENGINEERING VERIFIED
+                </Badge>
+                <span className="text-xs font-black text-emerald-950 uppercase tracking-wide">
+                  [{pumpTypeLabel}] {pumpModel}
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-800">
+                Engineered for <strong>{dailyWater} m³/day</strong> daily yield at <strong>{headLift}m TDH</strong> with design efficiency <strong>η ≥ 65%</strong>.
+              </p>
+            </div>
+            <div className="text-left sm:text-right shrink-0">
+              <span className="text-[10px] text-slate-500 font-bold block uppercase">Turnkey Investment</span>
+              <span className="text-lg font-black text-slate-900 font-mono tabular-nums">{formatCurrency(totalPrice)}</span>
+            </div>
+          </div>
+
           {/* Hydraulic Site Calculation Analysis */}
           <div className="space-y-3">
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-2 border-b pb-2">
               <Droplets className="h-4 w-4 text-sky-600" /> SECTION 1: HYDRAULIC & WATER DEMAND ANALYSIS
             </h3>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono tabular-nums">
               <div className="p-4 bg-sky-50 rounded-xl border border-sky-200 space-y-1">
-                <span className="text-[10px] font-bold text-sky-700 uppercase block">Daily Water Need</span>
+                <span className="text-[10px] font-bold text-sky-700 uppercase block font-sans">Daily Water Need</span>
                 <span className="text-xl font-black text-sky-950">{dailyWater} m³/day</span>
-                <span className="text-[10px] text-sky-600 block">Required Discharge Volume</span>
+                <span className="text-[10px] text-sky-600 block font-sans">Required Discharge Volume</span>
               </div>
               <div className="p-4 bg-sky-50 rounded-xl border border-sky-200 space-y-1">
-                <span className="text-[10px] font-bold text-sky-700 uppercase block">Total Vertical Lift (Head)</span>
+                <span className="text-[10px] font-bold text-sky-700 uppercase block font-sans">Total Vertical Lift (Head)</span>
                 <span className="text-xl font-black text-sky-950">{headLift} Meters</span>
-                <span className="text-[10px] text-sky-600 block">Dynamic Pumping Head</span>
+                <span className="text-[10px] text-sky-600 block font-sans">Dynamic Pumping Head</span>
               </div>
               <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 space-y-1">
-                <span className="text-[10px] font-bold text-amber-700 uppercase block">Peak Solar Irradiance</span>
+                <span className="text-[10px] font-bold text-amber-700 uppercase block font-sans">Peak Solar Irradiance</span>
                 <span className="text-xl font-black text-amber-950">5.5 Peak Hours</span>
-                <span className="text-[10px] text-amber-600 block">Average Solar Radiation</span>
+                <span className="text-[10px] text-amber-600 block font-sans">Average Solar Radiation</span>
               </div>
               <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 space-y-1">
-                <span className="text-[10px] font-bold text-emerald-700 uppercase block">Flow Rate Demand</span>
+                <span className="text-[10px] font-bold text-emerald-700 uppercase block font-sans">Flow Rate Demand</span>
                 <span className="text-xl font-black text-emerald-950">{(dailyWater / 5.5).toFixed(1)} m³/hr</span>
-                <span className="text-[10px] text-emerald-600 block">Calculated hourly flow</span>
+                <span className="text-[10px] text-emerald-600 block font-sans">Calculated hourly flow</span>
               </div>
             </div>
           </div>
