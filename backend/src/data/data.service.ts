@@ -1238,6 +1238,16 @@ export class DataService {
     return documents.map(toPlain);
   }
 
+  async getCustomerDocumentById(customerId: string, docId: string) {
+    const doc = await this.prisma.customerDocument.findUnique({
+      where: { id: docId },
+      include: {
+        uploadedBy: { select: { id: true, displayName: true, username: true } },
+      },
+    });
+    return doc ? toPlain(doc) : null;
+  }
+
   async deleteCustomerDocument(customerId: string, docId: string) {
     const doc = await this.prisma.customerDocument.findUnique({ where: { id: docId } });
     if (!doc) {

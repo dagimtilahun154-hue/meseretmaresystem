@@ -17,7 +17,13 @@ export const apiClient = axios.create({
 });
 
 export function getAccessToken() {
-  return sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  return (
+    sessionStorage.getItem(ACCESS_TOKEN_KEY) ||
+    localStorage.getItem(ACCESS_TOKEN_KEY) ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("auth_token") ||
+    localStorage.getItem("solarflow_token")
+  );
 }
 
 export function getRefreshToken() {

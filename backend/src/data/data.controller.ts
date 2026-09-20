@@ -1,11 +1,30 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UploadedFile, UseInterceptors, Req } from "@nestjs/common";
+import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Put, Query, Res, UploadedFile, UseInterceptors, UsePipes, ValidationPipe, Req } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
 import { extname, join } from "path";
 import { existsSync, mkdirSync } from "fs";
+import { IsOptional, IsString } from "class-validator";
 import { DataService } from "./data.service";
 import { Roles } from "../common/decorators/roles.decorator";
 import { Public } from "../common/decorators/public.decorator";
+
+export class UploadCustomerDocumentDto {
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
 
 const customerDocsUploadDir = join(process.cwd(), "uploads", "customer-documents");
 if (!existsSync(customerDocsUploadDir)) {
@@ -42,7 +61,29 @@ export class DataController {
   @Get("customers") customers() { return this.data.customers(); }
   @Get("customers/:id/360") getCustomer360(@Param("id") id: string) { return this.data.getCustomer360(id); }
   @Get("customers/:id/documents") getCustomerDocuments(@Param("id") id: string) { return this.data.getCustomerDocuments(id); }
+  @Get("customers/:id/documents/:docId/download")
+  async downloadCustomerDocument(
+    @Param("id") id: string,
+    @Param("docId") docId: string,
+    @Res() res: any,
+  ) {
+    const doc = await this.data.getCustomerDocumentById(id, docId);
+    if (!doc) {
+      throw new NotFoundException("Document not found");
+    }
+    const fileName = doc.fileUrl.replace("/uploads/customer-documents/", "");
+    const filePath = join(customerDocsUploadDir, fileName);
+    if (!existsSync(filePath)) {
+      throw new NotFoundException("Document file does not exist on disk");
+    }
+
+    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(doc.fileName || fileName)}"`);
+    res.setHeader("Content-Type", doc.fileType || "application/octet-stream");
+    return res.sendFile(filePath);
+  }
+
   @Post("customers/:id/documents")
+  @UsePipes(new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false, transform: false }))
   @UseInterceptors(
     FileInterceptor("file", {
       storage: diskStorage({
@@ -63,7 +104,7 @@ export class DataController {
     @Param("id") id: string,
     @UploadedFile() file: any,
     @Req() req: any,
-    @Body() body: { title?: string; category?: string; notes?: string; description?: string },
+    @Body() body: UploadCustomerDocumentDto,
   ) {
     return this.data.uploadCustomerDocument(id, file, req.user?.id, body);
   }

@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   Search,
   Filter,
+  Loader2,
 } from "lucide-react";
 import { customersDB } from "@/lib/db-service";
 import { toast } from "sonner";
@@ -77,6 +78,7 @@ export function CustomerDocumentsManager({
   const [notes, setNotes] = useState("");
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("ALL");
   const [isDragging, setIsDragging] = useState(false);
@@ -149,6 +151,51 @@ export function CustomerDocumentsManager({
       toast.error(errMsg);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDownload = async (doc: CustomerDocumentItem) => {
+    setDownloadingId(doc.id);
+    try {
+      const directDownloadUrl = `${API_BASE}/api/v1/customers/${customerId}/documents/${doc.id}/download`;
+      const token =
+        localStorage.getItem("token") ||
+        localStorage.getItem("auth_token") ||
+        localStorage.getItem("solarflow_auth_token") ||
+        localStorage.getItem("solarflow_token");
+
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(directDownloadUrl, { headers });
+      if (res.ok) {
+        const blob = await res.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = doc.fileName || `${doc.title || "document"}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+        toast.success(`Downloaded "${doc.fileName || doc.title}"`);
+        return;
+      }
+
+      // Fallback to static direct file download
+      const fallbackUrl = getFullFileUrl(doc.fileUrl);
+      const link = document.createElement("a");
+      link.href = fallbackUrl;
+      link.download = doc.fileName || doc.title;
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success(`Downloading "${doc.fileName || doc.title}"`);
+    } catch (err: any) {
+      toast.error("Failed to download document.");
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -482,16 +529,21 @@ export function CustomerDocumentsManager({
 
                     {/* Actions: Direct On-Demand Download & Delete */}
                     <div className="flex items-center gap-2 self-end md:self-center shrink-0">
-                      <a
-                        href={fullUrl}
-                        download={doc.fileName || doc.title}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-sm border border-primary/20"
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={downloadingId === doc.id}
+                        onClick={() => handleDownload(doc)}
+                        className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-sm border border-primary/20"
+                        title={`Download "${doc.fileName || doc.title}" to your computer`}
                       >
-                        <Download className="h-3.5 w-3.5" />
+                        {downloadingId === doc.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Download className="h-3.5 w-3.5" />
+                        )}
                         Download
-                      </a>
+                      </Button>
 
                       {canDelete && (
                         <Button
