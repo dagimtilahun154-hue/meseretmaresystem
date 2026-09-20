@@ -241,7 +241,10 @@ export const customersDB = {
   getAll: async (): Promise<Customer[]> => apiFetch("/customers"),
   get360: async (id: string) => apiFetch(`/customers/${id}/360`),
   getDocuments: async (id: string) => apiFetch(`/customers/${id}/documents`),
-  uploadDocument: async (id: string, formData: FormData) => apiFetch(`/customers/${id}/documents`, { method: "POST", formData }),
+  uploadDocument: async (id: string, formData: FormData) => {
+    const response = await apiClient.post(`/customers/${id}/documents`, formData);
+    return response.data;
+  },
   deleteDocument: async (id: string, docId: string) => apiFetch(`/customers/${id}/documents/${docId}`, { method: "DELETE" }),
   addNote: async (id: string, note: string) => apiFetch(`/customers/${id}/notes`, { method: "POST", body: JSON.stringify({ note }) }),
   save: async (customer: Customer): Promise<boolean> => !!(await apiFetch("/customers", { method: "POST", body: JSON.stringify(customer) }))?.success,

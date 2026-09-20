@@ -25,6 +25,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { customersDB } from "@/lib/db-service";
+import { getAccessToken } from "@/lib/api/client";
 import { toast } from "sonner";
 
 export interface CustomerDocumentItem {
@@ -158,12 +159,7 @@ export function CustomerDocumentsManager({
     setDownloadingId(doc.id);
     try {
       const directDownloadUrl = `${API_BASE}/api/v1/customers/${customerId}/documents/${doc.id}/download`;
-      const token =
-        localStorage.getItem("token") ||
-        localStorage.getItem("auth_token") ||
-        localStorage.getItem("solarflow_auth_token") ||
-        localStorage.getItem("solarflow_token");
-
+      const token = getAccessToken();
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
 

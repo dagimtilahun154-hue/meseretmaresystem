@@ -50,6 +50,19 @@ apiClient.interceptors.request.use((config) => {
     config.headers["x-company-id"] = savedEntity;
   }
   config.headers["x-request-id"] = crypto.randomUUID();
+
+  // If request data is FormData, do not set application/json; allow browser to attach boundary
+  if (config.data instanceof FormData) {
+    if (config.headers) {
+      delete config.headers["Content-Type"];
+      delete config.headers["content-type"];
+      if (typeof (config.headers as any).delete === "function") {
+        (config.headers as any).delete("Content-Type");
+        (config.headers as any).delete("content-type");
+      }
+    }
+  }
+
   return config;
 });
 

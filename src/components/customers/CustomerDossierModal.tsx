@@ -564,6 +564,10 @@ export function CustomerDossierModal({ customerId, open, onOpenChange }: Custome
         {lightboxImage && (
           <Dialog open={!!lightboxImage} onOpenChange={() => setLightboxImage(null)}>
             <DialogContent className="max-w-3xl p-2 bg-black border-none text-white">
+              <DialogHeader className="sr-only">
+                <DialogTitle>{lightboxImage.label || "Customer Document Preview"}</DialogTitle>
+                <DialogDescription>Full size preview of customer file</DialogDescription>
+              </DialogHeader>
               <div className="relative">
                 <img src={lightboxImage.url} alt={lightboxImage.label} className="w-full max-h-[75vh] object-contain rounded-lg" />
                 <div className="p-3 text-center text-sm font-bold text-slate-200">
