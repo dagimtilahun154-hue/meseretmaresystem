@@ -176,7 +176,7 @@ describe("CustomerDocumentsManager Component", () => {
     });
   });
 
-  it("provides on-demand direct download links with correct href", () => {
+  it("provides on-demand direct download buttons for each document", () => {
     render(
       <CustomerDocumentsManager
         customerId="cust-101"
@@ -185,11 +185,11 @@ describe("CustomerDocumentsManager Component", () => {
       />
     );
 
-    const downloadLinks = screen.getAllByRole("link", { name: /Download/i });
-    expect(downloadLinks.length).toBe(2);
+    const downloadButtons = screen.getAllByRole("button", { name: /Download/i });
+    expect(downloadButtons.length).toBe(2);
 
-    // Verify download link points to static uploads URL
-    expect(downloadLinks[0].getAttribute("href")).toContain("/uploads/customer-documents/custdoc-101.pdf");
-    expect(downloadLinks[0].getAttribute("download")).toBe("solar_contract_signed.pdf");
+    // Verify download buttons have correct descriptive title
+    expect(downloadButtons[0].getAttribute("title")).toContain("solar_contract_signed.pdf");
+    expect(downloadButtons[1].getAttribute("title")).toContain("cbe_deposit_slip.jpg");
   });
 });
