@@ -245,6 +245,10 @@ export const customersDB = {
     const response = await apiClient.post(`/customers/${id}/documents`, formData);
     return response.data;
   },
+  uploadDocumentJson: async (id: string, payload: any) => {
+    const response = await apiClient.post(`/customers/${id}/documents`, payload);
+    return response.data;
+  },
   deleteDocument: async (id: string, docId: string) => apiFetch(`/customers/${id}/documents/${docId}`, { method: "DELETE" }),
   addNote: async (id: string, note: string) => apiFetch(`/customers/${id}/notes`, { method: "POST", body: JSON.stringify({ note }) }),
   save: async (customer: Customer): Promise<boolean> => !!(await apiFetch("/customers", { method: "POST", body: JSON.stringify(customer) }))?.success,

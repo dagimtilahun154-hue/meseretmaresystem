@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { createHash } from "crypto";
 import * as fs from "fs";
-import { join } from "path";
+import { join, extname } from "path";
 import { PrismaService } from "../prisma/prisma.service";
 
 const toDate = (value?: string | Date | null) => (value ? new Date(value) : undefined);
@@ -1189,26 +1189,65 @@ export class DataService {
     customerId: string,
     file: any,
     userId: string | undefined,
-    body: { title?: string; category?: string; notes?: string; description?: string },
+    body: {
+      title?: string;
+      category?: string;
+      notes?: string;
+      description?: string;
+      fileName?: string;
+      fileType?: string;
+      fileBase64?: string;
+      fileSize?: number;
+    },
   ) {
-    if (!file) {
+    let finalFileName = "";
+    let finalFileUrl = "";
+    let finalFileType = "application/pdf";
+    let finalFileSize = 0;
+
+    if (file) {
+      finalFileName = file.originalname || "document.pdf";
+      finalFileUrl = `/uploads/customer-documents/${file.filename}`;
+      finalFileType = file.mimetype || "application/pdf";
+      finalFileSize = file.size || 0;
+    } else if (body && body.fileBase64) {
+      try {
+        const base64Data = body.fileBase64.replace(/^data:([A-Za-z-+\/]+);base64,/, "");
+        const buffer = Buffer.from(base64Data, "base64");
+        const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+        const originalName = body.fileName || "document.pdf";
+        const ext = extname(originalName) || ".pdf";
+        const diskFileName = `custdoc-${uniqueSuffix}${ext}`;
+        const uploadDirPath = join(process.cwd(), "uploads", "customer-documents");
+        if (!fs.existsSync(uploadDirPath)) {
+          fs.mkdirSync(uploadDirPath, { recursive: true });
+        }
+        fs.writeFileSync(join(uploadDirPath, diskFileName), buffer);
+
+        finalFileName = originalName;
+        finalFileUrl = `/uploads/customer-documents/${diskFileName}`;
+        finalFileType = body.fileType || "application/pdf";
+        finalFileSize = body.fileSize || buffer.length;
+      } catch (err: any) {
+        throw new BadRequestException(`Failed to parse base64 file data: ${err.message}`);
+      }
+    } else {
       throw new BadRequestException("No file provided for upload");
     }
 
     const customer = await this.ensureCustomerExists(customerId);
-    const fileUrl = `/uploads/customer-documents/${file.filename}`;
-    const category = body.category || "AGREEMENT";
-    const title = body.title || file.originalname;
-    const notes = body.notes || body.description || null;
+    const category = body?.category || "AGREEMENT";
+    const title = body?.title || finalFileName;
+    const notes = body?.notes || body?.description || null;
 
     const doc = await this.prisma.customerDocument.create({
       data: {
         customerId: customer.id,
         title,
-        fileName: file.originalname,
-        fileUrl,
-        fileType: file.mimetype,
-        fileSize: file.size,
+        fileName: finalFileName,
+        fileUrl: finalFileUrl,
+        fileType: finalFileType,
+        fileSize: finalFileSize,
         category,
         notes,
         uploadedById: userId || null,

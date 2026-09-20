@@ -24,6 +24,21 @@ export class UploadCustomerDocumentDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  fileName?: string;
+
+  @IsOptional()
+  @IsString()
+  fileType?: string;
+
+  @IsOptional()
+  @IsString()
+  fileBase64?: string;
+
+  @IsOptional()
+  fileSize?: number;
 }
 
 const customerDocsUploadDir = join(process.cwd(), "uploads", "customer-documents");

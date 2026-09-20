@@ -133,20 +133,51 @@ export function CustomerDocumentsManager({
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("title", title.trim() || selectedFile.name);
-      formData.append("category", category);
-      formData.append("notes", notes.trim());
+      let uploadSucceeded = false;
+      const docTitle = title.trim() || selectedFile.name;
 
-      await customersDB.uploadDocument(customerId, formData);
-      toast.success(`Successfully uploaded "${title.trim() || selectedFile.name}" to customer file.`);
-      setSelectedFile(null);
-      setTitle("");
-      setNotes("");
-      setCategory("AGREEMENT");
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      onDocumentsChange?.();
+      // 1. Attempt standard FormData upload
+      try {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        formData.append("title", docTitle);
+        formData.append("category", category);
+        formData.append("notes", notes.trim());
+
+        await customersDB.uploadDocument(customerId, formData);
+        uploadSucceeded = true;
+      } catch (multipartErr: any) {
+        console.warn("Multipart upload fallback to Base64 channel:", multipartErr);
+
+        // 2. Dual-channel fallback: Convert file to Base64 and send as JSON
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(selectedFile);
+        });
+
+        await customersDB.uploadDocumentJson(customerId, {
+          title: docTitle,
+          category,
+          notes: notes.trim(),
+          fileName: selectedFile.name,
+          fileType: selectedFile.type || "application/pdf",
+          fileSize: selectedFile.size,
+          fileBase64: base64Data,
+        });
+        uploadSucceeded = true;
+      }
+
+      if (uploadSucceeded) {
+        toast.success(`Successfully uploaded "${docTitle}" to customer file.`);
+        setSelectedFile(null);
+        setTitle("");
+        setNotes("");
+        setCategory("AGREEMENT");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        onDocumentsChange?.();
+      }
     } catch (error: any) {
       const errMsg = error?.response?.data?.message || error?.message || "Failed to upload document.";
       toast.error(errMsg);
