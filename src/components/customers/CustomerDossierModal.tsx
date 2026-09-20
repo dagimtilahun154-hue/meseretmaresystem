@@ -14,6 +14,7 @@ import {
 import { customersDB } from "@/lib/db-service";
 import { formatCurrency } from "@/lib/data";
 import { toast } from "sonner";
+import { CustomerDocumentsManager } from "./CustomerDocumentsManager";
 
 interface CustomerDossierModalProps {
   customerId: string | null;
@@ -71,6 +72,7 @@ export function CustomerDossierModal({ customerId, open, onOpenChange }: Custome
   const peachtree = data?.peachtreeRecords || [];
   const fieldWorks = data?.fieldWorkOperations || [];
   const notes = data?.notes || [];
+  const documents = data?.documents || [];
 
   // Calculate Lifetime Financials
   const solarflowSalesTotal = sales.reduce((acc: number, s: any) => acc + Number(s.totalAmount || s.totalSell || 0), 0);
@@ -188,14 +190,15 @@ export function CustomerDossierModal({ customerId, open, onOpenChange }: Custome
             {/* 7 Structured Tabs */}
             <div className="p-6 space-y-4">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid grid-cols-7 w-full bg-muted/60 p-1">
-                  <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
-                  <TabsTrigger value="pumps" className="text-xs">Pumps & Sizing</TabsTrigger>
-                  <TabsTrigger value="peachtree" className="text-xs">Peachtree ({peachtree.length})</TabsTrigger>
-                  <TabsTrigger value="media" className="text-xs">Media & Photos</TabsTrigger>
-                  <TabsTrigger value="assessment" className="text-xs">Survey</TabsTrigger>
-                  <TabsTrigger value="notes" className="text-xs">Notes ({notes.length})</TabsTrigger>
-                  <TabsTrigger value="warranty" className="text-xs">Warranty</TabsTrigger>
+                <TabsList className="grid grid-cols-4 sm:grid-cols-8 w-full bg-muted/60 p-1 gap-1 h-auto">
+                  <TabsTrigger value="overview" className="text-xs py-1.5">Overview</TabsTrigger>
+                  <TabsTrigger value="documents" className="text-xs py-1.5 font-bold text-primary">Files & Scans ({documents.length})</TabsTrigger>
+                  <TabsTrigger value="pumps" className="text-xs py-1.5">Pumps & Sizing</TabsTrigger>
+                  <TabsTrigger value="peachtree" className="text-xs py-1.5">Peachtree ({peachtree.length})</TabsTrigger>
+                  <TabsTrigger value="media" className="text-xs py-1.5">Media & Photos</TabsTrigger>
+                  <TabsTrigger value="assessment" className="text-xs py-1.5">Survey</TabsTrigger>
+                  <TabsTrigger value="notes" className="text-xs py-1.5">Notes ({notes.length})</TabsTrigger>
+                  <TabsTrigger value="warranty" className="text-xs py-1.5">Warranty</TabsTrigger>
                 </TabsList>
 
                 {/* TAB 1: 360 OVERVIEW */}
@@ -257,6 +260,16 @@ export function CustomerDossierModal({ customerId, open, onOpenChange }: Custome
                       </CardContent>
                     </Card>
                   </div>
+                </TabsContent>
+
+                {/* TAB: DOCUMENTS & SCANNED FILES */}
+                <TabsContent value="documents" className="pt-4 space-y-4">
+                  <CustomerDocumentsManager
+                    customerId={customerId || customer.id}
+                    customerName={customer.name}
+                    documents={documents}
+                    onDocumentsChange={fetchCustomerData}
+                  />
                 </TabsContent>
 
                 {/* TAB 2: PUMPS & JOB COSTING */}

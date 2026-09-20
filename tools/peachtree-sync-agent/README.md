@@ -1,42 +1,37 @@
-# Peachtree Sync Agent Setup
+# Peachtree 2010 Direct Binary Live Sync Agent
 
-This folder contains the Python agent responsible for querying the local Peachtree 2010 database and pushing the data to the SolarFlow Manager cloud ERP.
+This folder contains the automated background sync agent responsible for reading directly from live Peachtree 2010 `.DAT` / `.PTB` binary company files (Shared Non-Blocking Mode) and pushing real-time changes to the SolarFlow Manager ERP cloud backend.
+
+## Key Features
+- **Direct Binary File Engine**: Reads directly from `CHART.DAT`, `CUSTOMER.DAT`, `VENDOR.DAT`, and `JRNLHDR.DAT` without requiring any 32-bit ODBC drivers or DSN configuration.
+- **Shared Non-Blocking Mode**: Zero file locking — the accountant can operate Peachtree normally while synchronization runs.
+- **Zero-Duplicate Delta Sync**: Change Data Capture (CDC) with SHA-256 hash checking prevents duplicate entries.
+- **Render Cloud Cold-Start Resilient**: Integrated server wake-up ping with 120s timeout and exponential backoff retry.
+- **Headless Background Daemon**: Operates silently in the background without needing to keep a command prompt or terminal window open.
 
 ## Prerequisites
-1. **Python 3.8+** installed on the Windows machine.
-2. **Peachtree ODBC Driver** configured.
+1. **Python 3.8+** on the Windows machine.
 
-## Step 1: Configure ODBC Data Source (DSN)
-1. Open the **ODBC Data Source Administrator (32-bit)** on Windows (since Peachtree 2010 is 32-bit).
-2. Go to the **System DSN** tab.
-3. Click **Add** and select the **Pervasive ODBC Engine Interface** (or Client Interface).
-4. Name the Data Source exactly `Peachtree`.
-5. Point it to your company database directory (e.g., `C:\Program Files\Sage\Peachtree\Company\[YourCompany]`).
-
-## Step 2: Install Python Dependencies
-Open Command Prompt in this folder and run:
+## Step 1: Install Python Dependencies
 ```cmd
 pip install -r requirements.txt
 ```
 
-## Step 3: Configure Environment Variables
-Create a `.env` file in this folder (or set Windows environment variables):
+## Step 2: Configure Environment Variables
+Create a `.env` file in this folder (or configure `config.json`):
 ```env
-PEACHTREE_DSN=Peachtree
-API_URL=http://localhost:4000/api/v1/sync/peachtree
+PEACHTREE_DATA_PATH=C:\Peachtree\Company\MeseretMare
+API_BASE_URL=https://meseretmaresystem.onrender.com/api/v1
 API_KEY=solarflow-sync-secret-2026
 POLL_INTERVAL_SECONDS=900
 ```
 
-## Step 4: Run the Agent
+## Step 3: Run the Agent
+To test connectivity:
 ```cmd
 python sync_agent.py
 ```
-
-## Step 5 (Optional): Compile to EXE
-To run this as a standalone executable without Python installed on the server:
+Or to run as a silent background Windows daemon without keeping a terminal open:
 ```cmd
-pip install pyinstaller
-pyinstaller --onefile sync_agent.py
+pythonw sync_agent.py
 ```
-You can then set the generated `sync_agent.exe` to run as a Windows Scheduled Task or Service.

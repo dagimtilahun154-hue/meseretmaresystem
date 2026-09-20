@@ -1,0 +1,1 @@
+CreateObject("Wscript.Shell").Run """C:\Users\new\AppData\Local\Microsoft\WindowsApps\pythonw.exe"" ""C:\Users\new\OneDrive\Documents\solarflow-manager-main\solarflow-manager-main\tools\peachtree-daemon\peachtree_agent.py""", 0, False

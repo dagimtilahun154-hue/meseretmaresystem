@@ -27,7 +27,7 @@ Write-Host "  SolarFlow Peachtree Background Agent - Installer v2.1.0" -Foregrou
 Write-Host "  Meseret Mare Enterprise Accounting Workstation Sync" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
-# 1. Detect Python Executable
+# 1. Detect Python Executables (Console + Windowless)
 $PythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source
 if (-not $PythonExe) {
     $PythonExe = (Get-Command py -ErrorAction SilentlyContinue).Source
@@ -36,7 +36,12 @@ if (-not $PythonExe) {
     Write-Host "[ERROR] Python was not found in PATH. Please install Python 3.8+." -ForegroundColor Red
     exit 1
 }
-Write-Host "[OK] Detected Python runtime: $PythonExe" -ForegroundColor Green
+
+$PythonwExe = (Get-Command pythonw -ErrorAction SilentlyContinue).Source
+if (-not $PythonwExe) {
+    $PythonwExe = $PythonExe
+}
+Write-Host "[OK] Detected Python runtime: $PythonExe (Windowless Runner: $PythonwExe)" -ForegroundColor Green
 
 # 2. Configure paths
 if ([string]::IsNullOrWhiteSpace($WatchDirectory)) {
@@ -72,14 +77,15 @@ try {
     Write-Host "[WARNING] Could not connect to server ($ServerUrl). Please ensure backend is running." -ForegroundColor DarkYellow
 }
 
-# 5. Register Windows Scheduled Task (Runs on Logon / System Boot)
+# 5. Create Silent VBS Launcher (Windowless Headless Execution)
+$VbsLauncher = Join-Path $ScriptDir "run_silent.vbs"
+$VbsContent = "CreateObject(`"Wscript.Shell`").Run `"`"`"$PythonwExe`"`" `"`"$AgentScript`"`"`", 0, False"
+Set-Content -Path $VbsLauncher -Value $VbsContent -Encoding ASCII
+Write-Host "[OK] Created windowless background launcher: $VbsLauncher" -ForegroundColor Green
+
+# 6. Register Windows Scheduled Task (Runs on Logon / System Boot)
 if (-not $NoAutoStart) {
     Write-Host "[INFO] Configuring Windows Scheduled Task for automatic startup on boot..." -ForegroundColor Yellow
-    
-    # Create silent VBS launcher so no console window pops up
-    $VbsLauncher = Join-Path $ScriptDir "run_silent.vbs"
-    $VbsContent = "CreateObject(`"Wscript.Shell`").Run `"`"`"$PythonExe`"`" `"`"$AgentScript`"`"`", 0, False"
-    Set-Content -Path $VbsLauncher -Value $VbsContent -Encoding ASCII
 
     # Unregister existing task if present
     Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
@@ -100,13 +106,13 @@ if (-not $NoAutoStart) {
     }
 }
 
-# 6. Generate Management Batch Files
+# 7. Generate Management Batch Files
 $StartBat = Join-Path $ScriptDir "start-agent.bat"
 $StopBat = Join-Path $ScriptDir "stop-agent.bat"
 $StatusBat = Join-Path $ScriptDir "status-agent.bat"
 
-Set-Content -Path $StartBat -Value "@echo off`r`nstart wscript.exe `"$ScriptDir\run_silent.vbs`"`r`necho [OK] SolarFlow Peachtree Agent started in background.`r`npause" -Encoding ASCII
-Set-Content -Path $StopBat -Value "@echo off`r`ntaskkill /F /FI `"WINDOWTITLE eq SolarFlowPeachtree*`" /IM python.exe 2>nul`r`necho [OK] Agent stopped.`r`npause" -Encoding ASCII
+Set-Content -Path $StartBat -Value "@echo off`r`nstart `"`" wscript.exe `"$ScriptDir\run_silent.vbs`"`r`necho [OK] SolarFlow Peachtree Agent started in background.`r`n" -Encoding ASCII
+Set-Content -Path $StopBat -Value "@echo off`r`ntaskkill /F /IM pythonw.exe 2>nul`r`ntaskkill /F /FI `"WINDOWTITLE eq SolarFlowPeachtree*`" /IM python.exe 2>nul`r`necho [OK] Agent stopped.`r`npause" -Encoding ASCII
 Set-Content -Path $StatusBat -Value "@echo off`r`npython `"$AgentScript`" --test`r`npause" -Encoding ASCII
 
 Write-Host "`n============================================================" -ForegroundColor Green

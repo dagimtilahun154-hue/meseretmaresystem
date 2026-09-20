@@ -23,6 +23,7 @@ import hashlib
 import logging
 import argparse
 import re
+import subprocess
 import urllib.request
 import urllib.error
 from datetime import datetime
@@ -58,8 +59,34 @@ def load_config(config_path=DEFAULT_CONFIG_PATH):
             "pollIntervalSeconds": 60,
             "heartbeatIntervalSeconds": 60
         }
-    with open(config_path, "r", encoding="utf-8") as f:
+    with open(config_path, "r", encoding="utf-8-sig") as f:
         return json.load(f)
+
+
+def is_peachtree_process_running():
+    """Checks if Peachtree (Peachw.exe or Sage processes) is currently active in Windows."""
+    try:
+        if sys.platform == 'win32':
+            output = subprocess.check_output('tasklist /FI "IMAGENAME eq peachw.exe"', shell=True, text=True)
+            if 'peachw.exe' in output.lower():
+                return True
+            output_sage = subprocess.check_output('tasklist /FI "IMAGENAME eq sage.exe"', shell=True, text=True)
+            if 'sage.exe' in output_sage.lower():
+                return True
+        return False
+    except Exception:
+        return False
+
+
+def wake_up_server(server_url):
+    """Wakes up free/sleeping cloud instances (e.g. Render) before sending data payloads."""
+    try:
+        health_url = f"{server_url.rstrip('/')}/health"
+        req = urllib.request.Request(health_url, headers={"User-Agent": f"SolarFlow-Peachtree-Agent/{AGENT_VERSION}"})
+        with urllib.request.urlopen(req, timeout=15) as res:
+            pass
+    except Exception:
+        pass
 
 
 def get_local_ip():
@@ -76,6 +103,7 @@ def get_local_ip():
 
 def get_telemetry(start_time, watch_dir, last_sync_file="None", synced_count=0):
     uptime_sec = int(time.time() - start_time)
+    is_running = is_peachtree_process_running()
     return {
         "host": socket.gethostname(),
         "user": getpass.getuser(),
@@ -88,8 +116,8 @@ def get_telemetry(start_time, watch_dir, last_sync_file="None", synced_count=0):
         "uptimeSeconds": uptime_sec,
         "lastSyncedFile": last_sync_file,
         "entriesLoggedToday": synced_count,
-        "peachtreeRunning": True,
-        "status": "active",
+        "peachtreeRunning": is_running,
+        "status": "active" if is_running else "idle",
         "timestamp": datetime.now().isoformat()
     }
 
@@ -107,9 +135,33 @@ def send_http_post(url, payload, api_key=""):
         },
         method="POST"
     )
-    with urllib.request.urlopen(req, timeout=60) as response:
-        resp_body = response.read().decode("utf-8")
-        return json.loads(resp_body) if resp_body else {"status": response.status}
+    max_retries = 3
+    last_err = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=120) as response:
+                resp_body = response.read().decode("utf-8")
+                return json.loads(resp_body) if resp_body else {"status": response.status}
+        except urllib.error.HTTPError as he:
+            last_err = he
+            err_body = ""
+            try:
+                err_body = he.read().decode("utf-8")
+            except Exception:
+                pass
+            logger.warning(f"HTTP Error {he.code} on {url} (Attempt {attempt}/{max_retries}): {err_body or he.reason}")
+            if he.code >= 500 and attempt < max_retries:
+                time.sleep(attempt * 4)
+                continue
+            raise he
+        except Exception as e:
+            last_err = e
+            logger.warning(f"Network error on {url} (Attempt {attempt}/{max_retries}): {e}")
+            if attempt < max_retries:
+                time.sleep(attempt * 4)
+    if last_err:
+        raise last_err
+    return {"status": "error"}
 
 
 class Peachtree2010LiveParser:
@@ -270,7 +322,7 @@ class Peachtree2010SyncDaemon:
         }
         if os.path.exists(STATE_FILE):
             try:
-                with open(STATE_FILE, "r", encoding="utf-8") as f:
+                with open(STATE_FILE, "r", encoding="utf-8-sig") as f:
                     loaded = json.load(f)
                     if isinstance(loaded, dict):
                         state.update(loaded)
@@ -293,6 +345,7 @@ class Peachtree2010SyncDaemon:
 
     def test_connection(self):
         logger.info(f"Testing connection to SolarFlow Backend: {self.server_url} ...")
+        wake_up_server(self.server_url)
         # 1. Probe heartbeat endpoint
         heartbeat_endpoint = f"{self.server_url}/sync/peachtree/heartbeat"
         telemetry = get_telemetry(self.start_time, self.watch_dir)
@@ -392,6 +445,7 @@ class Peachtree2010SyncDaemon:
         logger.info(f"       Accounts: {len(delta['accounts'])} | Customers: {len(delta['customers'])} | Vendors: {len(delta['vendors'])} | Vouchers: {len(delta['vouchers'])}")
 
         # Transmit delta to SolarFlow Backend
+        wake_up_server(self.server_url)
         endpoint = f"{self.server_url}/sync/peachtree"
         try:
             res = send_http_post(endpoint, delta, self.api_key)

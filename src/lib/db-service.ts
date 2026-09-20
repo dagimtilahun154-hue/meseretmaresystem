@@ -25,17 +25,22 @@ export type {
 
 async function apiFetch(endpoint: string, options: any = {}) {
   const method = options.method || "GET";
-  const data = options.body ? JSON.parse(options.body) : options.data;
+  let data = options.body ? (typeof options.body === "string" && !options.body.startsWith("---") ? (options.body.startsWith("{") || options.body.startsWith("[") ? JSON.parse(options.body) : options.body) : options.body) : options.data;
+  const headers = { ...(options.headers || {}) };
+  if (options.formData || data instanceof FormData) {
+    data = options.formData || data;
+    delete headers["Content-Type"];
+  }
   try {
     const response = await apiClient.request({
       url: endpoint,
       method,
       data,
-      headers: options.headers,
+      headers: Object.keys(headers).length ? headers : undefined,
     });
     return response.data;
   } catch (error: any) {
-    const canQueue = method !== "GET" && (!navigator.onLine || !error?.response);
+    const canQueue = method !== "GET" && (!navigator.onLine || !error?.response) && !(data instanceof FormData);
     if (!canQueue) throw error;
 
     await enqueueOfflineMutation({
@@ -235,6 +240,9 @@ export const hrDB = {
 export const customersDB = {
   getAll: async (): Promise<Customer[]> => apiFetch("/customers"),
   get360: async (id: string) => apiFetch(`/customers/${id}/360`),
+  getDocuments: async (id: string) => apiFetch(`/customers/${id}/documents`),
+  uploadDocument: async (id: string, formData: FormData) => apiFetch(`/customers/${id}/documents`, { method: "POST", formData }),
+  deleteDocument: async (id: string, docId: string) => apiFetch(`/customers/${id}/documents/${docId}`, { method: "DELETE" }),
   addNote: async (id: string, note: string) => apiFetch(`/customers/${id}/notes`, { method: "POST", body: JSON.stringify({ note }) }),
   save: async (customer: Customer): Promise<boolean> => !!(await apiFetch("/customers", { method: "POST", body: JSON.stringify(customer) }))?.success,
   delete: async (id: string): Promise<boolean> => !!(await apiFetch(`/customers/${id}`, { method: "DELETE" }))?.success,

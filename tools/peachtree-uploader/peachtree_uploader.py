@@ -98,13 +98,20 @@ def pending_files(conn: sqlite3.Connection):
 
 
 def login(api_url: str, username: str, password: str) -> str:
-    response = requests.post(
-        f"{api_url}/auth/login",
-        json={"username": username, "password": password},
-        timeout=30,
-    )
-    response.raise_for_status()
-    return response.json()["accessToken"]
+    for attempt in range(1, 4):
+        try:
+            response = requests.post(
+                f"{api_url}/auth/login",
+                json={"username": username, "password": password},
+                timeout=(15, 120),
+            )
+            response.raise_for_status()
+            return response.json()["accessToken"]
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            if attempt < 3:
+                time.sleep(attempt * 3)
+            else:
+                raise
 
 
 def upload_file(api_url: str, token: str, company: str, path: Path) -> dict:

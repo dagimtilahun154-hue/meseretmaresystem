@@ -287,108 +287,123 @@ export class SyncService {
     this.logger.log(`Received Peachtree structured sync payload with keys: ${Object.keys(payload).join(", ")}`);
     const results: Record<string, number> = {};
 
+    const chunkArray = <T>(arr: T[], size = 25): T[][] => {
+      const chunks: T[][] = [];
+      for (let i = 0; i < arr.length; i += size) {
+        chunks.push(arr.slice(i, i + size));
+      }
+      return chunks;
+    };
+
     if (Array.isArray(payload.customers) && payload.customers.length > 0) {
       let mergedCount = 0;
-      let createdCount = 0;
-
-      await Promise.all(
-        payload.customers.map(async (customer: any, idx: number) => {
-          try {
-            if (!customer.id && !customer.name) return;
-            const cId = customer.id || `CUST-PT-${Date.now()}-${idx}`;
-            await this.prisma.customer.upsert({
-              where: { id: cId },
-              update: {
-                name: customer.name || "Peachtree Client",
-                balance: Number(customer.balance || 0),
-                address: customer.address || "Addis Ababa, Ethiopia",
-                phone: customer.phone || "",
-                email: customer.email || "",
-                creditLimit: Number(customer.creditLimit || 0),
-              },
-              create: {
-                id: cId,
-                name: customer.name || "Peachtree Client",
-                balance: Number(customer.balance || 0),
-                address: customer.address || "Addis Ababa, Ethiopia",
-                phone: customer.phone || "",
-                email: customer.email || "",
-                creditLimit: Number(customer.creditLimit || 0),
-              },
-            });
-            mergedCount += 1;
-          } catch (err) {
-            this.logger.warn(`Failed to upsert customer ${customer.id || customer.name}: ${err}`);
-          }
-        })
-      );
+      const customerChunks = chunkArray(payload.customers, 25);
+      for (const chunk of customerChunks) {
+        await Promise.all(
+          chunk.map(async (customer: any, idx: number) => {
+            try {
+              if (!customer.id && !customer.name) return;
+              const cId = customer.id || `CUST-PT-${Date.now()}-${idx}`;
+              await this.prisma.customer.upsert({
+                where: { id: cId },
+                update: {
+                  name: customer.name || "Peachtree Client",
+                  balance: Number(customer.balance || 0),
+                  address: customer.address || "Addis Ababa, Ethiopia",
+                  phone: customer.phone || "",
+                  email: customer.email || "",
+                  creditLimit: Number(customer.creditLimit || 0),
+                },
+                create: {
+                  id: cId,
+                  name: customer.name || "Peachtree Client",
+                  balance: Number(customer.balance || 0),
+                  address: customer.address || "Addis Ababa, Ethiopia",
+                  phone: customer.phone || "",
+                  email: customer.email || "",
+                  creditLimit: Number(customer.creditLimit || 0),
+                },
+              });
+              mergedCount += 1;
+            } catch (err) {
+              this.logger.warn(`Failed to upsert customer ${customer.id || customer.name}: ${err}`);
+            }
+          })
+        );
+      }
       results.customersProcessed = payload.customers.length;
       results.customersMerged = mergedCount;
     }
 
     if (Array.isArray(payload.vendors) && payload.vendors.length > 0) {
       let vCount = 0;
-      await Promise.all(
-        payload.vendors.map(async (vendor: any, idx: number) => {
-          try {
-            if (!vendor.id && !vendor.name) return;
-            const vId = vendor.id || `VEND-PT-${Date.now()}-${idx}`;
-            await this.prisma.vendor.upsert({
-              where: { id: vId },
-              update: {
-                name: vendor.name || "Unknown Vendor",
-                balance: Number(vendor.balance || 0),
-                address: vendor.address,
-                phone: vendor.phone,
-                tin: vendor.tin,
-              },
-              create: {
-                id: vId,
-                name: vendor.name || "Unknown Vendor",
-                balance: Number(vendor.balance || 0),
-                address: vendor.address,
-                phone: vendor.phone,
-                tin: vendor.tin,
-              },
-            });
-            vCount += 1;
-          } catch (err) {
-            this.logger.warn(`Failed to upsert vendor ${vendor.id || vendor.name}: ${err}`);
-          }
-        })
-      );
+      const vendorChunks = chunkArray(payload.vendors, 25);
+      for (const chunk of vendorChunks) {
+        await Promise.all(
+          chunk.map(async (vendor: any, idx: number) => {
+            try {
+              if (!vendor.id && !vendor.name) return;
+              const vId = vendor.id || `VEND-PT-${Date.now()}-${idx}`;
+              await this.prisma.vendor.upsert({
+                where: { id: vId },
+                update: {
+                  name: vendor.name || "Unknown Vendor",
+                  balance: Number(vendor.balance || 0),
+                  address: vendor.address,
+                  phone: vendor.phone,
+                  tin: vendor.tin,
+                },
+                create: {
+                  id: vId,
+                  name: vendor.name || "Unknown Vendor",
+                  balance: Number(vendor.balance || 0),
+                  address: vendor.address,
+                  phone: vendor.phone,
+                  tin: vendor.tin,
+                },
+              });
+              vCount += 1;
+            } catch (err) {
+              this.logger.warn(`Failed to upsert vendor ${vendor.id || vendor.name}: ${err}`);
+            }
+          })
+        );
+      }
       results.vendors = vCount;
     }
 
     if (Array.isArray(payload.accounts) && payload.accounts.length > 0) {
       let aCount = 0;
-      await Promise.all(
-        payload.accounts.map(async (account: any) => {
-          try {
-            if (!account.id && !account.code) return;
-            const id = account.id || account.code;
-            await this.prisma.account.upsert({
-              where: { id },
-              update: {
-                name: account.name || "Peachtree Account",
-                type: account.type || (id.startsWith("11") ? "Cash and Bank" : id.startsWith("12") ? "Accounts Receivable" : id.startsWith("21") ? "Accounts Payable" : id.startsWith("41") ? "Revenue" : "Expense"),
-                description: account.description || account.name,
-                openingBalance: Number(account.openingBalance || account.balance || 0),
-              },
-              create: {
-                id,
-                name: account.name || `Account ${id}`,
-                type: account.type || (id.startsWith("11") ? "Cash and Bank" : id.startsWith("12") ? "Accounts Receivable" : id.startsWith("13") ? "Inventory" : id.startsWith("15") ? "Fixed Asset" : id.startsWith("21") || id.startsWith("22") ? "Accounts Payable" : id.startsWith("31") ? "Equity" : id.startsWith("41") ? "Revenue" : id.startsWith("51") ? "Cost of Goods Sold" : "Operating Expense"),
-                description: account.description || account.name,
-                openingBalance: Number(account.openingBalance || account.balance || 0),
-              },
-            });
-            aCount += 1;
-          } catch (err) {
-            this.logger.warn(`Failed to upsert account ${account.id || account.code}: ${err}`);
-          }
-        })
-      );
+      const accountChunks = chunkArray(payload.accounts, 25);
+      for (const chunk of accountChunks) {
+        await Promise.all(
+          chunk.map(async (account: any) => {
+            try {
+              if (!account.id && !account.code) return;
+              const id = account.id || account.code;
+              await this.prisma.account.upsert({
+                where: { id },
+                update: {
+                  name: account.name || "Peachtree Account",
+                  type: account.type || (id.startsWith("11") ? "Cash and Bank" : id.startsWith("12") ? "Accounts Receivable" : id.startsWith("21") ? "Accounts Payable" : id.startsWith("41") ? "Revenue" : "Expense"),
+                  description: account.description || account.name,
+                  openingBalance: Number(account.openingBalance || account.balance || 0),
+                },
+                create: {
+                  id,
+                  name: account.name || `Account ${id}`,
+                  type: account.type || (id.startsWith("11") ? "Cash and Bank" : id.startsWith("12") ? "Accounts Receivable" : id.startsWith("13") ? "Inventory" : id.startsWith("15") ? "Fixed Asset" : id.startsWith("21") || id.startsWith("22") ? "Accounts Payable" : id.startsWith("31") ? "Equity" : id.startsWith("41") ? "Revenue" : id.startsWith("51") ? "Cost of Goods Sold" : "Operating Expense"),
+                  description: account.description || account.name,
+                  openingBalance: Number(account.openingBalance || account.balance || 0),
+                },
+              });
+              aCount += 1;
+            } catch (err) {
+              this.logger.warn(`Failed to upsert account ${account.id || account.code}: ${err}`);
+            }
+          })
+        );
+      }
       results.accounts = aCount;
     }
 
@@ -396,104 +411,107 @@ export class SyncService {
     if (Array.isArray(vouchersList) && vouchersList.length > 0) {
       let jCount = 0;
       let invCount = 0;
-      await Promise.all(
-        vouchersList.map(async (v: any, idx: number) => {
-          try {
-            const vId = v.ref || v.id || `JV-PT-${Date.now()}-${idx}`;
-            let clientName = v.customerName || v.description || "Peachtree Client";
-            if (
-              !clientName ||
-              clientName.includes("@") ||
-              clientName.startsWith("00") ||
-              /^[0-9]+$/.test(clientName) ||
-              ["beg", "synced", "sys", "dat", "ptl", "void", "none", "yaya", "test"].includes(clientName.toLowerCase())
-            ) {
-              const fallbackClients = [
-                "Ketef Trading Commercial Solar", "Addis Ababa Airport Enterprise", "AAU Horn of Africa Center",
-                "ERCA Tax Authority", "Save the Children Org", "Medecins Sans Frontieres",
-                "Norwegian Church Aid", "Action for Social Development", "Ministry of Agriculture",
-                "Ministry of Water & Energy", "Fasil Zelalem Import", "Yane Mitiku Solar"
-              ];
-              clientName = fallbackClients[idx % fallbackClients.length];
+      const voucherChunks = chunkArray(vouchersList, 25);
+      for (const chunk of voucherChunks) {
+        await Promise.all(
+          chunk.map(async (v: any, idx: number) => {
+            try {
+              const vId = v.ref || v.id || `JV-PT-${Date.now()}-${idx}`;
+              let clientName = v.customerName || v.description || "Peachtree Client";
+              if (
+                !clientName ||
+                clientName.includes("@") ||
+                clientName.startsWith("00") ||
+                /^[0-9]+$/.test(clientName) ||
+                ["beg", "synced", "sys", "dat", "ptl", "void", "none", "yaya", "test"].includes(clientName.toLowerCase())
+              ) {
+                const fallbackClients = [
+                  "Ketef Trading Commercial Solar", "Addis Ababa Airport Enterprise", "AAU Horn of Africa Center",
+                  "ERCA Tax Authority", "Save the Children Org", "Medecins Sans Frontieres",
+                  "Norwegian Church Aid", "Action for Social Development", "Ministry of Agriculture",
+                  "Ministry of Water & Energy", "Fasil Zelalem Import", "Yane Mitiku Solar"
+                ];
+                clientName = fallbackClients[idx % fallbackClients.length];
+              }
+
+              const amt = Number(v.amount || v.total || 0);
+
+              let parsedTxnDate: Date;
+              if (v.date && !isNaN(new Date(v.date).getTime()) && new Date(v.date).getFullYear() <= 2025 && new Date(v.date).getFullYear() >= 2020) {
+                parsedTxnDate = new Date(v.date);
+              } else if (v.transactionDate && !isNaN(new Date(v.transactionDate).getTime()) && new Date(v.transactionDate).getFullYear() <= 2025 && new Date(v.transactionDate).getFullYear() >= 2020) {
+                parsedTxnDate = new Date(v.transactionDate);
+              } else {
+                const seed = (vId.split("").reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0) + idx);
+                const mNum = (seed % 11) + 1;
+                const dNum = (seed % 27) + 1;
+                parsedTxnDate = new Date(`2024-${String(mNum).padStart(2, "0")}-${String(dNum).padStart(2, "0")}`);
+              }
+
+              const parsedDueDate = v.dueDate && !isNaN(new Date(v.dueDate).getTime()) && new Date(v.dueDate).getFullYear() <= 2025
+                ? new Date(v.dueDate)
+                : new Date(parsedTxnDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+              await this.prisma.financeJournalEntry.upsert({
+                where: { id: vId },
+                update: {
+                  description: `Peachtree ${vId} - ${clientName}`,
+                  date: parsedTxnDate,
+                  amount: amt,
+                  debitAccount: v.debitAccount,
+                  creditAccount: v.creditAccount,
+                  lines: v.lines || null,
+                },
+                create: {
+                  id: vId,
+                  date: parsedTxnDate,
+                  description: `Peachtree ${vId} - ${clientName}`,
+                  amount: amt,
+                  debitAccount: v.debitAccount,
+                  creditAccount: v.creditAccount,
+                  lines: v.lines || null,
+                },
+              });
+              jCount += 1;
+
+              const subtotal = Number(v.subtotal || v.amount || v.total || 0);
+              const vat = Number(v.vat || (subtotal * 0.15));
+              const total = Number(v.total || v.amount || (subtotal + vat));
+              const invStatus = (v.status && v.status !== "Synced")
+                ? v.status
+                : (parsedDueDate < new Date() ? "Overdue" : "Pending");
+
+              await this.prisma.invoice.upsert({
+                where: { id: vId },
+                update: {
+                  customerId: v.customerId || null,
+                  customerName: clientName,
+                  date: parsedTxnDate,
+                  dueDate: parsedDueDate,
+                  subtotal: subtotal,
+                  totalVat: vat,
+                  total: total,
+                  status: invStatus,
+                },
+                create: {
+                  id: vId,
+                  customerId: v.customerId || null,
+                  customerName: clientName,
+                  date: parsedTxnDate,
+                  dueDate: parsedDueDate,
+                  subtotal: subtotal,
+                  totalVat: vat,
+                  total: total,
+                  status: invStatus,
+                },
+              });
+              invCount += 1;
+            } catch (err) {
+              this.logger.warn(`Failed to upsert journal entry/invoice ${v.ref || v.id}: ${err}`);
             }
-
-            const amt = Number(v.amount || v.total || 0);
-
-            let parsedTxnDate: Date;
-            if (v.date && !isNaN(new Date(v.date).getTime()) && new Date(v.date).getFullYear() <= 2025 && new Date(v.date).getFullYear() >= 2020) {
-              parsedTxnDate = new Date(v.date);
-            } else if (v.transactionDate && !isNaN(new Date(v.transactionDate).getTime()) && new Date(v.transactionDate).getFullYear() <= 2025 && new Date(v.transactionDate).getFullYear() >= 2020) {
-              parsedTxnDate = new Date(v.transactionDate);
-            } else {
-              const seed = (vId.split("").reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0) + idx);
-              const mNum = (seed % 11) + 1;
-              const dNum = (seed % 27) + 1;
-              parsedTxnDate = new Date(`2024-${String(mNum).padStart(2, "0")}-${String(dNum).padStart(2, "0")}`);
-            }
-
-            const parsedDueDate = v.dueDate && !isNaN(new Date(v.dueDate).getTime()) && new Date(v.dueDate).getFullYear() <= 2025
-              ? new Date(v.dueDate)
-              : new Date(parsedTxnDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-            await this.prisma.financeJournalEntry.upsert({
-              where: { id: vId },
-              update: {
-                description: `Peachtree ${vId} - ${clientName}`,
-                date: parsedTxnDate,
-                amount: amt,
-                debitAccount: v.debitAccount,
-                creditAccount: v.creditAccount,
-                lines: v.lines || null,
-              },
-              create: {
-                id: vId,
-                date: parsedTxnDate,
-                description: `Peachtree ${vId} - ${clientName}`,
-                amount: amt,
-                debitAccount: v.debitAccount,
-                creditAccount: v.creditAccount,
-                lines: v.lines || null,
-              },
-            });
-            jCount += 1;
-
-            const subtotal = Number(v.subtotal || v.amount || v.total || 0);
-            const vat = Number(v.vat || (subtotal * 0.15));
-            const total = Number(v.total || v.amount || (subtotal + vat));
-            const invStatus = (v.status && v.status !== "Synced")
-              ? v.status
-              : (parsedDueDate < new Date() ? "Overdue" : "Pending");
-
-            await this.prisma.invoice.upsert({
-              where: { id: vId },
-              update: {
-                customerId: v.customerId || null,
-                customerName: clientName,
-                date: parsedTxnDate,
-                dueDate: parsedDueDate,
-                subtotal: subtotal,
-                totalVat: vat,
-                total: total,
-                status: invStatus,
-              },
-              create: {
-                id: vId,
-                customerId: v.customerId || null,
-                customerName: clientName,
-                date: parsedTxnDate,
-                dueDate: parsedDueDate,
-                subtotal: subtotal,
-                totalVat: vat,
-                total: total,
-                status: invStatus,
-              },
-            });
-            invCount += 1;
-          } catch (err) {
-            this.logger.warn(`Failed to upsert journal entry/invoice ${v.ref || v.id}: ${err}`);
-          }
-        })
-      );
+          })
+        );
+      }
       results.vouchers = jCount;
       results.invoices = invCount;
     }

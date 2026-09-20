@@ -141,6 +141,7 @@ export function FinanceOverviewWorkspace({
   bankDistributionData = [],
   peachtreeCustomers = [],
   peachtreeVendors = [],
+  peachtreeInvoices = [],
   peachtreeSummary,
 }: FinanceOverviewWorkspaceProps) {
   const navigate = useNavigate();

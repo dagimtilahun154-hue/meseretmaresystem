@@ -1,8 +1,16 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UploadedFile, UseInterceptors, Req } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { diskStorage } from "multer";
+import { extname, join } from "path";
+import { existsSync, mkdirSync } from "fs";
 import { DataService } from "./data.service";
 import { Roles } from "../common/decorators/roles.decorator";
 import { Public } from "../common/decorators/public.decorator";
+
+const customerDocsUploadDir = join(process.cwd(), "uploads", "customer-documents");
+if (!existsSync(customerDocsUploadDir)) {
+  mkdirSync(customerDocsUploadDir, { recursive: true });
+}
 
 @Controller()
 export class DataController {
@@ -33,7 +41,36 @@ export class DataController {
 
   @Get("customers") customers() { return this.data.customers(); }
   @Get("customers/:id/360") getCustomer360(@Param("id") id: string) { return this.data.getCustomer360(id); }
-  @Post("customers/:id/notes") addCustomerNote(@Param("id") id: string, @Req() req: any, @Body() body: { note: string }) { return this.data.addCustomerNote(id, req.user.id, body.note); }
+  @Get("customers/:id/documents") getCustomerDocuments(@Param("id") id: string) { return this.data.getCustomerDocuments(id); }
+  @Post("customers/:id/documents")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: diskStorage({
+        destination: (_req: any, _file: any, cb: any) => cb(null, customerDocsUploadDir),
+        filename: (_req: any, file: any, cb: any) => {
+          const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+          const ext = extname(file.originalname) || ".pdf";
+          cb(null, `custdoc-${uniqueSuffix}${ext}`);
+        },
+      }),
+      fileFilter: (_req: any, file: any, cb: any) => {
+        cb(null, true);
+      },
+      limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+    }),
+  )
+  uploadCustomerDocument(
+    @Param("id") id: string,
+    @UploadedFile() file: any,
+    @Req() req: any,
+    @Body() body: { title?: string; category?: string; notes?: string; description?: string },
+  ) {
+    return this.data.uploadCustomerDocument(id, file, req.user?.id, body);
+  }
+  @Delete("customers/:id/documents/:docId") deleteCustomerDocument(@Param("id") id: string, @Param("docId") docId: string) {
+    return this.data.deleteCustomerDocument(id, docId);
+  }
+  @Post("customers/:id/notes") addCustomerNote(@Param("id") id: string, @Req() req: any, @Body() body: { note: string }) { return this.data.addCustomerNote(id, req.user?.id, body.note); }
   @Post("customers") saveCustomer(@Body() body: any) { return this.data.saveCustomer(body); }
   @Delete("customers/:id") deleteCustomer(@Param("id") id: string) { return this.data.deleteCustomer(id); }
   @Get("vendors") vendors() { return this.data.vendors(); }

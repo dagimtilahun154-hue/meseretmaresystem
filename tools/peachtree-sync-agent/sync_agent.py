@@ -1,6 +1,5 @@
 import re
 import struct
-import pyodbc
 import requests
 import json
 import time
@@ -467,7 +466,7 @@ def send_heartbeat_and_telemetry(entries_count=0):
 
     try:
         headers = {'Content-Type': 'application/json', 'x-api-key': API_KEY}
-        res = requests.post(HEARTBEAT_URL, json=payload, headers=headers, timeout=10)
+        res = requests.post(HEARTBEAT_URL, json=payload, headers=headers, timeout=(10, 30))
         if res.status_code in [200, 201]:
             print(f"[{datetime.now()}] HEARTBEAT: Sent successfully. Peachtree Active: {is_running}, Entries Today: {entries_count}")
     except Exception as e:
@@ -481,19 +480,31 @@ def send_heartbeat_and_telemetry(entries_count=0):
             "Daily Peachtree entries pending. Please ensure today's invoices, receipts, and cash vouchers are posted."
         )
 
+def wake_up_server():
+    """Wakes up free/sleeping Render instances if idle."""
+    try:
+        requests.get(f"{API_BASE_URL}/health", timeout=(10, 30))
+    except Exception:
+        pass
+
 def obtain_jwt_token():
     """Authenticates using username Terefe and password T123456 to fetch a Bearer token."""
     login_url = f"{API_BASE_URL}/auth/login"
-    try:
-        res = requests.post(login_url, json={"username": PEACHTREE_USER, "password": PEACHTREE_PASS}, timeout=10)
-        if res.status_code in [200, 201]:
-            token = res.json().get("accessToken")
-            return token
-    except Exception as e:
-        print(f"[{datetime.now()}] WARN: JWT Login with user '{PEACHTREE_USER}' skipped/failed: {e}")
+    for attempt in range(1, 4):
+        try:
+            res = requests.post(login_url, json={"username": PEACHTREE_USER, "password": PEACHTREE_PASS}, timeout=(15, 60))
+            if res.status_code in [200, 201]:
+                token = res.json().get("accessToken")
+                return token
+        except Exception as e:
+            if attempt < 3:
+                time.sleep(2 * attempt)
+            else:
+                print(f"[{datetime.now()}] WARN: JWT Login with user '{PEACHTREE_USER}' skipped/failed: {e}")
     return None
 
 def push_to_api(payload):
+    wake_up_server()
     token = obtain_jwt_token()
     headers = {
         'Content-Type': 'application/json',
@@ -502,19 +513,37 @@ def push_to_api(payload):
     if token:
         headers['Authorization'] = f'Bearer {token}'
     
-    try:
-        print(f"[{datetime.now()}] INFO: Pushing Peachtree sync dataset to {SYNC_URL} (User: {PEACHTREE_USER})...")
-        response = requests.post(SYNC_URL, json=payload, headers=headers, timeout=30)
-        
-        if response.status_code in [200, 201]:
-            print(f"[{datetime.now()}] SUCCESS: 15-Minute Sync completed successfully.")
-            return True
-        else:
-            print(f"[{datetime.now()}] ERROR: API responded with {response.status_code}: {response.text}")
-            return False
-    except Exception as e:
-        print(f"[{datetime.now()}] ERROR: Sync push failure: {e}")
-        return False
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"[{datetime.now()}] INFO: Pushing Peachtree sync dataset to {SYNC_URL} (Attempt {attempt}/{max_retries}, Timeout: 120s)...")
+            response = requests.post(SYNC_URL, json=payload, headers=headers, timeout=(15, 120))
+            
+            if response.status_code in [200, 201]:
+                print(f"[{datetime.now()}] SUCCESS: 15-Minute Sync completed successfully.")
+                return True
+            else:
+                print(f"[{datetime.now()}] ERROR: API responded with {response.status_code}: {response.text}")
+                if response.status_code >= 500 and attempt < max_retries:
+                    time.sleep(3 * attempt)
+                    continue
+                return False
+        except requests.exceptions.Timeout as te:
+            print(f"[{datetime.now()}] WARN: Sync push timed out on attempt {attempt}/{max_retries}: {te}")
+            if attempt < max_retries:
+                backoff = attempt * 5
+                print(f"[{datetime.now()}] INFO: Retrying in {backoff} seconds...")
+                time.sleep(backoff)
+            else:
+                print(f"[{datetime.now()}] ERROR: Sync push failure after {max_retries} attempts: Read timed out.")
+                return False
+        except Exception as e:
+            print(f"[{datetime.now()}] ERROR: Sync push failure (Attempt {attempt}/{max_retries}): {e}")
+            if attempt < max_retries:
+                time.sleep(attempt * 4)
+            else:
+                return False
+    return False
 
 def main():
     print("=======================================================")

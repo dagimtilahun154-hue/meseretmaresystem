@@ -85,6 +85,7 @@ model User {
   chatMessages        ChatMessage[]      @relation("SentMessages")
   notifications       Notification[]     @relation("UserNotifications")
   customerNotes       CustomerNote[]
+  customerDocuments   CustomerDocument[]
 
   @@unique([organizationId, username])
   @@index([organizationId])
@@ -377,12 +378,36 @@ model Customer {
   updatedAt   DateTime @updatedAt
 
   notes       CustomerNote[]
+  documents   CustomerDocument[]
 
   @@index([name])
   @@index([phone])
   @@index([tin])
   @@index([city])
   @@map("customers")
+}
+
+model CustomerDocument {
+  id          String   @id @default(cuid())
+  customerId  String
+  title       String
+  fileName    String
+  fileUrl     String
+  fileType    String
+  fileSize    Int
+  category    String   @default("OTHER") // AGREEMENT, PAYMENT_PROOF, ID_SCAN, SITE_DOC, WARRANTY, OTHER
+  notes       String?  @db.Text
+  uploadedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  uploadedBy  User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([category])
+  @@index([uploadedById])
+  @@map("customer_documents")
 }
 
 model CustomerNote {

@@ -16,6 +16,7 @@ import { formatCurrency } from "@/lib/data";
 import { toast } from "sonner";
 import { CompanyDocumentHeader } from "@/components/common/CompanyDocumentHeader";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { CustomerDocumentsManager } from "@/components/customers/CustomerDocumentsManager";
 
 export function CustomerDossierPage() {
   const { id } = useParams<{ id: string }>();
@@ -100,6 +101,7 @@ export function CustomerDossierPage() {
   const fieldWorks = data?.fieldWorkOperations || [];
   const fieldCashRequests = data?.fieldCashRequests || [];
   const notes = data?.notes || [];
+  const documents = data?.documents || [];
 
   const completedFieldWork = fieldWorks.find((fw: any) => fw.status === "completed" || fw.completedDate || fw.status === "done");
   const installationDate = completedFieldWork?.completedDate ? new Date(completedFieldWork.completedDate) : new Date(customer.createdAt || Date.now());
@@ -166,6 +168,9 @@ export function CustomerDossierPage() {
           </Button>
           <Button variant="ghost" size="sm" onClick={() => scrollToSection("sec-media")} className="h-7 text-xs font-semibold gap-1">
             <Camera className="h-3 w-3 text-purple-500" /> Media & Photos
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => scrollToSection("sec-documents")} className="h-7 text-xs font-semibold gap-1 text-primary">
+            <FileText className="h-3 w-3 text-primary" /> Documents ({documents.length})
           </Button>
           <Button variant="ghost" size="sm" onClick={() => scrollToSection("sec-notes")} className="h-7 text-xs font-semibold gap-1">
             <MessageSquare className="h-3 w-3 text-blue-500" /> Notes ({notes.length})
@@ -702,6 +707,18 @@ export function CustomerDossierPage() {
               );
             })()}
           </Card>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* SECTION 6.5: SCANNED CUSTOMER FILES & SIGNED AGREEMENTS */}
+        {/* ========================================================================= */}
+        <div id="sec-documents" className="space-y-4 print:break-inside-avoid">
+          <CustomerDocumentsManager
+            customerId={id || customer.id}
+            customerName={customer.name}
+            documents={documents}
+            onDocumentsChange={fetchCustomerData}
+          />
         </div>
 
         {/* ========================================================================= */}

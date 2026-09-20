@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { createHash } from "crypto";
+import * as fs from "fs";
+import { join } from "path";
 import { PrismaService } from "../prisma/prisma.service";
 
 const toDate = (value?: string | Date | null) => (value ? new Date(value) : undefined);
@@ -786,6 +788,12 @@ export class DataService {
               user: { select: { id: true, displayName: true, username: true } }
             },
             orderBy: { createdAt: "desc" }
+          },
+          documents: {
+            include: {
+              uploadedBy: { select: { id: true, displayName: true, username: true } }
+            },
+            orderBy: { createdAt: "desc" }
           }
         }
       });
@@ -800,6 +808,12 @@ export class DataService {
             notes: {
               include: {
                 user: { select: { id: true, displayName: true, username: true } }
+              },
+              orderBy: { createdAt: "desc" }
+            },
+            documents: {
+              include: {
+                uploadedBy: { select: { id: true, displayName: true, username: true } }
               },
               orderBy: { createdAt: "desc" }
             }
@@ -1065,6 +1079,20 @@ export class DataService {
       orderBy: { createdAt: "desc" }
     });
 
+    const customerDocs = await this.prisma.customerDocument.findMany({
+      where: {
+        OR: [
+          { customerId: customer.id },
+          { customerId: id },
+          ...(cName ? [{ customer: { name: { contains: cName } } }] : []),
+        ],
+      },
+      include: {
+        uploadedBy: { select: { id: true, displayName: true, username: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
     return {
       customer: toPlain(customer),
       sizingHistory: customerSizings.map(toPlain),
@@ -1082,8 +1110,155 @@ export class DataService {
       notes: (customer.notes || []).map((n: any) => ({
         ...toPlain(n),
         user: toPlain(n.user)
+      })),
+      documents: customerDocs.map((d: any) => ({
+        ...toPlain(d),
+        uploadedBy: toPlain(d.uploadedBy)
       }))
     };
+  }
+
+  private async ensureCustomerExists(customerId: string) {
+    let customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
+    if (customer) return customer;
+
+    // Check if customer exists by name or virtual ID
+    if (customerId.startsWith("CUST-SZ-")) {
+      const rawId = customerId.replace("CUST-SZ-", "");
+      const sz = await this.prisma.sizingRequest.findFirst({ where: { OR: [{ id: rawId }, { id: { endsWith: rawId } }] } });
+      if (sz) {
+        return this.prisma.customer.create({
+          data: {
+            id: customerId,
+            name: sz.clientName,
+            address: sz.address,
+            city: sz.address,
+          },
+        });
+      }
+    } else if (customerId.startsWith("CUST-FW-")) {
+      const rawId = customerId.replace("CUST-FW-", "");
+      const fw = await this.prisma.fieldWorkJob.findFirst({ where: { OR: [{ id: rawId }, { id: { endsWith: rawId } }] } });
+      if (fw) {
+        return this.prisma.customer.create({
+          data: {
+            id: customerId,
+            name: fw.customerName || "Client Site",
+            address: fw.location,
+            city: fw.location,
+          },
+        });
+      }
+    }
+
+    // Default fallback customer record
+    return this.prisma.customer.upsert({
+      where: { id: customerId },
+      update: {},
+      create: {
+        id: customerId,
+        name: customerId.startsWith("CUST-") ? customerId : `Customer ${customerId}`,
+        address: "Ethiopia",
+      },
+    });
+  }
+
+  async addCustomerNote(customerId: string, userId: string, noteText: string) {
+    if (!noteText || !noteText.trim()) {
+      throw new BadRequestException("Note content is required");
+    }
+    const customer = await this.ensureCustomerExists(customerId);
+    const user = userId ? await this.prisma.user.findUnique({ where: { id: userId } }) : null;
+
+    const note = await this.prisma.customerNote.create({
+      data: {
+        customerId: customer.id,
+        userId: userId || (await this.prisma.user.findFirst().then(u => u?.id || "")),
+        userRole: user?.department || "Finance",
+        department: user?.department || "Finance",
+        note: noteText.trim(),
+      },
+      include: {
+        user: { select: { id: true, displayName: true, username: true } },
+      },
+    });
+    return toPlain(note);
+  }
+
+  async uploadCustomerDocument(
+    customerId: string,
+    file: any,
+    userId: string | undefined,
+    body: { title?: string; category?: string; notes?: string; description?: string },
+  ) {
+    if (!file) {
+      throw new BadRequestException("No file provided for upload");
+    }
+
+    const customer = await this.ensureCustomerExists(customerId);
+    const fileUrl = `/uploads/customer-documents/${file.filename}`;
+    const category = body.category || "AGREEMENT";
+    const title = body.title || file.originalname;
+    const notes = body.notes || body.description || null;
+
+    const doc = await this.prisma.customerDocument.create({
+      data: {
+        customerId: customer.id,
+        title,
+        fileName: file.originalname,
+        fileUrl,
+        fileType: file.mimetype,
+        fileSize: file.size,
+        category,
+        notes,
+        uploadedById: userId || null,
+      },
+      include: {
+        uploadedBy: { select: { id: true, displayName: true, username: true } },
+      },
+    });
+
+    return { success: true, document: toPlain(doc) };
+  }
+
+  async getCustomerDocuments(customerId: string) {
+    const documents = await this.prisma.customerDocument.findMany({
+      where: {
+        OR: [
+          { customerId },
+          { customer: { id: customerId } },
+          { customer: { name: { equals: customerId } } },
+        ],
+      },
+      include: {
+        uploadedBy: { select: { id: true, displayName: true, username: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return documents.map(toPlain);
+  }
+
+  async deleteCustomerDocument(customerId: string, docId: string) {
+    const doc = await this.prisma.customerDocument.findUnique({ where: { id: docId } });
+    if (!doc) {
+      throw new NotFoundException("Customer document not found");
+    }
+
+    // Delete file from disk
+    if (doc.fileUrl && doc.fileUrl.startsWith("/uploads/customer-documents/")) {
+      const fileName = doc.fileUrl.replace("/uploads/customer-documents/", "");
+      const filePath = join(process.cwd(), "uploads", "customer-documents", fileName);
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (err) {
+        // Log and continue deletion
+      }
+    }
+
+    await this.prisma.customerDocument.delete({ where: { id: docId } });
+    return { success: true, message: "Document deleted successfully" };
   }
 
   async createFieldCashRequest(userId: string, fieldWorkId: string, data: { amount: number; category: string; reason: string; receiptUrl?: string }) {
@@ -1152,26 +1327,6 @@ export class DataService {
     });
 
     return toPlain(req);
-  }
-
-  async addCustomerNote(customerId: string, userId: string, noteText: string) {
-    const user = await this.prisma.user.findUniqueOrThrow({
-      where: { id: userId },
-      include: { roles: { include: { role: true } } }
-    });
-
-    return this.prisma.customerNote.create({
-      data: {
-        customerId,
-        userId,
-        userRole: user.roles[0]?.role?.name || "General",
-        department: user.department || "General",
-        note: noteText
-      },
-      include: {
-        user: { select: { id: true, displayName: true, username: true } }
-      }
-    });
   }
 
   async deleteCustomer(id: string) {
