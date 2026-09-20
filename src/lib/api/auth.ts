@@ -14,6 +14,8 @@ export interface ApiUser {
   roles?: string[];
   organizationId?: string;
   companies?: ApiCompany[];
+  reportsToId?: string | null;
+  department?: string | null;
 }
 
 export async function loginRequest(username: string, password: string) {
