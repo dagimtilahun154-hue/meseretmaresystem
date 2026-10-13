@@ -92,6 +92,7 @@ jobs:
           local-dir: deploy/frontend/
           server-dir: /
           dangerous-clean-slate: false
+          security: loose
 
   # ─── Deploy Backend via FTP ────────────────────────────────
   deploy-backend:
@@ -113,6 +114,7 @@ jobs:
           local-dir: deploy/backend/
           server-dir: /
           dangerous-clean-slate: false
+          security: loose
           exclude: |
             **/.env
             **/uploads/**
