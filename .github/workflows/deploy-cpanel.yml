@@ -57,6 +57,9 @@ jobs:
           cp backend/package.json deploy/backend/
           cp backend/package-lock.json deploy/backend/
           cp backend/app.js deploy/backend/
+          cp backend/tsconfig.json deploy/backend/
+          cp backend/tsconfig.build.json deploy/backend/
+          cp backend/nest-cli.json deploy/backend/
           mkdir -p deploy/backend/node_modules/.prisma
           mkdir -p deploy/backend/node_modules/@prisma
           cp -r backend/node_modules/.prisma/* deploy/backend/node_modules/.prisma/
