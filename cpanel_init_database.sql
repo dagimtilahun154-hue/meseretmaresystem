@@ -1,5 +1,8 @@
+SET FOREIGN_KEY_CHECKS = 0;
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+
 -- CreateTable
-CREATE TABLE `organizations` (
+CREATE TABLE IF NOT EXISTS `organizations` (
     `id` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
     `slug` VARCHAR(191) NOT NULL,
@@ -11,7 +14,7 @@ CREATE TABLE `organizations` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `companies` (
+CREATE TABLE IF NOT EXISTS `companies` (
     `id` VARCHAR(191) NOT NULL,
     `organizationId` VARCHAR(191) NOT NULL,
     `code` VARCHAR(191) NOT NULL,
@@ -26,7 +29,7 @@ CREATE TABLE `companies` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `users` (
+CREATE TABLE IF NOT EXISTS `users` (
     `id` VARCHAR(191) NOT NULL,
     `organizationId` VARCHAR(191) NOT NULL,
     `username` VARCHAR(191) NOT NULL,
@@ -45,7 +48,7 @@ CREATE TABLE `users` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `roles` (
+CREATE TABLE IF NOT EXISTS `roles` (
     `id` VARCHAR(191) NOT NULL,
     `organizationId` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
@@ -59,7 +62,7 @@ CREATE TABLE `roles` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `permissions` (
+CREATE TABLE IF NOT EXISTS `permissions` (
     `id` VARCHAR(191) NOT NULL,
     `key` VARCHAR(191) NOT NULL,
     `description` VARCHAR(191) NULL,
@@ -69,7 +72,7 @@ CREATE TABLE `permissions` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `user_roles` (
+CREATE TABLE IF NOT EXISTS `user_roles` (
     `userId` VARCHAR(191) NOT NULL,
     `roleId` VARCHAR(191) NOT NULL,
 
@@ -77,7 +80,7 @@ CREATE TABLE `user_roles` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `role_permissions` (
+CREATE TABLE IF NOT EXISTS `role_permissions` (
     `roleId` VARCHAR(191) NOT NULL,
     `permissionId` VARCHAR(191) NOT NULL,
 
@@ -85,7 +88,7 @@ CREATE TABLE `role_permissions` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `user_companies` (
+CREATE TABLE IF NOT EXISTS `user_companies` (
     `userId` VARCHAR(191) NOT NULL,
     `companyId` VARCHAR(191) NOT NULL,
 
@@ -93,7 +96,7 @@ CREATE TABLE `user_companies` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `refresh_tokens` (
+CREATE TABLE IF NOT EXISTS `refresh_tokens` (
     `id` VARCHAR(191) NOT NULL,
     `userId` VARCHAR(191) NOT NULL,
     `tokenHash` VARCHAR(255) NOT NULL,
@@ -106,7 +109,7 @@ CREATE TABLE `refresh_tokens` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `audit_logs` (
+CREATE TABLE IF NOT EXISTS `audit_logs` (
     `id` VARCHAR(191) NOT NULL,
     `organizationId` VARCHAR(191) NOT NULL,
     `companyId` VARCHAR(191) NULL,
@@ -126,7 +129,7 @@ CREATE TABLE `audit_logs` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `products` (
+CREATE TABLE IF NOT EXISTS `products` (
     `id` VARCHAR(191) NOT NULL,
     `code` VARCHAR(191) NULL,
     `name` VARCHAR(191) NOT NULL,
@@ -147,7 +150,7 @@ CREATE TABLE `products` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `inventory_transactions` (
+CREATE TABLE IF NOT EXISTS `inventory_transactions` (
     `id` VARCHAR(191) NOT NULL,
     `productId` VARCHAR(191) NULL,
     `productCode` VARCHAR(191) NULL,
@@ -171,7 +174,7 @@ CREATE TABLE `inventory_transactions` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `stock_counts` (
+CREATE TABLE IF NOT EXISTS `stock_counts` (
     `id` VARCHAR(191) NOT NULL,
     `category` ENUM('PUMP', 'PUMP_EQUIPMENT', 'SOLAR_PANEL', 'COMPANY_TOOL', 'WORK_TOOL') NULL,
     `status` ENUM('IN_PROGRESS', 'SUBMITTED', 'APPROVED') NOT NULL DEFAULT 'IN_PROGRESS',
@@ -185,7 +188,7 @@ CREATE TABLE `stock_counts` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `stock_count_items` (
+CREATE TABLE IF NOT EXISTS `stock_count_items` (
     `id` VARCHAR(191) NOT NULL,
     `stockCountId` VARCHAR(191) NOT NULL,
     `productId` VARCHAR(191) NOT NULL,
@@ -202,7 +205,7 @@ CREATE TABLE `stock_count_items` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `field_job_materials` (
+CREATE TABLE IF NOT EXISTS `field_job_materials` (
     `id` VARCHAR(191) NOT NULL,
     `fieldWorkJobId` VARCHAR(191) NOT NULL,
     `productId` VARCHAR(191) NULL,
@@ -227,7 +230,7 @@ CREATE TABLE `field_job_materials` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `pos_sales` (
+CREATE TABLE IF NOT EXISTS `pos_sales` (
     `id` VARCHAR(191) NOT NULL,
     `date` DATETIME(3) NOT NULL,
     `customerName` VARCHAR(191) NULL,
@@ -250,7 +253,7 @@ CREATE TABLE `pos_sales` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `field_work_jobs` (
+CREATE TABLE IF NOT EXISTS `field_work_jobs` (
     `id` VARCHAR(191) NOT NULL,
     `title` VARCHAR(191) NOT NULL,
     `description` TEXT NULL,
@@ -277,7 +280,7 @@ CREATE TABLE `field_work_jobs` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `customers` (
+CREATE TABLE IF NOT EXISTS `customers` (
     `id` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
     `phone` VARCHAR(191) NULL,
@@ -301,7 +304,7 @@ CREATE TABLE `customers` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `customer_documents` (
+CREATE TABLE IF NOT EXISTS `customer_documents` (
     `id` VARCHAR(191) NOT NULL,
     `customerId` VARCHAR(191) NOT NULL,
     `title` VARCHAR(191) NOT NULL,
@@ -322,7 +325,7 @@ CREATE TABLE `customer_documents` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `customer_notes` (
+CREATE TABLE IF NOT EXISTS `customer_notes` (
     `id` VARCHAR(191) NOT NULL,
     `customerId` VARCHAR(191) NOT NULL,
     `userId` VARCHAR(191) NOT NULL,
@@ -337,7 +340,7 @@ CREATE TABLE `customer_notes` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `vendors` (
+CREATE TABLE IF NOT EXISTS `vendors` (
     `id` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
     `phone` VARCHAR(191) NULL,
@@ -360,7 +363,7 @@ CREATE TABLE `vendors` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `chart_accounts` (
+CREATE TABLE IF NOT EXISTS `chart_accounts` (
     `id` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
     `type` VARCHAR(191) NOT NULL,
@@ -374,7 +377,7 @@ CREATE TABLE `chart_accounts` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `invoices` (
+CREATE TABLE IF NOT EXISTS `invoices` (
     `id` VARCHAR(191) NOT NULL,
     `customerId` VARCHAR(191) NULL,
     `customerName` VARCHAR(191) NULL,
@@ -395,7 +398,7 @@ CREATE TABLE `invoices` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `bills` (
+CREATE TABLE IF NOT EXISTS `bills` (
     `id` VARCHAR(191) NOT NULL,
     `vendorId` VARCHAR(191) NULL,
     `vendorName` VARCHAR(191) NULL,
@@ -413,7 +416,7 @@ CREATE TABLE `bills` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `payments` (
+CREATE TABLE IF NOT EXISTS `payments` (
     `id` VARCHAR(191) NOT NULL,
     `reference` VARCHAR(191) NULL,
     `entityId` VARCHAR(191) NULL,
@@ -436,7 +439,7 @@ CREATE TABLE `payments` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `expenses` (
+CREATE TABLE IF NOT EXISTS `expenses` (
     `id` VARCHAR(191) NOT NULL,
     `category` VARCHAR(191) NOT NULL,
     `description` TEXT NULL,
@@ -452,7 +455,7 @@ CREATE TABLE `expenses` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `finance_journal_entries` (
+CREATE TABLE IF NOT EXISTS `finance_journal_entries` (
     `id` VARCHAR(191) NOT NULL,
     `date` DATETIME(3) NOT NULL,
     `description` TEXT NULL,
@@ -470,7 +473,7 @@ CREATE TABLE `finance_journal_entries` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `hr_departments` (
+CREATE TABLE IF NOT EXISTS `hr_departments` (
     `id` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
     `description` TEXT NULL,
@@ -481,7 +484,7 @@ CREATE TABLE `hr_departments` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `hr_workers` (
+CREATE TABLE IF NOT EXISTS `hr_workers` (
     `id` VARCHAR(191) NOT NULL,
     `workerCode` VARCHAR(191) NULL,
     `fullName` VARCHAR(191) NOT NULL,
@@ -499,7 +502,7 @@ CREATE TABLE `hr_workers` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `hr_settings` (
+CREATE TABLE IF NOT EXISTS `hr_settings` (
     `id` VARCHAR(191) NOT NULL DEFAULT 'default',
     `workStartTime` VARCHAR(191) NOT NULL DEFAULT '08:00',
     `workEndTime` VARCHAR(191) NOT NULL DEFAULT '17:00',
@@ -512,7 +515,7 @@ CREATE TABLE `hr_settings` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `attendance_logs` (
+CREATE TABLE IF NOT EXISTS `attendance_logs` (
     `id` VARCHAR(191) NOT NULL,
     `workerId` VARCHAR(191) NOT NULL,
     `workerName` VARCHAR(191) NULL,
@@ -531,7 +534,7 @@ CREATE TABLE `attendance_logs` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `inventory_requests` (
+CREATE TABLE IF NOT EXISTS `inventory_requests` (
     `id` VARCHAR(191) NOT NULL,
     `productId` VARCHAR(191) NULL,
     `productName` VARCHAR(191) NOT NULL,
@@ -551,7 +554,7 @@ CREATE TABLE `inventory_requests` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `finance_center_records` (
+CREATE TABLE IF NOT EXISTS `finance_center_records` (
     `id` VARCHAR(191) NOT NULL,
     `type` VARCHAR(191) NOT NULL,
     `company` VARCHAR(191) NULL,
@@ -564,7 +567,7 @@ CREATE TABLE `finance_center_records` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `peachtree_imports` (
+CREATE TABLE IF NOT EXISTS `peachtree_imports` (
     `id` VARCHAR(191) NOT NULL,
     `company` VARCHAR(191) NULL,
     `source` VARCHAR(191) NOT NULL DEFAULT 'desktop-agent',
@@ -592,7 +595,7 @@ CREATE TABLE `peachtree_imports` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `sync_devices` (
+CREATE TABLE IF NOT EXISTS `sync_devices` (
     `id` VARCHAR(191) NOT NULL,
     `deviceKey` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NULL,
@@ -611,7 +614,7 @@ CREATE TABLE `sync_devices` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `sync_mutations` (
+CREATE TABLE IF NOT EXISTS `sync_mutations` (
     `id` VARCHAR(191) NOT NULL,
     `deviceKey` VARCHAR(191) NULL,
     `company` VARCHAR(191) NULL,
@@ -636,7 +639,7 @@ CREATE TABLE `sync_mutations` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `sync_conflicts` (
+CREATE TABLE IF NOT EXISTS `sync_conflicts` (
     `id` VARCHAR(191) NOT NULL,
     `mutationId` VARCHAR(191) NULL,
     `company` VARCHAR(191) NULL,
@@ -656,7 +659,7 @@ CREATE TABLE `sync_conflicts` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `pump_products` (
+CREATE TABLE IF NOT EXISTS `pump_products` (
     `id` VARCHAR(191) NOT NULL,
     `model` VARCHAR(191) NOT NULL,
     `brand` VARCHAR(191) NOT NULL,
@@ -685,7 +688,7 @@ CREATE TABLE `pump_products` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `pump_categories` (
+CREATE TABLE IF NOT EXISTS `pump_categories` (
     `id` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
     `description` TEXT NULL,
@@ -699,7 +702,7 @@ CREATE TABLE `pump_categories` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `hierarchy_requests` (
+CREATE TABLE IF NOT EXISTS `hierarchy_requests` (
     `id` VARCHAR(191) NOT NULL,
     `title` VARCHAR(191) NOT NULL,
     `description` TEXT NULL,
@@ -717,7 +720,7 @@ CREATE TABLE `hierarchy_requests` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `request_audit_logs` (
+CREATE TABLE IF NOT EXISTS `request_audit_logs` (
     `id` VARCHAR(191) NOT NULL,
     `requestId` VARCHAR(191) NOT NULL,
     `userId` VARCHAR(191) NOT NULL,
@@ -729,7 +732,7 @@ CREATE TABLE `request_audit_logs` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `eod_reports` (
+CREATE TABLE IF NOT EXISTS `eod_reports` (
     `id` VARCHAR(191) NOT NULL,
     `date` VARCHAR(191) NOT NULL,
     `department` VARCHAR(191) NOT NULL,
@@ -747,7 +750,7 @@ CREATE TABLE `eod_reports` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `eod_comments` (
+CREATE TABLE IF NOT EXISTS `eod_comments` (
     `id` VARCHAR(191) NOT NULL,
     `reportId` VARCHAR(191) NOT NULL,
     `userId` VARCHAR(191) NOT NULL,
@@ -758,7 +761,7 @@ CREATE TABLE `eod_comments` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `tasks` (
+CREATE TABLE IF NOT EXISTS `tasks` (
     `id` VARCHAR(191) NOT NULL,
     `title` VARCHAR(191) NOT NULL,
     `description` TEXT NULL,
@@ -774,7 +777,7 @@ CREATE TABLE `tasks` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `comments` (
+CREATE TABLE IF NOT EXISTS `comments` (
     `id` VARCHAR(191) NOT NULL,
     `entityType` VARCHAR(191) NOT NULL,
     `entityId` VARCHAR(191) NOT NULL,
@@ -787,7 +790,7 @@ CREATE TABLE `comments` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `chat_channels` (
+CREATE TABLE IF NOT EXISTS `chat_channels` (
     `id` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NULL,
     `type` VARCHAR(191) NOT NULL,
@@ -798,7 +801,7 @@ CREATE TABLE `chat_channels` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `channel_members` (
+CREATE TABLE IF NOT EXISTS `channel_members` (
     `channelId` VARCHAR(191) NOT NULL,
     `userId` VARCHAR(191) NOT NULL,
     `lastReadAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -808,7 +811,7 @@ CREATE TABLE `channel_members` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `chat_messages` (
+CREATE TABLE IF NOT EXISTS `chat_messages` (
     `id` VARCHAR(191) NOT NULL,
     `channelId` VARCHAR(191) NOT NULL,
     `senderId` VARCHAR(191) NOT NULL,
@@ -819,7 +822,7 @@ CREATE TABLE `chat_messages` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `notifications` (
+CREATE TABLE IF NOT EXISTS `notifications` (
     `id` VARCHAR(191) NOT NULL,
     `userId` VARCHAR(191) NOT NULL,
     `type` VARCHAR(191) NOT NULL,
@@ -833,7 +836,7 @@ CREATE TABLE `notifications` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `sizing_requests` (
+CREATE TABLE IF NOT EXISTS `sizing_requests` (
     `id` VARCHAR(191) NOT NULL,
     `clientName` VARCHAR(191) NOT NULL,
     `address` TEXT NULL,
@@ -863,7 +866,7 @@ CREATE TABLE `sizing_requests` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `company_assets` (
+CREATE TABLE IF NOT EXISTS `company_assets` (
     `id` VARCHAR(191) NOT NULL,
     `serialNumber` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
@@ -878,7 +881,7 @@ CREATE TABLE `company_assets` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `field_work_assets` (
+CREATE TABLE IF NOT EXISTS `field_work_assets` (
     `id` VARCHAR(191) NOT NULL,
     `fieldWorkJobId` VARCHAR(191) NOT NULL,
     `companyAssetId` VARCHAR(191) NOT NULL,
@@ -1000,8 +1003,6 @@ ALTER TABLE `notifications` ADD CONSTRAINT `notifications_userId_fkey` FOREIGN K
 ALTER TABLE `field_work_assets` ADD CONSTRAINT `field_work_assets_companyAssetId_fkey` FOREIGN KEY (`companyAssetId`) REFERENCES `company_assets`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 
-
-
 -- ========================================================
 -- SEED DATA: ORGANIZATIONS, COMPANIES, ROLES & ADMIN
 -- ========================================================
@@ -1071,7 +1072,7 @@ INSERT IGNORE INTO `role_permissions` (`roleId`, `permissionId`) VALUES
 ('role_mgr_01', 'perm_att_w');
 
 INSERT INTO `users` (`id`, `organizationId`, `username`, `passwordHash`, `displayName`, `status`, `department`, `createdAt`, `updatedAt`) VALUES
-('user_admin_01', 'org_solar_01', 'admin', '$argon2id$v=19$m=65536,t=3,p=4$zUCAwKG0aseCz80fjFlVuw$TVv5hqXocWBGBvbRNI9LTpOAo2xA4WL4S4PL/UaPz9w', 'System Administrator', 'ACTIVE', 'ADMIN', NOW(3), NOW(3))
+('user_admin_01', 'org_solar_01', 'admin', '$argon2id$v=19$m=65536,t=3,p=4$I+O9Nl2KxTOM0NLuu5/2sg$vgwbahjlCGNRgyMQFiQ7N+tR4pj9g8EjE2vJYHgI6ec', 'System Administrator', 'ACTIVE', 'ADMIN', NOW(3), NOW(3))
 ON DUPLICATE KEY UPDATE `passwordHash` = VALUES(`passwordHash`), `status` = VALUES(`status`);
 
 INSERT IGNORE INTO `user_roles` (`userId`, `roleId`) VALUES
@@ -1355,3 +1356,6 @@ ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
 INSERT INTO `hr_settings` (`id`, `workStartTime`, `workEndTime`, `gracePeriodMinutes`, `companyName`, `createdAt`, `updatedAt`) VALUES
 ('default', '08:00', '17:00', 15, 'Meseret Mare Solar', NOW(3), NOW(3))
 ON DUPLICATE KEY UPDATE `companyName` = VALUES(`companyName`);
+
+
+SET FOREIGN_KEY_CHECKS = 1;
