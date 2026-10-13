@@ -60,10 +60,8 @@ jobs:
           cp backend/tsconfig.json deploy/backend/
           cp backend/tsconfig.build.json deploy/backend/
           cp backend/nest-cli.json deploy/backend/
-          mkdir -p deploy/backend/node_modules/.prisma
-          mkdir -p deploy/backend/node_modules/@prisma
-          cp -r backend/node_modules/.prisma/* deploy/backend/node_modules/.prisma/
-          cp -r backend/node_modules/@prisma/* deploy/backend/node_modules/@prisma/
+          mkdir -p deploy/backend/prisma-client
+          cp -r backend/node_modules/.prisma/client/* deploy/backend/prisma-client/
           mkdir -p deploy/backend/uploads
 
       # ── Upload artifacts for deploy jobs ──
@@ -125,6 +123,7 @@ jobs:
           exclude: |
             **/.env
             **/uploads/**
+            **/node_modules/**
             **/stderr.log
             **/stdout.log
 

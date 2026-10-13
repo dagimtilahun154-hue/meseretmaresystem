@@ -8,6 +8,23 @@
  * Usage: set "Application startup file" to  app.js  in cPanel Node.js Selector.
  */
 
+const path = require("path");
+const Module = require("module");
+const originalRequire = Module.prototype.require;
+
+// Redirect @prisma/client to the pre-generated client in prisma-client/
+Module.prototype.require = function (request) {
+  if (request === "@prisma/client" || request === ".prisma/client/default" || request === ".prisma/client") {
+    try {
+      const customClient = path.join(__dirname, "prisma-client");
+      if (fs.existsSync(customClient)) {
+        return originalRequire.call(this, customClient);
+      }
+    } catch (_) {}
+  }
+  return originalRequire.apply(this, arguments);
+};
+
 const { NestFactory } = require("@nestjs/core");
 const { ConfigService } = require("@nestjs/config");
 const { ValidationPipe } = require("@nestjs/common");
