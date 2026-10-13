@@ -1,5 +1,4 @@
-import { UnauthorizedException } from "@nestjs/common";
-import { Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { AuditAction, User } from "@prisma/client";
@@ -19,13 +18,52 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto, request: Request) {
-    const user = await this.prisma.user.findFirst({
-      where: { username: dto.username, status: "ACTIVE" },
-      include: {
-        roles: { include: { role: true } },
-        companies: { include: { company: true } },
-      },
-    });
+    let user;
+    try {
+      user = await this.prisma.user.findFirst({
+        where: { username: dto.username, status: "ACTIVE" },
+        include: {
+          roles: { include: { role: true } },
+          companies: { include: { company: true } },
+        },
+      });
+
+      // If user not found, check if this is a fresh database with 0 users
+      if (!user) {
+        const totalUsers = await this.prisma.user.count().catch(() => -1);
+        if (totalUsers === 0) {
+          console.log("[AuthService] Fresh database detected (0 users). Auto-seeding default admin and system data...");
+          await this.seedDefaultAdmin();
+          user = await this.prisma.user.findFirst({
+            where: { username: dto.username, status: "ACTIVE" },
+            include: {
+              roles: { include: { role: true } },
+              companies: { include: { company: true } },
+            },
+          });
+        }
+      }
+    } catch (dbErr: any) {
+      console.error("[AuthService.login] Database error:", dbErr?.message || dbErr);
+      if (dbErr?.code === "P2021" || (dbErr?.message && dbErr.message.includes("doesn't exist"))) {
+        throw new HttpException(
+          {
+            statusCode: 500,
+            error: "DATABASE_NOT_INITIALIZED",
+            message: "Database tables not found. Please import 'cpanel_init_database.sql' into 'meseretmarecom_system' in phpMyAdmin.",
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+      throw new HttpException(
+        {
+          statusCode: 500,
+          error: "DATABASE_ERROR",
+          message: `Database error: ${dbErr?.message || "Failed to query database"}`,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
 
     if (!user || !(await argon2.verify(user.passwordHash, dto.password))) {
       throw new UnauthorizedException("Invalid username or password.");
@@ -33,6 +71,91 @@ export class AuthService {
 
     await this.writeAudit(user, AuditAction.LOGIN, "auth", user.id, request);
     return this.createSession(user, request);
+  }
+
+  private async seedDefaultAdmin() {
+    try {
+      const organization = await this.prisma.organization.upsert({
+        where: { slug: "meseret-mare-solar" },
+        update: { name: "Meseret Mare Solar" },
+        create: { name: "Meseret Mare Solar", slug: "meseret-mare-solar" },
+      });
+
+      const companies = await Promise.all([
+        this.prisma.company.upsert({
+          where: { organizationId_code: { organizationId: organization.id, code: "MM" } },
+          update: { name: "Meseret Mare" },
+          create: { organizationId: organization.id, code: "MM", name: "Meseret Mare" },
+        }),
+        this.prisma.company.upsert({
+          where: { organizationId_code: { organizationId: organization.id, code: "FZ" } },
+          update: { name: "Fasil Zelalem" },
+          create: { organizationId: organization.id, code: "FZ", name: "Fasil Zelalem" },
+        }),
+      ]);
+
+      const roleDefinitions = [
+        { name: "admin", label: "Administrator" },
+        { name: "manager", label: "Manager" },
+        { name: "finance", label: "Finance" },
+        { name: "storekeeper", label: "Store Keeper" },
+        { name: "fieldwork", label: "Field Work Controller" },
+        { name: "attendance", label: "Attendance Officer" },
+        { name: "hr", label: "HR Manager" },
+        { name: "ttl", label: "Technical Team Leader" },
+      ];
+
+      const roles = await Promise.all(
+        roleDefinitions.map((role) =>
+          this.prisma.role.upsert({
+            where: { organizationId_name: { organizationId: organization.id, name: role.name } },
+            update: { label: role.label },
+            create: { organizationId: organization.id, ...role },
+          }),
+        ),
+      );
+
+      const adminRole = roles.find((role) => role.name === "admin") || roles[0];
+      const adminUsername = this.config.get<string>("DEFAULT_ADMIN_USERNAME", "admin");
+      const adminPassword = this.config.get<string>("DEFAULT_ADMIN_PASSWORD", "admin123");
+      const passwordHash = await argon2.hash(adminPassword);
+
+      const adminUser = await this.prisma.user.upsert({
+        where: { organizationId_username: { organizationId: organization.id, username: adminUsername } },
+        update: {
+          displayName: "System Administrator",
+          status: "ACTIVE",
+          department: "ADMIN",
+        },
+        create: {
+          organizationId: organization.id,
+          username: adminUsername,
+          displayName: "System Administrator",
+          passwordHash,
+          department: "ADMIN",
+        },
+      });
+
+      await this.prisma.userRole.upsert({
+        where: { userId_roleId: { userId: adminUser.id, roleId: adminRole.id } },
+        update: {},
+        create: { userId: adminUser.id, roleId: adminRole.id },
+      });
+
+      await Promise.all(
+        companies.map((company) =>
+          this.prisma.userCompany.upsert({
+            where: { userId_companyId: { userId: adminUser.id, companyId: company.id } },
+            update: {},
+            create: { userId: adminUser.id, companyId: company.id },
+          }),
+        ),
+      );
+
+      console.log(`[AuthService] Auto-seed successful: user '${adminUsername}' ready.`);
+    } catch (seedErr: any) {
+      console.error("[AuthService] Auto-seed failed:", seedErr?.message || seedErr);
+    }
   }
 
   async refresh(refreshToken: string, request: Request) {

@@ -36,8 +36,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         retries--;
         console.warn(`[PrismaService] Database connection attempt failed. Retrying in 2s (${retries} attempts left)...`);
         if (retries === 0) {
-          console.error(`[PrismaService] Critical: Unable to connect to TiDB database:`, err.message);
-          throw err;
+          console.error(`[PrismaService] Critical: Could not connect to database on startup:`, err.message);
+          // Do not crash the entire process; allow HealthController to report status
+          break;
         }
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
