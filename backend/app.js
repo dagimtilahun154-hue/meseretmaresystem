@@ -132,11 +132,15 @@ async function createApp() {
   );
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  await app.init();
-
-  // Return the underlying Express instance for Passenger
-  return app.getHttpAdapter().getInstance();
+  const port = process.env.PORT || config.get("PORT") || 4000;
+  const server = await app.listen(port);
+  console.log(`Backend started on port ${port}`);
+  return server;
 }
 
-// Passenger expects module.exports to be the app (or a promise of one)
-module.exports = createApp();
+// Start application and handle any bootstrap errors
+const serverPromise = createApp().catch((err) => {
+  console.error("FATAL ERROR IN BOOTSTRAP:", err);
+});
+
+module.exports = serverPromise;
