@@ -13,8 +13,10 @@ dist-ssr
 *.local
 .env
 .env.*
+!.env.cpanel
 *.env
 backend/.env
+!backend/.env.cpanel
 
 # Editor directories and files
 .vscode/*
@@ -49,3 +51,9 @@ tools/**/build32/
 tools/**/__pycache__/
 __pycache__/
 tools/**/agent_state.json
+
+# Local agent artifacts & scratch
+.agent/
+.agents/
+/scratch/
+

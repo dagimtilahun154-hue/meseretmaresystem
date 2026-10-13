@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "build:cpanel": "vite build --mode cpanel",
     "build:android": "vite build && powershell -Command \"Copy-Item -Path dist/* -Destination android/app/src/main/assets -Recurse -Force\""
   },
   "dependencies": {

@@ -1,0 +1,145 @@
+name: Deploy to cPanel (FTP)
+
+on:
+  push:
+    branches: [main, finance-adjusted]
+  workflow_dispatch: # Manual trigger from GitHub UI
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ─── Build Everything ──────────────────────────────────────
+  build:
+    name: Build Frontend & Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Frontend ──
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend for cPanel
+        run: npm run build:cpanel
+        env:
+          VITE_API_URL: https://api.meseretmare.com/api/v1
+
+      # ── Backend ──
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+
+      - name: Build NestJS backend
+        working-directory: backend
+        run: npm run build
+
+      # ── Prepare deploy structure ──
+      - name: Prepare frontend deploy
+        run: |
+          mkdir -p deploy/frontend
+          cp -r dist/* deploy/frontend/
+
+      - name: Prepare backend deploy
+        run: |
+          mkdir -p deploy/backend
+          cp -r backend/dist deploy/backend/
+          cp -r backend/prisma deploy/backend/
+          cp backend/package.json deploy/backend/
+          cp backend/package-lock.json deploy/backend/
+          cp backend/app.js deploy/backend/
+          mkdir -p deploy/backend/uploads
+
+      # ── Upload artifacts for deploy jobs ──
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-deploy
+          path: deploy/frontend/
+          retention-days: 1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-deploy
+          path: deploy/backend/
+          retention-days: 1
+
+  # ─── Deploy Frontend via FTP ───────────────────────────────
+  deploy-frontend:
+    name: Deploy Frontend → app.meseretmare.com
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-deploy
+          path: deploy/frontend
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_FRONTEND_USER }}
+          password: ${{ secrets.FTP_FRONTEND_PASS }}
+          local-dir: deploy/frontend/
+          server-dir: /
+          dangerous-clean-slate: false
+
+  # ─── Deploy Backend via FTP ────────────────────────────────
+  deploy-backend:
+    name: Deploy Backend → api.meseretmare.com
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-deploy
+          path: deploy/backend
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_BACKEND_USER }}
+          password: ${{ secrets.FTP_BACKEND_PASS }}
+          local-dir: deploy/backend/
+          server-dir: /
+          dangerous-clean-slate: false
+          exclude: |
+            **/.env
+            **/uploads/**
+            **/node_modules/**
+            **/stderr.log
+            **/stdout.log
+
+  # ─── Post-deploy: Install deps on server ───────────────────
+  post-deploy:
+    name: Post-Deploy (Install & Restart)
+    needs: deploy-backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger cPanel restart via API
+        run: |
+          echo "============================================"
+          echo "  ⚠️  MANUAL STEP REQUIRED (first time only)"
+          echo "============================================"
+          echo ""
+          echo "After the first deploy, SSH or use cPanel Terminal to run:"
+          echo "  cd ~/api.meseretmare.com"
+          echo "  npm ci --omit=dev"
+          echo "  npx prisma generate"
+          echo "  npx prisma db push"
+          echo ""
+          echo "Then restart the Node.js app from cPanel."
+          echo ""
+          echo "For subsequent deploys, just restart the Node.js app"
+          echo "from cPanel → Setup Node.js App → RESTART"
+          echo "============================================"
