@@ -41,7 +41,7 @@ jobs:
 
       - name: Build NestJS backend
         working-directory: backend
-        run: npm run build
+        run: npm run build:full
 
       # ── Prepare deploy structure ──
       - name: Prepare frontend deploy
