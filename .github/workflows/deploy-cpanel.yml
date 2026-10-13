@@ -57,6 +57,10 @@ jobs:
           cp backend/package.json deploy/backend/
           cp backend/package-lock.json deploy/backend/
           cp backend/app.js deploy/backend/
+          mkdir -p deploy/backend/node_modules/.prisma
+          mkdir -p deploy/backend/node_modules/@prisma
+          cp -r backend/node_modules/.prisma/* deploy/backend/node_modules/.prisma/
+          cp -r backend/node_modules/@prisma/* deploy/backend/node_modules/@prisma/
           mkdir -p deploy/backend/uploads
 
       # ── Upload artifacts for deploy jobs ──
@@ -118,7 +122,6 @@ jobs:
           exclude: |
             **/.env
             **/uploads/**
-            **/node_modules/**
             **/stderr.log
             **/stdout.log
 

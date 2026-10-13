@@ -11,7 +11,8 @@
     "start:dev": "nest start --watch",
     "lint": "eslint \"src/**/*.ts\"",
     "test": "jest",
-    "prisma:generate": "prisma generate",
+    "prisma:generate": "node -e \"console.log('Prisma client already generated in CI/CD')\"",
+    "prisma:generate:local": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "seed": "ts-node prisma/seed.ts"
