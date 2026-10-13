@@ -1027,20 +1027,20 @@ INSERT INTO `roles` (`id`, `organizationId`, `name`, `label`, `createdAt`, `upda
 ('role_ttl_01', 'org_solar_01', 'ttl', 'Technical Team Leader', NOW(3), NOW(3))
 ON DUPLICATE KEY UPDATE `label` = VALUES(`label`);
 
-INSERT INTO `permissions` (`id`, `key`, `description`, `createdAt`, `updatedAt`) VALUES
-('perm_dash_r', 'dashboard:read', 'View system dashboard', NOW(3), NOW(3)),
-('perm_user_m', 'users:manage', 'Manage system users', NOW(3), NOW(3)),
-('perm_comp_r', 'companies:read', 'View companies', NOW(3), NOW(3)),
-('perm_inv_r', 'inventory:read', 'View stock and catalog', NOW(3), NOW(3)),
-('perm_inv_w', 'inventory:write', 'Create and modify inventory items', NOW(3), NOW(3)),
-('perm_pos_r', 'pos:read', 'View point of sale orders', NOW(3), NOW(3)),
-('perm_pos_w', 'pos:write', 'Create point of sale transactions', NOW(3), NOW(3)),
-('perm_fin_r', 'finance:read', 'View finance and accounting records', NOW(3), NOW(3)),
-('perm_fin_w', 'finance:write', 'Record financial transactions', NOW(3), NOW(3)),
-('perm_fld_r', 'fieldwork:read', 'View field work jobs and assessments', NOW(3), NOW(3)),
-('perm_fld_w', 'fieldwork:write', 'Create and update field jobs', NOW(3), NOW(3)),
-('perm_att_r', 'attendance:read', 'View attendance records', NOW(3), NOW(3)),
-('perm_att_w', 'attendance:write', 'Record staff attendance', NOW(3), NOW(3))
+INSERT INTO `permissions` (`id`, `key`, `description`) VALUES
+('perm_dash_r', 'dashboard:read', 'View system dashboard'),
+('perm_user_m', 'users:manage', 'Manage system users'),
+('perm_comp_r', 'companies:read', 'View companies'),
+('perm_inv_r', 'inventory:read', 'View stock and catalog'),
+('perm_inv_w', 'inventory:write', 'Create and modify inventory items'),
+('perm_pos_r', 'pos:read', 'View point of sale orders'),
+('perm_pos_w', 'pos:write', 'Create point of sale transactions'),
+('perm_fin_r', 'finance:read', 'View finance and accounting records'),
+('perm_fin_w', 'finance:write', 'Record financial transactions'),
+('perm_fld_r', 'fieldwork:read', 'View field work jobs and assessments'),
+('perm_fld_w', 'fieldwork:write', 'Create and update field jobs'),
+('perm_att_r', 'attendance:read', 'View attendance records'),
+('perm_att_w', 'attendance:write', 'Record staff attendance')
 ON DUPLICATE KEY UPDATE `description` = VALUES(`description`);
 
 INSERT IGNORE INTO `role_permissions` (`roleId`, `permissionId`) VALUES
@@ -1072,7 +1072,7 @@ INSERT IGNORE INTO `role_permissions` (`roleId`, `permissionId`) VALUES
 ('role_mgr_01', 'perm_att_w');
 
 INSERT INTO `users` (`id`, `organizationId`, `username`, `passwordHash`, `displayName`, `status`, `department`, `createdAt`, `updatedAt`) VALUES
-('user_admin_01', 'org_solar_01', 'admin', '$argon2id$v=19$m=65536,t=3,p=4$I+O9Nl2KxTOM0NLuu5/2sg$vgwbahjlCGNRgyMQFiQ7N+tR4pj9g8EjE2vJYHgI6ec', 'System Administrator', 'ACTIVE', 'ADMIN', NOW(3), NOW(3))
+('user_admin_01', 'org_solar_01', 'admin', '$argon2id$v=19$m=65536,t=3,p=4$GOpj9uNMP5Wyu8lvyQQK8A$TmdLAAC/FyHk1633akcbU32LCrXDnKlW9jhKSCuByAs', 'System Administrator', 'ACTIVE', 'ADMIN', NOW(3), NOW(3))
 ON DUPLICATE KEY UPDATE `passwordHash` = VALUES(`passwordHash`), `status` = VALUES(`status`);
 
 INSERT IGNORE INTO `user_roles` (`userId`, `roleId`) VALUES
